@@ -1,0 +1,56 @@
+{
+  "expo": {
+    "name": "MeeetMe",
+    "slug": "MeeetMe",
+    "version": "3.0.1",
+    "orientation": "portrait",
+    "icon": "./assets/Logo.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/Logo.png",
+      "backgroundColor": "#673AB7",
+      "resizeMode": "contain"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.bussinesse",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Meet Me a besoin d'accéder à votre caméra pour les appels vidéo.",
+        "NSMicrophoneUsageDescription": "Meet Me a besoin d'accéder à votre micro pour les appels audio et vidéo."
+      }
+    },
+    "android": {
+      "package": "com.bussinesse",
+      "versionCode": 3,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/Logo.png",
+        "backgroundColor": "#ffffff"
+      },
+      "permissions": [
+        "CAMERA",
+        "RECORD_AUDIO",
+        "MODIFY_AUDIO_SETTINGS",
+        "INTERNET",
+        "ACCESS_NETWORK_STATE",
+        "ACCESS_WIFI_STATE",
+        "READ_PHONE_STATE"
+      ],
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-localization"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "59084bb1-d382-4db1-bbb2-5ac571e0b6f1"
+      },
+      "apiUrl": "https://meet-me-backend-sg5c.onrender.com/api",
+      "socketUrl": "https://meet-me-backend-sg5c.onrender.com"
+    }
+  }
+}
