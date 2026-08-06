@@ -36,13 +36,7 @@ export default function SettingsScreen({ navigation }: any) {
 
   useEffect(() => {
     fetchUserProfile();
-    checkNotificationStatus();
   }, []);
-
-  const checkNotificationStatus = async () => {
-    const { status: existingStatus } = await Notifications.getPermissionsAsync();
-    setNotifications(existingStatus === 'granted');
-  };
 
   const notifyChange = async (message: string) => {
     await Notifications.scheduleNotificationAsync({
@@ -69,7 +63,7 @@ export default function SettingsScreen({ navigation }: any) {
 
       try {
         const token = (await Notifications.getExpoPushTokenAsync({
-          projectId: '5948ed5d-318e-4f02-861c-529e376878c4'
+          projectId: '822dba2a-c0bc-41fd-9d5b-fcf8c9303291'
         })).data;
 
         const res = await apiService.updatePushToken(token);
@@ -92,8 +86,19 @@ export default function SettingsScreen({ navigation }: any) {
 
   const fetchUserProfile = async () => {
     try {
-      const userData = await apiService.getCurrentUser();
-      if (userData) setUser(userData);
+      const res = await apiService.getMe();
+      if (res.success) {
+        const userData = res.data;
+        setUser(userData);
+
+        // La source de vérité est la présence d'un token sur le serveur
+        // ET les permissions système accordées
+        const { status: existingStatus } = await Notifications.getPermissionsAsync();
+        const hasToken = !!userData.push_token;
+        const hasPermission = existingStatus === 'granted';
+
+        setNotifications(hasToken && hasPermission);
+      }
     } catch (error) {
       console.error('Error fetching profile:', error);
     } finally {

@@ -188,6 +188,35 @@ export default function EditProfileScreen({ navigation }: any) {
     }
   };
 
+  const handleStartVerification = async () => {
+    const permission = await ImagePicker.requestCameraPermissionsAsync();
+    if (permission.status !== 'granted') {
+      Alert.alert('Erreur', 'Permission caméra requise pour la vérification.');
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({ allowsEditing: true, quality: 0.7 });
+    if (!result.canceled) {
+      setSaving(true);
+      try {
+        const uploadRes = await apiService.uploadFile({
+          uri: result.assets[0].uri,
+          type: 'image/jpeg',
+          name: 'verification.jpg'
+        }, 'image');
+
+        if (uploadRes.success) {
+          await apiService.submitVerification(uploadRes.data.fileUrl);
+          Alert.alert('Succès', 'Votre demande de vérification a été envoyée. Un admin l\'examinera prochainement.');
+        }
+      } catch (e) {
+        Alert.alert('Erreur', 'Échec de l\'envoi du document.');
+      } finally {
+        setSaving(false);
+      }
+    }
+  };
+
   if (loading) return <View style={styles.centered}><ActivityIndicator size="large" color={colors.primary} /></View>;
 
   const dynamicStyles = createStyles(colors, normalize, fontSizeFactor, isDark);
@@ -264,6 +293,26 @@ export default function EditProfileScreen({ navigation }: any) {
             </View>
           </View>
 
+          {/* SECTION VÉRIFICATION */}
+          <View style={dynamicStyles.verificationSection}>
+            <View style={dynamicStyles.verificationHeader}>
+              <Ionicons name="checkmark-circle" size={24} color={user?.is_verified ? colors.primary : colors.text.disabled} />
+              <Text style={[dynamicStyles.verificationTitle, user?.is_verified && { color: colors.primary }]}>
+                {user?.is_verified ? "Compte Vérifié" : "Vérifier mon compte"}
+              </Text>
+            </View>
+            <Text style={dynamicStyles.verificationDesc}>
+              {user?.is_verified
+                ? "Votre identité a été confirmée. Vous possédez le badge bleu officiel."
+                : "Obtenez un badge bleu en confirmant votre identité avec une pièce officielle."}
+            </Text>
+            {!user?.is_verified && (
+              <TouchableOpacity style={dynamicStyles.verifyBtn} onPress={handleStartVerification}>
+                <Text style={dynamicStyles.verifyBtnText}>DEMANDER LA VÉRIFICATION</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
           <TouchableOpacity
             style={[dynamicStyles.saveButton, saving && { opacity: 0.7 }]}
             onPress={handleSaveInfo}
@@ -324,6 +373,12 @@ const createStyles = (colors: any, normalize: any, factor: number, isDark: boole
   label: { fontSize: normalize(12, factor), color: colors.text.secondary, marginBottom: 5 },
   input: { fontSize: normalize(16, factor), fontWeight: '600', paddingVertical: 5, color: colors.text.primary },
   phoneText: { fontSize: normalize(16, factor), fontWeight: '600', paddingVertical: 5, color: colors.text.primary },
+  verificationSection: { marginTop: 10, padding: 15, backgroundColor: isDark ? '#222' : '#f8f9fa', borderRadius: 15, marginBottom: 20 },
+  verificationHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
+  verificationTitle: { fontSize: normalize(15, factor), fontWeight: 'bold', marginLeft: 10, color: colors.text.secondary },
+  verificationDesc: { fontSize: normalize(12, factor), color: colors.text.secondary, lineHeight: 18, marginBottom: 15 },
+  verifyBtn: { paddingVertical: 12, borderWeight: 1, borderColor: colors.primary, borderWidth: 1, borderRadius: 10, alignItems: 'center' },
+  verifyBtnText: { color: colors.primary, fontWeight: 'bold', fontSize: normalize(12, factor) },
   errorText: { color: colors.danger, fontSize: normalize(12, factor), marginTop: -20, marginBottom: 20, textAlign: 'center', fontWeight: 'bold' },
   saveButton: { backgroundColor: colors.primary, borderRadius: 25, height: 55, justifyContent: 'center', alignItems: 'center', marginTop: 15, elevation: 3 },
   saveButtonText: { color: '#fff', fontWeight: 'bold', fontSize: normalize(16, factor), letterSpacing: 1 },

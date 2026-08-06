@@ -190,9 +190,22 @@ class ApiService {
     } catch (e: any) { return this.handleError(e); }
   }
 
+  async getUserById(userId: string): Promise<ApiResponse> {
+    try {
+      const res = await this.api.get(`/users/${userId}`);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
   async updatePushToken(pushToken: string | null): Promise<ApiResponse> {
     try {
       const res = await this.api.put('/users/push-token', { pushToken });
+      if (res.data.success) {
+        const localUser = await this.getCurrentUser();
+        if (localUser) {
+          await AsyncStorage.setItem('user', JSON.stringify({ ...localUser, push_token: pushToken }));
+        }
+      }
       return res.data;
     } catch (e: any) { return this.handleError(e); }
   }
@@ -285,6 +298,28 @@ class ApiService {
   async submitHelpdesk(data: { category: string, reason: string, email?: string }): Promise<ApiResponse> {
     try {
       const res = await this.api.post('/support/helpdesk', data);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  // Update & Config
+  async checkUpdate(version: string, userId?: string): Promise<ApiResponse> {
+    try {
+      const res = await this.api.get('/check-update', { params: { version, userId } });
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async getLegalDocs(): Promise<ApiResponse> {
+    try {
+      const res = await this.api.get('/legal');
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async submitVerification(documentUrl: string): Promise<ApiResponse> {
+    try {
+      const res = await this.api.post('/users/verify', { documentUrl });
       return res.data;
     } catch (e: any) { return this.handleError(e); }
   }

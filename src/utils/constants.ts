@@ -2,7 +2,7 @@ import Constants from 'expo-constants';
 
 // Constantes de l'application
 
-export const APP_NAME = 'Meet Me';
+export const APP_NAME = 'Meet';
 export const APP_VERSION = '1.0.0';
 
 // URLs API

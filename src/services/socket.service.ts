@@ -201,6 +201,42 @@ class SocketService {
       this.emitEvent('user_chats', data);
     });
 
+    // Call signaling events
+    this.socket.on('call:ring', (data) => {
+      console.log('Incoming call ring:', data);
+      this.emitEvent('call:ring', data);
+    });
+
+    this.socket.on('call:offered', (data) => {
+      console.log('Call offered ack:', data);
+      this.emitEvent('call:offered', data);
+    });
+
+    this.socket.on('call:accepted', (data) => {
+      console.log('Call accepted:', data);
+      this.emitEvent('call:accepted', data);
+    });
+
+    this.socket.on('call:rejected', (data) => {
+      console.log('Call rejected:', data);
+      this.emitEvent('call:rejected', data);
+    });
+
+    this.socket.on('call:hangup', (data) => {
+      console.log('Call hangup:', data);
+      this.emitEvent('call:hangup', data);
+    });
+
+    this.socket.on('call:timeout', (data) => {
+      console.log('Call timeout:', data);
+      this.emitEvent('call:timeout', data);
+    });
+
+    this.socket.on('call:callee_unavailable', (data) => {
+      console.log('Callee unavailable:', data);
+      this.emitEvent('call:callee_unavailable', data);
+    });
+
     // Error events
     this.socket.on('error', (error) => {
       console.error('Socket error:', error);
@@ -351,6 +387,37 @@ class SocketService {
     if (this.socket && this.isConnected) {
       this.socket.emit('stop_typing', { chatId });
       console.log('Typing stopped in chat:', chatId);
+    }
+  }
+
+  // Call signaling (client)
+  sendCallOffer(toUserId: string, channelName: string, callType: 'audio' | 'video' = 'audio', callId?: string): void {
+    if (this.socket && this.isConnected) {
+      this.socket.emit('call:offer', { toUserId, channelName, callType, callId });
+      console.log('Call offer sent:', { toUserId, channelName, callType, callId });
+    } else {
+      console.error('Cannot send call offer: socket not connected');
+    }
+  }
+
+  acceptCall(callId: string): void {
+    if (this.socket && this.isConnected) {
+      this.socket.emit('call:accept', { callId });
+      console.log('Call accept sent:', callId);
+    }
+  }
+
+  rejectCall(callId: string): void {
+    if (this.socket && this.isConnected) {
+      this.socket.emit('call:reject', { callId });
+      console.log('Call reject sent:', callId);
+    }
+  }
+
+  hangupCall(callId: string, toUserId?: string): void {
+    if (this.socket && this.isConnected) {
+      this.socket.emit('call:hangup', { callId, toUserId });
+      console.log('Call hangup sent:', { callId, toUserId });
     }
   }
 

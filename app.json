@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "MeeetMe",
-    "slug": "MeeetMe",
+    "name": "Meet",
+    "slug": "meet-app",
     "version": "3.0.1",
     "orientation": "portrait",
     "icon": "./assets/Logo.png",
@@ -14,14 +14,14 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.bussinesse",
+      "bundleIdentifier": "com.meet.app",
       "infoPlist": {
-        "NSCameraUsageDescription": "Meet Me a besoin d'accéder à votre caméra pour les appels vidéo.",
-        "NSMicrophoneUsageDescription": "Meet Me a besoin d'accéder à votre micro pour les appels audio et vidéo."
+        "NSCameraUsageDescription": "Meet a besoin d'accéder à votre caméra pour les appels vidéo.",
+        "NSMicrophoneUsageDescription": "Meet a besoin d'accéder à votre micro pour les appels audio et vidéo."
       }
     },
     "android": {
-      "package": "com.bussinesse",
+      "package": "com.deve",
       "versionCode": 3,
       "adaptiveIcon": {
         "foregroundImage": "./assets/Logo.png",
@@ -34,7 +34,8 @@
         "INTERNET",
         "ACCESS_NETWORK_STATE",
         "ACCESS_WIFI_STATE",
-        "READ_PHONE_STATE"
+        "READ_PHONE_STATE",
+        "BLUETOOTH_CONNECT"
       ],
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
@@ -43,14 +44,27 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-localization"
+      "expo-localization",
+      "expo-secure-store",
+      "expo-notifications",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 24,
+            "newArchEnabled": true
+          }
+        }
+      ],
+      "expo-font"
     ],
     "extra": {
-      "eas": {
-        "projectId": "59084bb1-d382-4db1-bbb2-5ac571e0b6f1"
-      },
       "apiUrl": "https://meet-me-backend-sg5c.onrender.com/api",
-      "socketUrl": "https://meet-me-backend-sg5c.onrender.com"
-    }
+      "socketUrl": "https://meet-me-backend-sg5c.onrender.com",
+      "eas": {
+        "projectId": "822dba2a-c0bc-41fd-9d5b-fcf8c9303291"
+      }
+    },
+    "owner": "docteurparlemois-team"
   }
 }

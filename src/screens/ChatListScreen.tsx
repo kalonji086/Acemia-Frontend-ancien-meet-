@@ -66,6 +66,7 @@ export default function ChatListScreen({ navigation, route }: any) {
             lastMessageAt: chat.last_message_at,
             otherUserId: chat.other_user?.id,
             type: chat.type,
+            isVerified: chat.other_user?.is_verified,
             isSelf
           };
         });
@@ -142,9 +143,14 @@ export default function ChatListScreen({ navigation, route }: any) {
       
       <View style={dynamicStyles.chatInfo}>
         <View style={dynamicStyles.chatHeader}>
-          <Text style={[dynamicStyles.chatName, item.isSelf && { color: themeColors.primary }]}>
-            {item.name}
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+            <Text style={[dynamicStyles.chatName, item.isSelf && { color: themeColors.primary }]} numberOfLines={1}>
+              {item.name}
+            </Text>
+            {item.isVerified && (
+              <Ionicons name="checkmark-circle" size={16} color={themeColors.primary} style={{ marginLeft: 4 }} />
+            )}
+          </View>
           <Text style={dynamicStyles.chatTime}>
             {item.lastMessageAt ? new Date(item.lastMessageAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
           </Text>

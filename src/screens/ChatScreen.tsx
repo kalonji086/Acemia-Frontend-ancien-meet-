@@ -33,8 +33,9 @@ const { width } = Dimensions.get('window');
 export default function ChatScreen({ navigation, route }: any) {
   const { isDark, colors: themeColors, normalize, fontSizeFactor } = useTheme();
   const { t } = useLanguage();
-  const { chatId, name = 'Inconnu', avatar } = route.params || {};
+  const { chatId, name = 'Inconnu', avatar, isVerified: initialIsVerified } = route.params || {};
   const [messages, setMessages] = useState<any[]>([]);
+  const [isVerified, setIsVerified] = useState(initialIsVerified);
   const [inputText, setInputText] = useState('');
   const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -389,7 +390,12 @@ export default function ChatScreen({ navigation, route }: any) {
             style={styles.avatar}
           />
           <View>
-            <Text style={styles.headerName} numberOfLines={1}>{name}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Text style={styles.headerName} numberOfLines={1}>{name}</Text>
+              {isVerified && (
+                <Ionicons name="checkmark-circle" size={14} color="#fff" style={{ marginLeft: 4 }} />
+              )}
+            </View>
             <Text style={styles.headerStatus}>{t('online')}</Text>
           </View>
         </TouchableOpacity>

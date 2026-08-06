@@ -14,6 +14,9 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import apiService from '../services/api.service';
+import { PermissionsAndroid } from 'react-native';
+import SocketService from '../services/socket.service';
+import { Audio } from 'expo-av';
 
 // Import Agora conditionnel pour éviter les crashs sur Expo Go
 let createAgoraRtcEngine: any;
@@ -41,6 +44,12 @@ export default function AudioCallScreen({ navigation, route }: any) {
   const [isSpeaker, setIsSpeaker] = useState(false);
   const [callDuration, setCallDuration] = useState(0);
   const engine = useRef<any>(null);
+  const ringSound = useRef<any>(null);
+  const callTimeout = useRef<any>(null);
+  const currentCallId = useRef<string | null>(null);
+  const isOutgoing = route.params?.outgoing === true;
+  const toUserId = route.params?.toUserId;
+  const peerUserId = route.params?.peerUserId;
 
   useEffect(() => {
     if (!createAgoraRtcEngine) {
@@ -48,24 +57,148 @@ export default function AudioCallScreen({ navigation, route }: any) {
       return;
     }
     initAgora();
+    // Socket listeners
+    SocketService.on('call:accepted', handleCallAccepted);
+    SocketService.on('call:rejected', handleCallRejected);
+    SocketService.on('call:hangup', handleCallHangup);
+    SocketService.on('call:timeout', handleCallTimeout);
+    SocketService.on('call:callee_unavailable', handleCalleeUnavailable);
+
     const timer = setInterval(() => setCallDuration(prev => prev + 1), 1000);
     return () => {
       clearInterval(timer);
+      // send hangup if needed
+      const callIdParam = route.params?.callId || currentCallId.current;
+      const target = peerUserId || toUserId;
+      try { if (callIdParam && target) SocketService.hangupCall(callIdParam, target); } catch (err) {}
       leaveChannel();
+      cleanupRing();
+      // remove listeners
+      SocketService.off('call:accepted', handleCallAccepted);
+      SocketService.off('call:rejected', handleCallRejected);
+      SocketService.off('call:hangup', handleCallHangup);
+      SocketService.off('call:timeout', handleCallTimeout);
+      SocketService.off('call:callee_unavailable', handleCalleeUnavailable);
     };
   }, []);
 
+  const playRing = async () => {
+    try {
+      await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
+      const { sound } = await Audio.Sound.createAsync({ uri: 'https://actions.google.com/sounds/v1/alarms/phone_alerts_and_rings.ogg' });
+      ringSound.current = sound;
+      await sound.setIsLoopingAsync(true);
+      await sound.playAsync();
+    } catch (err) {
+      console.warn('Ring play error', err);
+    }
+  };
+
+  const cleanupRing = async () => {
+    try {
+      if (ringSound.current) {
+        await ringSound.current.stopAsync();
+        await ringSound.current.unloadAsync();
+        ringSound.current = null;
+      }
+    } catch (err) {
+      // ignore
+    }
+  };
+
+  const startCallTimeout = () => {
+    clearCallTimeout();
+    callTimeout.current = setTimeout(() => {
+      cleanupRing();
+      leaveChannel();
+      Alert.alert('Pas de réponse', 'L\'appel n\'a pas été répondu.');
+      navigation.goBack();
+    }, 30000);
+  };
+
+  const clearCallTimeout = () => {
+    if (callTimeout.current) {
+      clearTimeout(callTimeout.current);
+      callTimeout.current = null;
+    }
+  };
+
+  const handleCallAccepted = (data: any) => {
+    if (!data || !data.callId) return;
+    if (currentCallId.current && data.callId !== currentCallId.current) return;
+    cleanupRing();
+    clearCallTimeout();
+  };
+
+  const handleCallRejected = (data: any) => {
+    if (!data || !data.callId) return;
+    if (currentCallId.current && data.callId !== currentCallId.current) return;
+    cleanupRing();
+    clearCallTimeout();
+    Alert.alert('Appel rejeté', 'Le correspondant a rejeté l\'appel.');
+    navigation.goBack();
+  };
+
+  const handleCallHangup = (data: any) => {
+    cleanupRing();
+    clearCallTimeout();
+    Alert.alert('Appel terminé', 'Le correspondant a raccroché.');
+    navigation.goBack();
+  };
+
+  const handleCallTimeout = (data: any) => {
+    cleanupRing();
+    clearCallTimeout();
+    Alert.alert('Temps écoulé', 'L\'appel a expiré.');
+    navigation.goBack();
+  };
+
+  const handleCalleeUnavailable = (data: any) => {
+    cleanupRing();
+    clearCallTimeout();
+    Alert.alert('Hors ligne', 'Le destinataire est hors ligne.');
+    navigation.goBack();
+  };
+
   const initAgora = async () => {
     try {
+      // Permissions (Android)
+      if (Platform.OS === 'android') {
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
+          {
+            title: 'Permission microphone',
+            message: 'L\'application a besoin d\'accéder au microphone pour les appels audio',
+            buttonNeutral: 'Demander plus tard',
+            buttonNegative: 'Annuler',
+            buttonPositive: 'OK',
+          }
+        );
+
+        if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+          Alert.alert('Permission refusée', 'Le microphone est requis pour passer des appels.');
+          navigation.goBack();
+          return;
+        }
+      }
       // 1. Demander le Token au backend
       const response = await apiService.generateAgoraToken(chatId || 'test-channel');
       if (!response.success) throw new Error(response.error);
 
       const { token, appId, channelName } = response.data;
 
+      // If outgoing, notify callee via socket signaling
+      if (isOutgoing && toUserId) {
+        currentCallId.current = `${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
+        SocketService.sendCallOffer(toUserId, channelName, 'audio', currentCallId.current);
+        playRing();
+        startCallTimeout();
+      }
+
       // 2. Initialiser le moteur
       engine.current = createAgoraRtcEngine();
       engine.current.initialize({ appId });
+      try { engine.current.enableAudio && engine.current.enableAudio(); } catch (err) { console.warn('enableAudio failed', err); }
 
       // 3. Configurer les événements
       engine.current.registerEventHandler({
@@ -73,6 +206,12 @@ export default function AudioCallScreen({ navigation, route }: any) {
           console.log('Joined successfully');
           setJoined(true);
           setLoading(false);
+        },
+        onUserJoined: (connection: any, uid: number) => {
+          console.log('Remote user joined', uid);
+        },
+        onRemoteAudioStateChanged: (connection: any, remoteUid: number, state: number, reason: number, elapsed: number) => {
+          console.log('Remote audio state', remoteUid, state, reason, elapsed);
         },
         onUserOffline: (connection: any, remoteUid: number) => {
           Alert.alert('Appel terminé', 'Le correspondant a raccroché.');
@@ -173,7 +312,14 @@ export default function AudioCallScreen({ navigation, route }: any) {
 
         <TouchableOpacity
           style={styles.endCallButton}
-          onPress={() => navigation.goBack()}
+          onPress={() => {
+            const callIdParam = route.params?.callId || currentCallId.current;
+            const target = peerUserId || toUserId;
+            try { if (callIdParam) SocketService.hangupCall(callIdParam, target); } catch (err) {}
+            cleanupRing();
+            leaveChannel();
+            navigation.goBack();
+          }}
         >
           <Ionicons name="call" size={32} color="#fff" style={{ transform: [{ rotate: '135deg' }] }} />
         </TouchableOpacity>

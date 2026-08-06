@@ -14,6 +14,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors, normalize } from '../styles/theme';
 import { Ionicons } from '@expo/vector-icons';
 import apiService from '../services/api.service';
+import { APP_VERSION } from '../utils/constants';
 
 const SplashScreen = () => {
   const navigation = useNavigation();
@@ -27,6 +28,29 @@ const SplashScreen = () => {
     try {
       const token = await AsyncStorage.getItem('auth_token');
       const userString = await AsyncStorage.getItem('user');
+      const userObj = userString ? JSON.parse(userString) : null;
+
+      // 1. VÉRIFICATION DE MISE À JOUR (FORCE UPDATE / BETA)
+      try {
+        const updateRes = await apiService.checkUpdate(APP_VERSION, userObj?.id);
+        if (updateRes && updateRes.updateRequired) {
+          navigation.dispatch(CommonActions.reset({
+            index: 0,
+            routes: [{
+              name: 'Update',
+              params: {
+                updateUrl: updateRes.updateUrl,
+                releaseNotes: updateRes.releaseNotes,
+                forceUpdate: updateRes.forceUpdate,
+                latestVersion: updateRes.latestVersion
+              }
+            }]
+          }));
+          return;
+        }
+      } catch (updateErr) {
+        console.error('Update check failed:', updateErr);
+      }
 
       if (!token || !userString) {
         navigation.dispatch(CommonActions.reset({ index: 0, routes: [{ name: 'Login' }] }));
@@ -58,6 +82,31 @@ const SplashScreen = () => {
       }
 
       const user = checkRes.data;
+
+      // 2. VÉRIFICATION LÉGALE (CGU / PRIVACY)
+      try {
+        const legalRes = await apiService.getLegalDocs();
+        if (legalRes.success) {
+          const docs = legalRes.data;
+          const mustAccept = docs.some((doc: any) =>
+            doc.force_acceptance && doc.version !== user.accepted_legal_version
+          );
+
+          if (mustAccept) {
+            navigation.dispatch(CommonActions.reset({
+              index: 0,
+              routes: [{
+                name: 'LegalAcceptance',
+                params: { documents: docs }
+              }]
+            }));
+            return;
+          }
+        }
+      } catch (legalErr) {
+        console.error('Legal check failed:', legalErr);
+      }
+
       const lastLogin = user.last_login_at ? new Date(user.last_login_at).getTime() : Date.now();
       const now = Date.now();
       const tenDaysInMs = 10 * 24 * 60 * 60 * 1000;
@@ -105,7 +154,7 @@ const SplashScreen = () => {
           <Ionicons name="chatbubble" size={normalize(80)} color="#fff" style={styles.backIcon} />
           <Ionicons name="heart" size={normalize(35)} color={colors.secondary} style={styles.frontIcon} />
         </View>
-        <Text style={styles.appName}>Meet Me</Text>
+        <Text style={styles.appName}>Meet</Text>
       </Animated.View>
       <View style={styles.loader}>
         <Animated.View style={[styles.dot, getDotStyle(dot1)]} />
