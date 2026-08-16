@@ -13,6 +13,7 @@ import {
   ActivityIndicator,
   Modal,
   FlatList,
+  Keyboard,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { normalize } from '../styles/theme';
@@ -20,7 +21,7 @@ import apiService from '../services/api.service';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 
-export default function SecurityPrivacyScreen({ navigation }: any) {
+export default function SecurityPrivacyScreen({ navigation, isComponent = false }: any) {
   const { colors, isDark } = useTheme();
   const { t } = useLanguage();
 
@@ -109,13 +110,24 @@ export default function SecurityPrivacyScreen({ navigation }: any) {
       Alert.alert('Erreur', 'Entrez votre mot de passe pour confirmer');
       return;
     }
+
+    Keyboard.dismiss();
     setActionLoading(true);
+
     try {
       const res = await apiService.deleteAccount(deletePassword);
       if (res.success) {
-        await apiService.logout();
+        // Fermer d'abord le modal pour éviter les glitches visuels
         setDeleteModalVisible(false);
-        navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+
+        // Petit délai pour laisser le temps au modal et au clavier de se retirer
+        setTimeout(async () => {
+          await apiService.logout();
+          navigation.reset({
+            index: 0,
+            routes: [{ name: 'Login' }],
+          });
+        }, 300);
       } else {
         Alert.alert('Erreur', res.error || 'Mot de passe incorrect');
       }
@@ -143,14 +155,18 @@ export default function SecurityPrivacyScreen({ navigation }: any) {
   }
 
   return (
-    <SafeAreaView style={dynamicStyles.container}>
-      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={colors.surface} />
-      <View style={dynamicStyles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={dynamicStyles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={colors.primary} />
-        </TouchableOpacity>
-        <Text style={dynamicStyles.headerTitle}>Sécurité & Confidentialité</Text>
-      </View>
+    <View style={dynamicStyles.container}>
+      {!isComponent && (
+        <>
+          <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={colors.surface} />
+          <View style={dynamicStyles.header}>
+            <TouchableOpacity onPress={() => navigation.goBack()} style={dynamicStyles.backButton}>
+              <Ionicons name="arrow-back" size={24} color={colors.primary} />
+            </TouchableOpacity>
+            <Text style={dynamicStyles.headerTitle}>Sécurité & Confidentialité</Text>
+          </View>
+        </>
+      )}
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
 
@@ -319,7 +335,7 @@ export default function SecurityPrivacyScreen({ navigation }: any) {
         </View>
       </Modal>
 
-    </SafeAreaView>
+    </View>
   );
 }
 

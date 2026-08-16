@@ -4,7 +4,9 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 const scale = SCREEN_WIDTH / 375;
 export const normalize = (size: number, factor: number = 1) => {
-  const newSize = size * scale * factor;
+  // Limiter le scale pour les tablettes pour éviter des éléments trop gros
+  const adjustedScale = SCREEN_WIDTH > 600 ? 1.2 : scale;
+  const newSize = size * adjustedScale * factor;
   return Math.round(PixelRatio.roundToNearestPixel(newSize));
 };
 
@@ -56,4 +58,33 @@ export const spacing = {
   md: (f: number = 1) => normalize(16, f),
   lg: (f: number = 1) => normalize(24, f),
   xl: (f: number = 1) => normalize(32, f),
+};
+
+export const borderRadius = {
+  sm: 4,
+  md: 8,
+  lg: 16,
+  xl: 24,
+  round: 50,
+};
+
+export const typography = {
+  h1: {
+    fontSize: normalize(24),
+    fontWeight: 'bold' as const,
+  },
+  h2: {
+    fontSize: normalize(20),
+    fontWeight: 'bold' as const,
+  },
+  body: {
+    fontSize: normalize(16),
+  },
+  caption: {
+    fontSize: normalize(12),
+  },
+  button: {
+    fontSize: normalize(16),
+    fontWeight: '600' as const,
+  },
 };

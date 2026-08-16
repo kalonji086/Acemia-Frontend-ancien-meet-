@@ -15,12 +15,14 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import apiService from '../services/api.service';
+import { supabase } from '../services/supabase.service';
 import { useFocusEffect } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SOCKET_URL } from '../utils/constants';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
 
-export default function ChatListScreen({ navigation, route }: any) {
+export default function ChatListScreen({ navigation, route, onChatSelect, selectedChatId }: any) {
   const { colors: themeColors, isDark, normalize, fontSizeFactor } = useTheme();
   const { t } = useLanguage();
   const isArchivedView = route?.params?.showArchived === true;
@@ -35,15 +37,38 @@ export default function ChatListScreen({ navigation, route }: any) {
   const [archivedCount, setArchivedCount] = useState(0);
 
   const getFullUrl = (url: string) => {
-    if (!url) return null;
-    if (url.startsWith('http')) return url;
-    return `${SOCKET_URL}${url}`;
+    if (!url || url === 'null') return null;
+    if (url.startsWith('http') || url.startsWith('file://') || url.startsWith('content://')) return url;
+
+    const baseUrl = SOCKET_URL.endsWith('/') ? SOCKET_URL.slice(0, -1) : SOCKET_URL;
+    const path = url.startsWith('/') ? url : `/${url}`;
+
+    return `${baseUrl}${path}`;
   };
 
   useFocusEffect(
     useCallback(() => {
       fetchChats();
       loadCurrentUser();
+
+      // Real-time subscription for global message updates
+      const subscription = apiService.getCurrentUser().then(user => {
+        if (!user) return;
+
+        return supabase
+          .channel('public:messages')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, (payload) => {
+            // Un message a été ajouté, supprimé ou modifié -> rafraîchir la liste
+            fetchChats();
+          })
+          .subscribe();
+      });
+
+      return () => {
+        subscription.then(sub => {
+          if (sub) supabase.removeChannel(sub);
+        });
+      };
     }, [isArchivedView])
   );
 
@@ -57,16 +82,27 @@ export default function ChatListScreen({ navigation, route }: any) {
       const response = await apiService.getChats(1, 50, isArchivedView);
       if (response.success) {
         const formatted = response.data.map((chat: any) => {
-          const isSelf = chat.other_user?.id === currentUser?.id;
+          const isSelf = chat.type === 'private' && chat.other_user?.id === currentUser?.id;
+          const isGroup = chat.type === 'group';
+
+          let name = chat.name || 'Discussion';
+          let avatar = chat.avatar_url;
+
+          if (!isGroup) {
+            name = isSelf ? t('profile') : (chat.other_user?.full_name || 'Inconnu');
+            avatar = chat.other_user?.avatar_url;
+          }
+
           return {
             id: chat.id,
-            name: isSelf ? t('profile') : (chat.name || chat.other_user?.full_name || 'Inconnu'),
-            avatar: getFullUrl(chat.other_user?.avatar_url) || `https://ui-avatars.com/api/?name=${chat.other_user?.full_name || 'Chat'}&background=random`,
+            name,
+            avatar: getFullUrl(avatar) || `https://ui-avatars.com/api/?name=${name}&background=random`,
             lastMessage: chat.last_message,
             lastMessageAt: chat.last_message_at,
             otherUserId: chat.other_user?.id,
             type: chat.type,
-            isVerified: chat.other_user?.is_verified,
+            isVerified: !isGroup && chat.other_user?.is_verified,
+            unreadCount: parseInt(chat.unread_count || 0),
             isSelf
           };
         });
@@ -126,43 +162,63 @@ export default function ChatListScreen({ navigation, route }: any) {
 
   const dynamicStyles = createStyles(themeColors, isDark, normalize, fontSizeFactor);
 
-  const renderChatItem = ({ item }: any) => (
-    <TouchableOpacity
-      style={dynamicStyles.chatItem}
-      onPress={() => navigation.navigate('Chat', {
-        chatId: item.id,
-        name: item.name,
-        avatar: item.avatar,
-        otherUserId: item.otherUserId
-      })}
-      onLongPress={() => handleLongPress(item)}
-    >
-      <View style={dynamicStyles.avatarContainer}>
-        <Image source={{ uri: item.avatar }} style={dynamicStyles.avatar} />
-      </View>
-      
-      <View style={dynamicStyles.chatInfo}>
-        <View style={dynamicStyles.chatHeader}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-            <Text style={[dynamicStyles.chatName, item.isSelf && { color: themeColors.primary }]} numberOfLines={1}>
-              {item.name}
+  const renderChatItem = ({ item }: any) => {
+    if (!item || !item.id) return null;
+    return (
+      <TouchableOpacity
+        style={[
+          dynamicStyles.chatItem,
+          selectedChatId === item.id && { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }
+        ]}
+        onPress={() => {
+          if (onChatSelect) {
+            onChatSelect(item);
+          } else {
+            navigation.navigate('Chat', {
+              chatId: item.id,
+              name: item.name,
+              avatar: item.avatar,
+              peerUserId: item.otherUserId
+            });
+          }
+        }}
+        onLongPress={() => handleLongPress(item)}
+      >
+        <View style={dynamicStyles.avatarContainer}>
+          <Image source={{ uri: item.avatar }} style={dynamicStyles.avatar} />
+        </View>
+
+        <View style={dynamicStyles.chatInfo}>
+          <View style={dynamicStyles.chatHeader}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+              {item.type === 'group' && (
+                <Ionicons name="people" size={16} color={themeColors.primary} style={{ marginRight: 6 }} />
+              )}
+              <Text style={[dynamicStyles.chatName, item.isSelf && { color: themeColors.primary }]} numberOfLines={1}>
+                {item.name}
+              </Text>
+              {item.isVerified && (
+                <Ionicons name="checkmark-circle" size={16} color={themeColors.primary} style={{ marginLeft: 4 }} />
+              )}
+            </View>
+            <Text style={[dynamicStyles.chatTime, item.unreadCount > 0 && { color: themeColors.primary, fontWeight: 'bold' }]}>
+              {item.lastMessageAt ? new Date(item.lastMessageAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
             </Text>
-            {item.isVerified && (
-              <Ionicons name="checkmark-circle" size={16} color={themeColors.primary} style={{ marginLeft: 4 }} />
+          </View>
+          <View style={dynamicStyles.chatFooter}>
+            <Text style={dynamicStyles.lastMessage} numberOfLines={1}>
+              {item.lastMessage || 'Nouveau message'}
+            </Text>
+            {item.unreadCount > 0 && (
+              <View style={dynamicStyles.unreadBadge}>
+                <Text style={dynamicStyles.unreadText}>{item.unreadCount}</Text>
+              </View>
             )}
           </View>
-          <Text style={dynamicStyles.chatTime}>
-            {item.lastMessageAt ? new Date(item.lastMessageAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
-          </Text>
         </View>
-        <View style={dynamicStyles.chatFooter}>
-          <Text style={dynamicStyles.lastMessage} numberOfLines={1}>
-            {item.lastMessage || 'Nouveau message'}
-          </Text>
-        </View>
-      </View>
-    </TouchableOpacity>
-  );
+      </TouchableOpacity>
+    );
+  };
 
   const startSelfChat = async () => {
     if (!currentUser) return;
@@ -179,15 +235,16 @@ export default function ChatListScreen({ navigation, route }: any) {
     } catch (e) { console.error(e); }
   };
 
+  const insets = useSafeAreaInsets();
+
   return (
-    <SafeAreaView style={dynamicStyles.container}>
+    <View style={dynamicStyles.container}>
+      <View style={{ height: insets.top, backgroundColor: themeColors.primary }} />
       <StatusBar backgroundColor={themeColors.primary} barStyle="light-content" />
 
       {!isSearching ? (
         <View style={dynamicStyles.header}>
-          <View style={dynamicStyles.headerLeft}>
-             <Ionicons name="chatbubble" size={normalize(24)} color="#fff" />
-          </View>
+          <View style={dynamicStyles.headerLeft} />
 
           <View style={dynamicStyles.headerCenter}>
             <Text style={dynamicStyles.headerTitle}>Meet Me</Text>
@@ -272,7 +329,7 @@ export default function ChatListScreen({ navigation, route }: any) {
           <Ionicons name="chatbubble-ellipses" size={28} color="#fff" />
         </TouchableOpacity>
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -300,9 +357,11 @@ const createStyles = (colors: any, isDark: boolean, normalize: any, factor: numb
   chatHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
   chatName: { fontSize: normalize(15, factor), fontWeight: 'bold', color: colors.text.primary },
   chatTime: { fontSize: normalize(11, factor), color: colors.text.secondary },
-  chatFooter: { flexDirection: 'row', justifyContent: 'space-between' },
-  lastMessage: { fontSize: normalize(13, factor), color: colors.text.secondary, flex: 1 },
-  fab: { position: 'absolute', bottom: 30, right: 20, width: normalize(56), height: normalize(56), borderRadius: normalize(28), backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center', elevation: 5 },
+  chatFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  lastMessage: { fontSize: normalize(13, factor), color: colors.text.secondary, flex: 1, marginRight: 10 },
+  unreadBadge: { backgroundColor: colors.primary, borderRadius: normalize(10), minWidth: normalize(20), height: normalize(20), justifyContent: 'center', alignItems: 'center', paddingHorizontal: 5 },
+  unreadText: { color: '#fff', fontSize: normalize(11, factor), fontWeight: 'bold' },
+  fab: { position: 'absolute', bottom: normalize(25), right: normalize(20), width: normalize(56), height: normalize(56), borderRadius: normalize(28), backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center', elevation: 5 },
   emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 100 },
   emptyText: { color: colors.text.secondary, fontSize: normalize(16, factor), marginTop: 10 }
 });

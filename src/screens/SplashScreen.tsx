@@ -7,7 +7,6 @@ import Animated, {
   withSequence,
   withTiming,
   Easing,
-  runOnJS
 } from 'react-native-reanimated';
 import { useNavigation, CommonActions } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -23,101 +22,179 @@ const SplashScreen = () => {
   const dot1 = useSharedValue(0);
   const dot2 = useSharedValue(0);
   const dot3 = useSharedValue(0);
+  const hasNavigated = React.useRef(false);
+
+  const safeNavigate = (routeName: string, params?: any) => {
+    if (hasNavigated.current) return;
+    hasNavigated.current = true;
+
+    try {
+      navigation.dispatch(CommonActions.reset({
+        index: 0,
+        routes: [{ name: routeName, params }],
+      }));
+    } catch (error) {
+      console.error('Failed to navigate from splash:', error);
+    }
+  };
+
+  const withTimeout = async <T,>(promise: Promise<T>, ms: number, label: string): Promise<T> => {
+    return new Promise<T>((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error(`${label} timeout`)), ms);
+      promise
+        .then((value) => {
+          clearTimeout(timer);
+          resolve(value);
+        })
+        .catch((error) => {
+          clearTimeout(timer);
+          reject(error);
+        });
+    });
+  };
 
   const navigateToNext = async () => {
+    if (hasNavigated.current) return;
+
     try {
+      try {
+        // Augmentation des timeouts pour laisser le temps au serveur Render de se "réveiller"
+        const response = await withTimeout(
+          fetch('https://www.google.com', { method: 'HEAD' }),
+          3000,
+          'network-check'
+        );
+
+        if (!response.ok) {
+          console.log('No internet connection');
+        }
+      } catch (netErr) {
+        console.log('Network check failed, continuing startup:', netErr);
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
       const token = await AsyncStorage.getItem('auth_token');
       const userString = await AsyncStorage.getItem('user');
-      const userObj = userString ? JSON.parse(userString) : null;
+      let userObj = null;
 
-      // 1. VÉRIFICATION DE MISE À JOUR (FORCE UPDATE / BETA)
       try {
-        const updateRes = await apiService.checkUpdate(APP_VERSION, userObj?.id);
-        if (updateRes && updateRes.updateRequired) {
-          navigation.dispatch(CommonActions.reset({
-            index: 0,
-            routes: [{
-              name: 'Update',
-              params: {
-                updateUrl: updateRes.updateUrl,
-                releaseNotes: updateRes.releaseNotes,
-                forceUpdate: updateRes.forceUpdate,
-                latestVersion: updateRes.latestVersion
-              }
-            }]
-          }));
+        userObj = userString ? JSON.parse(userString) : null;
+      } catch (e) {
+        console.error('Error parsing user data:', e);
+      }
+
+      if (!token || !userObj) {
+        // Même si non connecté, on vérifie si une acceptation légale est forcée pour les nouveaux utilisateurs
+        try {
+          const legalRes = await withTimeout(apiService.getLegalDocs(), 2500, 'legal-check-guest') as any;
+          if (legalRes && legalRes.success) {
+            const docs = legalRes.data || [];
+            // Pour les invités, on vérifie par rapport à une version stockée localement
+            const lastAccepted = await AsyncStorage.getItem('guest_accepted_legal_version');
+            const mustAccept = docs.some((doc: any) => doc.force_acceptance && doc.version !== lastAccepted);
+
+            if (mustAccept) {
+              safeNavigate('LegalAcceptance', { documents: docs, isGuest: true });
+              return;
+            }
+          }
+        } catch (e) { console.log('Guest legal check failed'); }
+
+        safeNavigate('Login');
+        return;
+      }
+
+      try {
+        // Temps plus long pour le check update (Render wake up)
+        const updateRes = (await withTimeout(
+          apiService.checkUpdate(APP_VERSION, userObj?.id),
+          5000,
+          'update-check'
+        )) as any;
+
+        if (updateRes && updateRes.updateRequired === true) {
+          safeNavigate('Update', {
+            updateUrl: updateRes.updateUrl,
+            releaseNotes: updateRes.releaseNotes,
+            forceUpdate: updateRes.forceUpdate,
+            latestVersion: updateRes.latestVersion,
+          });
           return;
         }
       } catch (updateErr) {
         console.error('Update check failed:', updateErr);
       }
 
-      if (!token || !userString) {
-        navigation.dispatch(CommonActions.reset({ index: 0, routes: [{ name: 'Login' }] }));
-        return;
-      }
-
-      // VÉRIFICATION RÉELLE DU STATUT DU COMPTE (BLOCAGE)
-      let checkRes;
+      let checkRes: any;
       try {
-        checkRes = await apiService.getMe();
+        // Temps plus long pour le check user (Render wake up)
+        checkRes = await withTimeout(apiService.getMe(), 6000, 'user-check') as any;
       } catch (err) {
-        navigation.dispatch(CommonActions.reset({ index: 0, routes: [{ name: 'ChatList' }] }));
+        console.error('User check failed:', err);
+        // En cas d'erreur de connexion, on tente quand même d'aller sur l'écran principal
+        // si on a des données locales, sinon Login.
+        if (userObj) {
+          safeNavigate('ChatList');
+        } else {
+          safeNavigate('Login');
+        }
         return;
       }
 
       if (checkRes && !checkRes.success) {
-        // Si le compte est bloqué, apiService.getMe renverra success: false et isLocked: true
-        navigation.dispatch(CommonActions.reset({
-          index: 0,
-          routes: [{
-            name: 'Login',
-            params: {
-              isLocked: checkRes.isLocked,
-              lockMessage: checkRes.message
-            }
-          }]
-        }));
+        safeNavigate('Login', {
+          isLocked: checkRes.isLocked,
+          lockMessage: checkRes.message,
+        });
         return;
       }
 
-      const user = checkRes.data;
+      const user = checkRes?.data || userObj;
 
-      // 2. VÉRIFICATION LÉGALE (CGU / PRIVACY)
       try {
-        const legalRes = await apiService.getLegalDocs();
-        if (legalRes.success) {
-          const docs = legalRes.data;
-          const mustAccept = docs.some((doc: any) =>
-            doc.force_acceptance && doc.version !== user.accepted_legal_version
-          );
+        const legalRes = await withTimeout(apiService.getLegalDocs(), 2500, 'legal-check') as any;
+
+        if (legalRes && legalRes.success) {
+          const docs = legalRes.data || [];
+          const mustAccept = docs.some((doc: any) => {
+            if (!doc.force_acceptance) return false;
+            if (doc.type === 'tos') return doc.version !== user?.accepted_tos_version;
+            if (doc.type === 'privacy') return doc.version !== user?.accepted_privacy_version;
+            return doc.version !== user?.accepted_legal_version;
+          });
 
           if (mustAccept) {
-            navigation.dispatch(CommonActions.reset({
-              index: 0,
-              routes: [{
-                name: 'LegalAcceptance',
-                params: { documents: docs }
-              }]
-            }));
-            return;
+            // Ne pas montrer si c'est du contenu placeholder par défaut (31.0.0 ou vieux résidus)
+            const isPlaceholder = docs.every((d: any) =>
+              d.content === `Conditions Générales d'Utilisation - Version ${d.version}` ||
+              d.content === `Politique de Confidentialité - Version ${d.version}` ||
+              d.content.includes('Version 5.0.0') ||
+              d.content.includes('Version 32.0.0')
+            );
+
+            if (!isPlaceholder || docs.some((d: any) => d.force_acceptance === true)) {
+              safeNavigate('LegalAcceptance', { documents: docs });
+              return;
+            }
           }
         }
       } catch (legalErr) {
         console.error('Legal check failed:', legalErr);
       }
 
-      const lastLogin = user.last_login_at ? new Date(user.last_login_at).getTime() : Date.now();
+      const lastLogin = user?.last_login_at ? new Date(user.last_login_at).getTime() : Date.now();
       const now = Date.now();
       const tenDaysInMs = 10 * 24 * 60 * 60 * 1000;
 
       if (now - lastLogin > tenDaysInMs) {
-        navigation.dispatch(CommonActions.reset({ index: 0, routes: [{ name: 'Login' }] }));
+        safeNavigate('Login');
       } else {
-        navigation.dispatch(CommonActions.reset({ index: 0, routes: [{ name: 'ChatList' }] }));
+        safeNavigate('ChatList');
       }
     } catch (error) {
-      navigation.dispatch(CommonActions.reset({ index: 0, routes: [{ name: 'Login' }] }));
+      console.error('Critical navigation error:', error);
+      safeNavigate('Login');
     }
   };
 
@@ -132,8 +209,27 @@ const SplashScreen = () => {
       );
     };
     dotAnim(dot1, 0); dotAnim(dot2, 200); dotAnim(dot3, 400);
-    const timer = setTimeout(() => { runOnJS(navigateToNext)(); }, 3000);
-    return () => clearTimeout(timer);
+
+    const timer = setTimeout(() => {
+      try {
+        void navigateToNext();
+      } catch (error) {
+        console.error('Error in navigateToNext:', error);
+        safeNavigate('Login');
+      }
+    }, 1500);
+
+    const fallbackTimer = setTimeout(() => {
+      console.log('Splash fallback triggered');
+      safeNavigate('Login');
+    }, 12000); // 12 secondes de sécurité totale
+
+    return () => {
+      clearTimeout(timer);
+      clearTimeout(fallbackTimer);
+      opacity.value = 0;
+      scale.value = 0.8;
+    };
   }, []);
 
   const animatedLogoStyle = useAnimatedStyle(() => ({

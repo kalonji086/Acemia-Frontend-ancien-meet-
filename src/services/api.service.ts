@@ -10,6 +10,8 @@ interface ApiResponse<T = any> {
   error?: string;
   isLocked?: boolean;
   message?: string;
+  isContact?: boolean;
+  statusCode?: number;
 }
 
 class ApiService {
@@ -21,7 +23,7 @@ class ApiService {
   private constructor() {
     this.api = axios.create({
       baseURL: API_BASE_URL,
-      timeout: 30000,
+      timeout: 60000,
       headers: { 'Content-Type': 'application/json' },
     });
 
@@ -45,6 +47,13 @@ class ApiService {
 
   private setupInterceptors(): void {
     this.api.interceptors.request.use(async (config) => {
+      // Configuration de timeout adaptée au réveil de Render
+      config.timeout = 60000; // 60 secondes
+      config.timeoutErrorMessage = 'Request timeout';
+      
+      // Ajouter des headers de sécurité
+      config.headers['X-Request-ID'] = Date.now().toString(36) + Math.random().toString(36).substr(2);
+      
       const token = await this.getAuthToken();
       if (token) config.headers.Authorization = `Bearer ${token}`;
       return config;
@@ -58,6 +67,22 @@ class ApiService {
         // Gérer spécifiquement le bannissement (403)
         if (error.response?.status === 403 && error.response.data?.isLocked) {
           return Promise.reject(error);
+        }
+
+        // Gestion des erreurs réseau avec retry
+        if (!error.response && !originalRequest._retryCount) {
+          originalRequest._retryCount = originalRequest._retryCount || 0;
+          
+          if (originalRequest._retryCount < 3) {
+            originalRequest._retryCount++;
+            
+            // Backoff exponentiel
+            const delay = 1000 * Math.pow(2, originalRequest._retryCount);
+            console.log(`Retrying request (${originalRequest._retryCount}/3) in ${delay}ms`);
+            
+            await new Promise(resolve => setTimeout(resolve, delay));
+            return this.api(originalRequest);
+          }
         }
 
         if (error.response?.status === 401 && !originalRequest._retry) {
@@ -92,6 +117,16 @@ class ApiService {
             return Promise.reject(e);
           } finally { this.isRefreshing = false; }
         }
+        
+        // Loguer l'erreur pour le debugging
+        console.error('API Error:', {
+          url: originalRequest?.url,
+          method: originalRequest?.method,
+          status: error.response?.status,
+          message: error.message,
+          retryCount: originalRequest?._retryCount
+        });
+        
         return Promise.reject(error);
       }
     );
@@ -144,6 +179,20 @@ class ApiService {
     } catch (e: any) { return this.handleError(e); }
   }
 
+  async forgotPassword(email: string): Promise<ApiResponse> {
+    try {
+      const res = await this.api.post('/auth/forgot-password', { email });
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async resetPassword(email: string, otp: string, newPassword: string): Promise<ApiResponse> {
+    try {
+      const res = await this.api.post('/auth/reset-password', { email, otp, newPassword });
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
   // User
   async getMe(): Promise<ApiResponse> {
     try {
@@ -157,6 +206,13 @@ class ApiService {
     } catch (e: any) { return this.handleError(e); }
   }
 
+  async verifyToken(): Promise<ApiResponse> {
+    try {
+      const res = await this.api.get('/auth/verify');
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
   async updateProfile(userData: any): Promise<ApiResponse> {
     try {
       const res = await this.api.put('/users/profile', userData);
@@ -165,6 +221,27 @@ class ApiService {
         const localUser = await this.getCurrentUser();
         await AsyncStorage.setItem('user', JSON.stringify({ ...localUser, ...updatedData }));
       }
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async changePassword(currentPassword: string, newPassword: string): Promise<ApiResponse> {
+    try {
+      const res = await this.api.put('/auth/change-password', { currentPassword, newPassword });
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async updatePrivacySettings(settings: any): Promise<ApiResponse> {
+    try {
+      const res = await this.api.put('/users/privacy-settings', { settings });
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async deleteAccount(password: string): Promise<ApiResponse> {
+    try {
+      const res = await this.api.post('/users/delete-account', { password });
       return res.data;
     } catch (e: any) { return this.handleError(e); }
   }
@@ -210,6 +287,41 @@ class ApiService {
     } catch (e: any) { return this.handleError(e); }
   }
 
+  async blockUser(targetId: string): Promise<ApiResponse> {
+    try {
+      const res = await this.api.post('/users/block', { targetId });
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async submitAppeal(reason: string): Promise<ApiResponse> {
+    try {
+      const res = await this.api.post('/users/appeal', { reason });
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async reportUser(targetId: string, reason: string): Promise<ApiResponse> {
+    try {
+      const res = await this.api.post('/users/report', { targetId, reason });
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async addContact(peerId: string): Promise<ApiResponse> {
+    try {
+      const res = await this.api.post('/users/contacts', { contactId: peerId });
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async isContact(peerId: string): Promise<ApiResponse<{ isContact: boolean }>> {
+    try {
+      const res = await this.api.get(`/users/contacts/check/${peerId}`);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
   // Chats
   async getChats(page: number = 1, limit: number = 20, archived: boolean = false): Promise<ApiResponse> {
     try {
@@ -218,9 +330,44 @@ class ApiService {
     } catch (e: any) { return this.handleError(e); }
   }
 
+  async getChat(chatId: string): Promise<ApiResponse> {
+    try {
+      const res = await this.api.get(`/chats/${chatId}`);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
   async createChat(participantIds: string[], type: 'private' | 'group' = 'private', name?: string, avatarUrl?: string, description?: string): Promise<ApiResponse> {
     try {
       const res = await this.api.post('/chats', { participants: participantIds, type, name, avatarUrl, description });
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async updateChat(chatId: string, data: any): Promise<ApiResponse> {
+    try {
+      const res = await this.api.put(`/chats/${chatId}`, data);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async changeMemberRole(chatId: string, userId: string, role: string): Promise<ApiResponse> {
+    try {
+      const res = await this.api.put(`/chats/${chatId}/members/${userId}/role`, { role });
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async addGroupMembers(chatId: string, userIds: string[]): Promise<ApiResponse> {
+    try {
+      const res = await this.api.post(`/chats/${chatId}/members`, { userIds });
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async removeGroupMember(chatId: string, userId: string): Promise<ApiResponse> {
+    try {
+      const res = await this.api.delete(`/chats/${chatId}/members/${userId}`);
       return res.data;
     } catch (e: any) { return this.handleError(e); }
   }
@@ -246,9 +393,15 @@ class ApiService {
     } catch (e: any) { return this.handleError(e); }
   }
 
-  async sendMessage(chatId: string, content: string, type: string = 'text', fileUrl?: string): Promise<ApiResponse> {
+  async sendMessage(chatId: string, content: string, type: string = 'text', fileUrl?: string, metadata?: any): Promise<ApiResponse> {
     try {
-      const res = await this.api.post('/messages', { chat: chatId, content, type, file_url: fileUrl });
+      const res = await this.api.post('/messages', {
+        chat: chatId,
+        content,
+        type,
+        file_url: fileUrl,
+        ...metadata
+      });
       return res.data;
     } catch (e: any) { return this.handleError(e); }
   }
@@ -260,28 +413,65 @@ class ApiService {
     } catch (e: any) { return this.handleError(e); }
   }
 
-  // Calls (Agora)
-  async generateAgoraToken(channelName: string): Promise<ApiResponse> {
+  async deleteMessage(messageId: string, deleteType: 'everyone' | 'me' = 'everyone'): Promise<ApiResponse> {
     try {
-      const res = await this.api.post('/calls/generate-token', { channelName });
+      const res = await this.api.delete(`/messages/${messageId}?deleteType=${deleteType}`);
       return res.data;
     } catch (e: any) { return this.handleError(e); }
   }
 
-  async deleteMessage(messageId: string): Promise<ApiResponse> {
+  async translateMessage(messageId: string, targetLanguage: string): Promise<ApiResponse> {
     try {
-      const res = await this.api.delete(`/messages/${messageId}`);
+      const res = await this.api.post(`/messages/${messageId}/translate`, { targetLanguage });
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async translateVoiceMessage(messageId: string, targetLanguage: string): Promise<ApiResponse> {
+    try {
+      const res = await this.api.post(`/messages/${messageId}/translate-voice`, { targetLanguage });
       return res.data;
     } catch (e: any) { return this.handleError(e); }
   }
 
   // Upload
-  async uploadFile(file: any, type: string = 'image'): Promise<ApiResponse> {
+  async uploadFile(file: any, type: string = 'image', onProgress?: (progress: number) => void): Promise<ApiResponse> {
     try {
       const formData = new FormData();
-      const field = type === 'audio' ? 'audio' : 'image';
-      formData.append(field, { uri: file.uri, type: file.type || 'image/jpeg', name: file.name || 'upload.jpg' } as any);
-      const res = await this.api.post(`/upload/${type}`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+      let field = 'image';
+      let endpoint = `/upload/${type}`;
+
+      if (type === 'audio') {
+        field = 'audio';
+      } else if (type === 'document' || type === 'file') {
+        field = 'document';
+        endpoint = '/upload/document';
+      } else if (type === 'video') {
+        field = 'video';
+      } else if (type === 'image') {
+        field = 'image';
+      } else {
+        // Fallback générique
+        field = 'file';
+        endpoint = '/upload';
+      }
+
+      formData.append(field, {
+        uri: file.uri,
+        type: file.type || 'application/octet-stream',
+        name: file.name || 'upload'
+      } as any);
+
+      const res = await this.api.post(endpoint, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 0,
+        onUploadProgress: (progressEvent) => {
+          if (onProgress && progressEvent.total) {
+            const progress = progressEvent.loaded / progressEvent.total;
+            onProgress(progress);
+          }
+        }
+      });
       return res.data;
     } catch (e: any) { return this.handleError(e); }
   }
@@ -294,10 +484,45 @@ class ApiService {
     } catch (e: any) { return this.handleError(e); }
   }
 
+  async createStatus(data: { content: string, type: 'text' | 'image', mediaUrl?: string | null, backgroundColor?: string }): Promise<ApiResponse> {
+    try {
+      const res = await this.api.post('/statuses', data);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async markStatusAsViewed(statusId: string): Promise<ApiResponse> {
+    try {
+      const res = await this.api.post(`/statuses/${statusId}/view`);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async getStatusReactions(statusId: string): Promise<ApiResponse> {
+    try {
+      const res = await this.api.get(`/statuses/${statusId}/reactions`);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async addStatusReaction(statusId: string, data: { content: string, type: 'emoji' | 'comment' | 'like' }): Promise<ApiResponse> {
+    try {
+      const res = await this.api.post(`/statuses/${statusId}/reactions`, data);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
   // Helpdesk
   async submitHelpdesk(data: { category: string, reason: string, email?: string }): Promise<ApiResponse> {
     try {
       const res = await this.api.post('/support/helpdesk', data);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async submitFeedback(data: { type: string, title: string, description: string, email?: string, deviceInfo?: any, context?: string }): Promise<ApiResponse> {
+    try {
+      const res = await this.api.post('/support/feedback', data);
       return res.data;
     } catch (e: any) { return this.handleError(e); }
   }
@@ -324,6 +549,49 @@ class ApiService {
     } catch (e: any) { return this.handleError(e); }
   }
 
+  // Market
+  async getMyBusiness(): Promise<ApiResponse> {
+    try {
+      const res = await this.api.get('/market/my-business');
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async registerBusiness(data: any): Promise<ApiResponse> {
+    try {
+      const res = await this.api.post('/market/register', data);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async getMarketDashboard(): Promise<ApiResponse> {
+    try {
+      const res = await this.api.get('/market/dashboard');
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async createMarketPost(data: { title: string, content: string, images?: string[], type?: string }): Promise<ApiResponse> {
+    try {
+      const res = await this.api.post('/market/posts', data);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async getMarketFeed(): Promise<ApiResponse> {
+    try {
+      const res = await this.api.get('/market/feed');
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async getBusinessById(id: string): Promise<ApiResponse> {
+    try {
+      const res = await this.api.get(`/market/business/${id}`);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
   async getCurrentUser(): Promise<any> {
     try {
       const userString = await AsyncStorage.getItem('user');
@@ -332,15 +600,48 @@ class ApiService {
   }
 
   private handleError(error: any): ApiResponse {
+    const errorData = error.response?.data;
+    const errorMessage = typeof errorData?.error === 'string'
+      ? errorData.error
+      : (errorData?.message || errorData?.error?.message || error.message || 'Server error');
+
+    console.error('API Service Error:', {
+      message: errorMessage,
+      status: error.response?.status
+    });
+    
     if (error.response) {
       return {
         success: false,
-        error: error.response.data?.error || 'Server error',
-        isLocked: error.response.data?.isLocked,
-        message: error.response.data?.message
+        error: errorMessage,
+        isLocked: errorData?.isLocked,
+        message: errorData?.message,
+        statusCode: error.response.status
       };
     }
-    return { success: false, error: 'Network error' };
+    
+    // Gestion spécifique des erreurs réseau
+    if (error.message?.includes('timeout')) {
+      return { 
+        success: false, 
+        error: 'Request timeout', 
+        message: 'Le serveur met trop de temps à répondre' 
+      };
+    }
+    
+    if (error.message?.includes('Network Error')) {
+      return { 
+        success: false, 
+        error: 'Network error', 
+        message: 'Vérifiez votre connexion internet' 
+      };
+    }
+    
+    return { 
+      success: false, 
+      error: 'Unknown error', 
+      message: 'Une erreur inattendue est survenue' 
+    };
   }
 }
 

@@ -2,11 +2,10 @@
   "expo": {
     "name": "Meet",
     "slug": "meet-app",
-    "version": "3.0.1",
+    "version": "31.0.0",
     "orientation": "portrait",
     "icon": "./assets/Logo.png",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
     "splash": {
       "image": "./assets/Logo.png",
       "backgroundColor": "#673AB7",
@@ -14,15 +13,24 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.meet.app",
+      "bundleIdentifier": "com.deve",
       "infoPlist": {
         "NSCameraUsageDescription": "Meet a besoin d'accéder à votre caméra pour les appels vidéo.",
-        "NSMicrophoneUsageDescription": "Meet a besoin d'accéder à votre micro pour les appels audio et vidéo."
-      }
+        "NSMicrophoneUsageDescription": "Meet a besoin d'accéder à votre micro pour les appels audio et vidéo.",
+        "NSContactsUsageDescription": "Meet a besoin d'accéder à vos contacts pour synchroniser vos amis.",
+        "NSPhotoLibraryUsageDescription": "Meet a besoin d'accéder à votre bibliothèque photo pour partager des images.",
+        "UIBackgroundModes": [
+          "audio",
+          "fetch"
+        ],
+        "UIViewControllerBasedStatusBarAppearance": true
+      },
+      "requiresFullScreen": true,
+      "userInterfaceStyle": "automatic"
     },
     "android": {
       "package": "com.deve",
-      "versionCode": 3,
+      "versionCode": 32,
       "adaptiveIcon": {
         "foregroundImage": "./assets/Logo.png",
         "backgroundColor": "#ffffff"
@@ -34,9 +42,14 @@
         "INTERNET",
         "ACCESS_NETWORK_STATE",
         "ACCESS_WIFI_STATE",
-        "READ_PHONE_STATE",
-        "BLUETOOTH_CONNECT"
+        "READ_CONTACTS",
+        "BLUETOOTH_CONNECT",
+        "WAKE_LOCK",
+        "VIBRATE"
       ],
+      "softwareKeyboardLayoutMode": "resize",
+      "enableProguardInReleaseBuilds": false,
+      "enableShrinkResourcesInReleaseBuilds": false,
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
     },
@@ -46,13 +59,17 @@
     "plugins": [
       "expo-localization",
       "expo-secure-store",
-      "expo-notifications",
       [
         "expo-build-properties",
         {
           "android": {
             "minSdkVersion": 24,
-            "newArchEnabled": true
+            "targetSdkVersion": 35,
+            "compileSdkVersion": 35,
+            "newArchEnabled": false,
+            "jsEngine": "hermes",
+            "kotlinVersion": "1.9.25",
+            "gradleWrapperVersion": "8.8"
           }
         }
       ],
@@ -62,9 +79,9 @@
       "apiUrl": "https://meet-me-backend-sg5c.onrender.com/api",
       "socketUrl": "https://meet-me-backend-sg5c.onrender.com",
       "eas": {
-        "projectId": "822dba2a-c0bc-41fd-9d5b-fcf8c9303291"
+        "projectId": "4e5f4af4-614b-47b0-adfb-4db990d1d6ff"
       }
     },
-    "owner": "docteurparlemois-team"
+    "owner": "discutions-team"
   }
 }

@@ -3,10 +3,10 @@ import Constants from 'expo-constants';
 // Constantes de l'application
 
 export const APP_NAME = 'Meet';
-export const APP_VERSION = '1.0.0';
+export const APP_VERSION = "32.0.0";
 
 // URLs API
-const extra = Constants.expoConfig?.extra || {};
+const extra = Constants?.expoConfig?.extra || {};
 export const API_BASE_URL = extra.apiUrl || 'https://meet-me-backend-sg5c.onrender.com/api';
 export const SOCKET_URL = extra.socketUrl || 'https://meet-me-backend-sg5c.onrender.com';
 
@@ -30,24 +30,8 @@ export const SOCKET_URL = extra.socketUrl || 'https://meet-me-backend-sg5c.onren
 export const GOOGLE_TRANSLATE_API_KEY = 'YOUR_GOOGLE_TRANSLATE_API_KEY';
 export const DEEPL_API_KEY = 'YOUR_DEEPL_API_KEY';
 
-// Configuration des notifications
-export const NOTIFICATION_CONFIG = {
-  android: {
-    channelId: 'meetme_channel',
-    channelName: 'Meet Me Notifications',
-    channelDescription: 'Notifications for new messages',
-    importance: 4, // IMPORTANCE_HIGH
-  },
-  ios: {
-    allowsAlert: true,
-    allowsBadge: true,
-    allowsSound: true,
-  },
-};
-
 // Langues supportées
-export const SUPPORTED_LANGUAGES = [
-  { code: 'fr', name: 'Français', flag: '🇫🇷' },
+export const SUPPORTED_LANGUAGES = [  { code: 'fr', name: 'Français', flag: '🇫🇷' },
   { code: 'en', name: 'English', flag: '🇺🇸' },
   { code: 'es', name: 'Español', flag: '🇪🇸' },
   { code: 'de', name: 'Deutsch', flag: '🇩🇪' },

@@ -2,11 +2,14 @@ import React from 'react';
 import { View, Text, StyleSheet, Linking, TouchableOpacity, BackHandler, Platform } from 'react-native';
 import { colors, normalize } from '../styles/theme';
 import { Ionicons } from '@expo/vector-icons';
-import { useRoute, useNavigation } from '@react-navigation/native';
+import { useRoute, useNavigation, CommonActions } from '@react-navigation/native';
+import { useLanguage } from '../context/LanguageContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const UpdateScreen = () => {
   const route = useRoute();
   const navigation = useNavigation();
+  const { t } = useLanguage();
   const { updateUrl, releaseNotes, forceUpdate, latestVersion } = route.params as any;
 
   React.useEffect(() => {
@@ -23,6 +26,30 @@ const UpdateScreen = () => {
     }
   };
 
+  const handleLater = async () => {
+    try {
+      const token = await AsyncStorage.getItem('auth_token');
+      const userString = await AsyncStorage.getItem('user');
+
+      if (token && userString) {
+        navigation.dispatch(CommonActions.reset({
+          index: 0,
+          routes: [{ name: 'ChatList' }]
+        }));
+      } else {
+        navigation.dispatch(CommonActions.reset({
+          index: 0,
+          routes: [{ name: 'Login' }]
+        }));
+      }
+    } catch (e) {
+      navigation.dispatch(CommonActions.reset({
+        index: 0,
+        routes: [{ name: 'Login' }]
+      }));
+    }
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.card}>
@@ -30,8 +57,8 @@ const UpdateScreen = () => {
           <Ionicons name="cloud-download" size={normalize(60)} color={colors.primary} />
         </View>
 
-        <Text style={styles.title}>Mise à jour disponible !</Text>
-        <Text style={styles.version}>Version {latestVersion}</Text>
+        <Text style={styles.title}>{t('updateAvailable')}</Text>
+        <Text style={styles.version}>{t('newVersion')} {latestVersion}</Text>
 
         <View style={styles.notesContainer}>
           <Text style={styles.notesTitle}>Nouveautés :</Text>
@@ -42,21 +69,21 @@ const UpdateScreen = () => {
           style={styles.updateButton}
           onPress={handleUpdate}
         >
-          <Text style={styles.updateButtonText}>METTRE À JOUR MAINTENANT</Text>
+          <Text style={styles.updateButtonText}>{t('updateNow')}</Text>
         </TouchableOpacity>
 
         {!forceUpdate && (
           <TouchableOpacity
             style={styles.laterButton}
-            onPress={() => navigation.goBack()}
+            onPress={handleLater}
           >
-            <Text style={styles.laterButtonText}>Plus tard</Text>
+            <Text style={styles.laterButtonText}>{t('updateLater')}</Text>
           </TouchableOpacity>
         )}
 
         {forceUpdate && (
           <Text style={styles.footerNote}>
-            Cette mise à jour est obligatoire pour continuer à utiliser l'application.
+            {t('forcedUpdateNote')}
           </Text>
         )}
       </View>

@@ -19,6 +19,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Device from 'expo-device';
+import { APP_VERSION } from '../utils/constants';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -86,7 +87,12 @@ export default function LoginScreen({ navigation, route }: any) {
     };
 
     try {
-      const response = await apiService.login({ email, password, device_info: deviceInfo });
+      const response = await apiService.login({
+        email,
+        password,
+        device_info: deviceInfo,
+        appVersion: APP_VERSION
+      });
       if (response.success) {
         navigation.navigate('ChatList');
       } else {
@@ -121,13 +127,13 @@ export default function LoginScreen({ navigation, route }: any) {
     if (!appealReason.trim()) return;
     setSendingAppeal(true);
     try {
-      const res = await apiService.api.post('/users/appeal', { reason: appealReason });
-      if (res.data.success) {
+      const res = await apiService.submitAppeal(appealReason);
+      if (res.success) {
         Alert.alert("Envoyé", "Votre contestation a été transmise à l'administrateur.");
         setShowAppealModal(false);
         setAppealReason('');
       } else {
-        Alert.alert("Erreur", res.data.error || "Impossible d'envoyer la demande.");
+        Alert.alert("Erreur", res.error || "Impossible d'envoyer la demande.");
       }
     } catch (e: any) {
       const msg = e.response?.data?.error || "Un problème est survenu lors de l'envoi.";
@@ -220,7 +226,7 @@ export default function LoginScreen({ navigation, route }: any) {
     <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
       <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={{ flex: 1 }}
       >
         <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>

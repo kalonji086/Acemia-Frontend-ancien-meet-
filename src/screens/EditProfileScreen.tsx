@@ -13,14 +13,16 @@ import {
   ActivityIndicator,
   Modal,
   FlatList,
+  Switch,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
+import { useLanguage } from '../context/LanguageContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import apiService from '../services/api.service';
 import socketService from '../services/socket.service';
-import { SOCKET_URL } from '../utils/constants';
+import { SOCKET_URL, SUPPORTED_LANGUAGES } from '../utils/constants';
 import * as ImagePicker from 'expo-image-picker';
-import * as Notifications from 'expo-notifications';
 
 const STATUS_OPTIONS = [
   "Disponible",
@@ -36,17 +38,21 @@ const STATUS_OPTIONS = [
   "Appels d'urgence uniquement"
 ];
 
-export default function EditProfileScreen({ navigation }: any) {
+export default function EditProfileScreen({ navigation, isComponent = false }: any) {
   const { colors, normalize, isDark, fontSizeFactor } = useTheme();
+  const { t } = useLanguage();
   const [user, setUser] = useState<any>(null);
   const [name, setName] = useState('');
   const [status, setStatus] = useState('');
   const [pseudo, setPseudo] = useState('');
   const [phone, setPhone] = useState('');
+  const [preferredLang, setPreferredLang] = useState('fr');
+  const [autoTranslate, setAutoTranslate] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [pseudoError, setPseudoError] = useState('');
   const [statusModalVisible, setStatusModalVisible] = useState(false);
+  const [langModalVisible, setLangModalVisible] = useState(false);
   const [imgKey, setImgKey] = useState(Date.now());
 
   useEffect(() => {
@@ -63,6 +69,8 @@ export default function EditProfileScreen({ navigation }: any) {
         setStatus(userData.status || 'Disponible');
         setPseudo(userData.username || '');
         setPhone(userData.phone_number || '');
+        setPreferredLang(userData.preferred_language || 'fr');
+        setAutoTranslate(userData.auto_translate === true);
       } else {
         if (response.error?.includes('expiré')) {
           navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
@@ -78,9 +86,13 @@ export default function EditProfileScreen({ navigation }: any) {
   };
 
   const getFullUrl = (url: string) => {
-    if (!url) return null;
-    if (url.startsWith('http')) return `${url}?t=${imgKey}`;
-    return `${SOCKET_URL}${url}?t=${imgKey}`;
+    if (!url || url === 'null') return null;
+    if (url.startsWith('http') || url.startsWith('file://') || url.startsWith('content://')) return url;
+
+    const baseUrl = SOCKET_URL.endsWith('/') ? SOCKET_URL.slice(0, -1) : SOCKET_URL;
+    const path = url.startsWith('/') ? url : `/${url}`;
+
+    return `${baseUrl}${path}`;
   };
 
   const handleImageAction = () => {
@@ -127,12 +139,10 @@ export default function EditProfileScreen({ navigation }: any) {
       if (uploadRes.success) {
         const updateRes = await apiService.updateProfile({ avatar_url: uploadRes.data.fileUrl });
         if (updateRes.success) {
-          setImgKey(Date.now());
-          setUser({ ...user, avatar: uploadRes.data.fileUrl });
-          await Notifications.scheduleNotificationAsync({
-            content: { title: "Meet Me", body: "Photo de profil mise à jour !", sound: true },
-            trigger: null,
-          });
+          const newTimestamp = Date.now();
+          setImgKey(newTimestamp);
+          setUser({ ...user, avatar: `${uploadRes.data.fileUrl}?t=${newTimestamp}` });
+          Alert.alert('Succès', 'Photo de profil mise à jour');
         }
       }
     } catch (e) {
@@ -163,16 +173,14 @@ export default function EditProfileScreen({ navigation }: any) {
       const res = await apiService.updateProfile({
         name,
         status,
-        username: pseudo !== user?.username ? pseudo : undefined
+        username: pseudo !== user?.username ? pseudo : undefined,
+        preferred_language: preferredLang,
+        auto_translate: autoTranslate
       });
 
       if (res.success) {
         setUser(res.data);
         socketService.updateStatus('online');
-        await Notifications.scheduleNotificationAsync({
-          content: { title: "Meet Me", body: "Profil mis à jour avec succès !", sound: true },
-          trigger: null,
-        });
         Alert.alert('Succès', 'Informations enregistrées');
       } else {
         if (res.error && res.error.includes('pseudo')) {
@@ -217,19 +225,24 @@ export default function EditProfileScreen({ navigation }: any) {
     }
   };
 
-  if (loading) return <View style={styles.centered}><ActivityIndicator size="large" color={colors.primary} /></View>;
-
   const dynamicStyles = createStyles(colors, normalize, fontSizeFactor, isDark);
 
+  if (loading) return <View style={dynamicStyles.centered}><ActivityIndicator size="large" color={colors.primary} /></View>;
+
   return (
-    <SafeAreaView style={dynamicStyles.container}>
-      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={colors.surface} />
-      <View style={dynamicStyles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color={colors.primary} />
-        </TouchableOpacity>
-        <Text style={dynamicStyles.headerTitle}>Profil</Text>
-      </View>
+    <View style={dynamicStyles.container}>
+      {!isComponent && (
+        <>
+          <View style={{ height: useSafeAreaInsets().top, backgroundColor: colors.surface }} />
+          <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={colors.surface} />
+          <View style={dynamicStyles.header}>
+            <TouchableOpacity onPress={() => navigation.goBack()}>
+              <Ionicons name="arrow-back" size={24} color={colors.primary} />
+            </TouchableOpacity>
+            <Text style={dynamicStyles.headerTitle}>Profil</Text>
+          </View>
+        </>
+      )}
 
       <ScrollView contentContainerStyle={dynamicStyles.scrollContent}>
         <View style={dynamicStyles.imageSection}>
@@ -293,6 +306,37 @@ export default function EditProfileScreen({ navigation }: any) {
             </View>
           </View>
 
+          {/* AI TRANSLATION SETTINGS */}
+          <View style={[dynamicStyles.section, { marginTop: 10, borderTopWidth: 1, borderTopColor: colors.divider, paddingTop: 20 }]}>
+            <Text style={[dynamicStyles.sectionLabel, { color: colors.primary }]}>INTELLIGENCE ARTIFICIELLE</Text>
+
+            <TouchableOpacity style={dynamicStyles.inputGroup} onPress={() => setLangModalVisible(true)}>
+              <Ionicons name="language-outline" size={22} color={colors.primary} />
+              <View style={dynamicStyles.inputWrapper}>
+                <Text style={dynamicStyles.label}>Langue de traduction préférée</Text>
+                <View style={dynamicStyles.statusSelect}>
+                  <Text style={dynamicStyles.input}>
+                    {SUPPORTED_LANGUAGES.find(l => l.code === preferredLang)?.name || 'Français'}
+                  </Text>
+                  <Ionicons name="chevron-down" size={18} color={colors.text.disabled} />
+                </View>
+              </View>
+            </TouchableOpacity>
+
+            <View style={dynamicStyles.settingRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={[dynamicStyles.settingTitle, { color: colors.text.primary }]}>Traduction automatique</Text>
+                <Text style={[dynamicStyles.settingDesc, { color: colors.text.secondary }]}>Traduire les messages entrants sans demander</Text>
+              </View>
+              <Switch
+                value={autoTranslate}
+                onValueChange={setAutoTranslate}
+                trackColor={{ false: colors.divider, true: colors.primaryLight }}
+                thumbColor={autoTranslate ? colors.primary : '#f4f3f4'}
+              />
+            </View>
+          </View>
+
           {/* SECTION VÉRIFICATION */}
           <View style={dynamicStyles.verificationSection}>
             <View style={dynamicStyles.verificationHeader}>
@@ -350,7 +394,37 @@ export default function EditProfileScreen({ navigation }: any) {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+
+      {/* Modal Selection Langue */}
+      <Modal visible={langModalVisible} transparent animationType="slide" onRequestClose={() => setLangModalVisible(false)}>
+        <View style={dynamicStyles.modalOverlay}>
+          <View style={dynamicStyles.modalContent}>
+            <View style={dynamicStyles.modalHeader}>
+              <Text style={dynamicStyles.modalTitle}>Langue de traduction</Text>
+              <TouchableOpacity onPress={() => setLangModalVisible(false)}>
+                <Ionicons name="close" size={24} color={colors.text.primary} />
+              </TouchableOpacity>
+            </View>
+            <FlatList
+              data={SUPPORTED_LANGUAGES}
+              keyExtractor={(item) => item.code}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={[dynamicStyles.statusItem, preferredLang === item.code && dynamicStyles.selectedStatusItem]}
+                  onPress={() => { setPreferredLang(item.code); setLangModalVisible(false); }}
+                >
+                  <Text style={[dynamicStyles.statusText, preferredLang === item.code && { fontWeight: 'bold', color: colors.primary }]}>
+                    {item.flag} {item.name}
+                  </Text>
+                  {preferredLang === item.code && <Ionicons name="checkmark" size={20} color={colors.primary} />}
+                </TouchableOpacity>
+              )}
+              contentContainerStyle={{ paddingBottom: 20 }}
+            />
+          </View>
+        </View>
+      </Modal>
+    </View>
   );
 }
 
@@ -377,7 +451,7 @@ const createStyles = (colors: any, normalize: any, factor: number, isDark: boole
   verificationHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
   verificationTitle: { fontSize: normalize(15, factor), fontWeight: 'bold', marginLeft: 10, color: colors.text.secondary },
   verificationDesc: { fontSize: normalize(12, factor), color: colors.text.secondary, lineHeight: 18, marginBottom: 15 },
-  verifyBtn: { paddingVertical: 12, borderWeight: 1, borderColor: colors.primary, borderWidth: 1, borderRadius: 10, alignItems: 'center' },
+  verifyBtn: { paddingVertical: 12, borderColor: colors.primary, borderWidth: 1, borderRadius: 10, alignItems: 'center' },
   verifyBtnText: { color: colors.primary, fontWeight: 'bold', fontSize: normalize(12, factor) },
   errorText: { color: colors.danger, fontSize: normalize(12, factor), marginTop: -20, marginBottom: 20, textAlign: 'center', fontWeight: 'bold' },
   saveButton: { backgroundColor: colors.primary, borderRadius: 25, height: 55, justifyContent: 'center', alignItems: 'center', marginTop: 15, elevation: 3 },
@@ -390,9 +464,10 @@ const createStyles = (colors: any, normalize: any, factor: number, isDark: boole
   statusItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 18, borderBottomWidth: 0.5, borderBottomColor: colors.divider },
   selectedStatusItem: { backgroundColor: isDark ? '#333' : '#F9F9F9' },
   statusText: { fontSize: normalize(16, factor), color: colors.text.primary },
+  section: { marginVertical: 10 },
+  sectionLabel: { fontSize: normalize(12, factor), fontWeight: 'bold', marginBottom: 15 },
+  settingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginVertical: 10 },
+  settingTitle: { fontSize: normalize(15, factor), fontWeight: '600' },
+  settingDesc: { fontSize: normalize(12, factor), marginTop: 2 },
   closeBtn: { display: 'none' }
-});
-
-const styles = StyleSheet.create({
-  centered: { flex: 1, justifyContent: 'center', alignItems: 'center' }
 });

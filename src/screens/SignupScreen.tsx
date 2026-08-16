@@ -21,6 +21,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
 import { CountryPicker } from 'react-native-country-codes-picker';
 import * as Device from 'expo-device';
+import { APP_VERSION } from '../utils/constants';
 
 const { width } = Dimensions.get('window');
 
@@ -150,7 +151,8 @@ export default function SignupScreen({ navigation }: any) {
         password,
         phone_number: fullPhone,
         username: pseudo || undefined,
-        device_info: deviceInfo
+        device_info: deviceInfo,
+        appVersion: APP_VERSION
       });
       if (!response.success) throw new Error(response.error);
       if (uploadedImageUrl) await apiService.updateProfile({ avatar_url: uploadedImageUrl });

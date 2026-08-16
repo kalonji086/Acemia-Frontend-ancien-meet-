@@ -1,29 +1,77 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, ActivityIndicator, Dimensions, Alert } from 'react-native';
 import { colors, normalize } from '../styles/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useRoute, useNavigation, CommonActions } from '@react-navigation/native';
 import apiService from '../services/api.service';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const LegalAcceptanceScreen = () => {
   const route = useRoute();
   const navigation = useNavigation();
   const { documents } = route.params as any;
   const [loading, setLoading] = useState(false);
+  const [hasScrolledToBottom, setHasScrolledToBottom] = useState(false);
+
+  const handleScroll = (event: any) => {
+    const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
+    const isCloseToBottom = layoutMeasurement.height + contentOffset.y >= contentSize.height - 50;
+    if (isCloseToBottom && !hasScrolledToBottom) {
+      setHasScrolledToBottom(true);
+    }
+  };
 
   const handleAccept = async () => {
+    if (!hasScrolledToBottom) return;
     setLoading(true);
     try {
-      // On prend la version la plus récente de CGU pour marquer l'acceptation
-      const latestVersion = documents.find((d: any) => d.type === 'tos')?.version || '1.0.0';
-      await apiService.updateProfile({ accepted_legal_version: latestVersion });
+      // On récupère toutes les versions des documents acceptés
+      const updates: any = {};
+      const latestDoc = documents[documents.length - 1];
+      const latestVersion = latestDoc?.version || '1.0.0';
 
-      navigation.dispatch(CommonActions.reset({
-        index: 0,
-        routes: [{ name: 'ChatList' }]
-      }));
+      documents.forEach((d: any) => {
+        if (d.type === 'tos') updates.accepted_tos_version = d.version;
+        if (d.type === 'privacy') updates.accepted_privacy_version = d.version;
+      });
+
+      const { isGuest } = route.params as any;
+      if (isGuest) {
+        await AsyncStorage.setItem('guest_accepted_legal_version', latestVersion);
+        navigation.dispatch(CommonActions.reset({
+          index: 0,
+          routes: [{ name: 'Login' }]
+        }));
+      } else {
+        const res = await apiService.updateProfile({
+          accepted_legal_version: latestVersion,
+          ...updates
+        });
+
+        if (res.success) {
+          // Mise à jour de l'objet utilisateur local immédiatement
+          const userString = await AsyncStorage.getItem('user');
+          if (userString) {
+            const user = JSON.parse(userString);
+            const updatedUser = {
+              ...user,
+              accepted_legal_version: latestVersion,
+              ...updates
+            };
+            await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
+          }
+
+          navigation.dispatch(CommonActions.reset({
+            index: 0,
+            routes: [{ name: 'ChatList' }]
+          }));
+        } else {
+          Alert.alert('Erreur', 'Impossible de valider votre acceptation.');
+        }
+      }
     } catch (error) {
       console.error(error);
+      Alert.alert('Erreur', 'Une erreur est survenue lors de la validation.');
     } finally {
       setLoading(false);
     }
@@ -34,10 +82,15 @@ const LegalAcceptanceScreen = () => {
       <View style={styles.header}>
         <Ionicons name="shield-checkmark" size={normalize(40)} color={colors.primary} />
         <Text style={styles.title}>Mise à jour légale</Text>
-        <Text style={styles.subtitle}>Nous avons mis à jour nos conditions pour mieux vous protéger.</Text>
+        <Text style={styles.subtitle}>Veuillez lire et faire défiler jusqu'en bas pour accepter les nouvelles conditions.</Text>
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.content}
+        showsVerticalScrollIndicator={true}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+      >
         {documents.map((doc: any, index: number) => (
           <View key={index} style={styles.docSection}>
             <Text style={styles.docTitle}>{doc.type === 'privacy' ? 'Politique de Confidentialité' : 'Conditions Générales'}</Text>
@@ -47,16 +100,31 @@ const LegalAcceptanceScreen = () => {
             </View>
           </View>
         ))}
+        <View style={{ height: 50 }} />
       </ScrollView>
 
       <View style={styles.footer}>
+        {!hasScrolledToBottom && (
+          <Text style={[styles.footerText, { color: colors.danger, fontWeight: 'bold' }]}>
+            Défilez jusqu'en bas pour activer le bouton.
+          </Text>
+        )}
         <Text style={styles.footerText}>En cliquant sur "Accepter", vous confirmez avoir lu et accepté les nouvelles conditions.</Text>
         <TouchableOpacity
-          style={[styles.button, loading && { opacity: 0.7 }]}
+          style={[
+            styles.button,
+            (loading || !hasScrolledToBottom) && { backgroundColor: '#E5E7EB', opacity: 0.8 }
+          ]}
           onPress={handleAccept}
-          disabled={loading}
+          disabled={loading || !hasScrolledToBottom}
         >
-          {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>ACCEPTER ET CONTINUER</Text>}
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={[styles.buttonText, !hasScrolledToBottom && { color: '#9CA3AF' }]}>
+              ACCEPTER ET CONTINUER
+            </Text>
+          )}
         </TouchableOpacity>
       </View>
     </SafeAreaView>

@@ -42,8 +42,8 @@ export default function Button({
     };
 
     const sizeStyle: ViewStyle = {
-      paddingHorizontal: size === 'small' ? spacing.md : size === 'large' ? spacing.xl : spacing.lg,
-      paddingVertical: size === 'small' ? spacing.sm : size === 'large' ? spacing.md : spacing.sm,
+      paddingHorizontal: size === 'small' ? spacing.md() : size === 'large' ? spacing.xl() : spacing.lg(),
+      paddingVertical: size === 'small' ? spacing.sm() : size === 'large' ? spacing.md() : spacing.sm(),
     };
 
     const variantStyle: ViewStyle = {

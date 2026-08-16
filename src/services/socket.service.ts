@@ -1,7 +1,7 @@
 import io, { Socket } from 'socket.io-client';
-import { SOCKET_URL } from '../utils/constants';
+import { SOCKET_URL, APP_VERSION } from '../utils/constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Alert } from 'react-native';
+import { Alert, Platform } from 'react-native';
 
 // Types
 interface SocketEvent {
@@ -59,32 +59,81 @@ class SocketService {
     }
 
     try {
+      // Vérifier que l'URL socket est configurée
+      if (!SOCKET_URL || SOCKET_URL.includes('YOUR_SOCKET_URL') || SOCKET_URL.includes('localhost')) {
+        console.warn('Socket URL not properly configured:', SOCKET_URL);
+        return;
+      }
+
       const token = await AsyncStorage.getItem('auth_token');
       const userString = await AsyncStorage.getItem('user');
-      const user = userString ? JSON.parse(userString) : null;
 
-      if (!token || !user) {
+      if (!token || !userString) {
         console.warn('No auth token or user found. Socket connection deferred.');
         return;
       }
 
+      let user = null;
+      try {
+        user = JSON.parse(userString);
+      } catch (e) {
+        console.error('Error parsing user for socket:', e);
+        return;
+      }
+
+      if (!user || !user.id) {
+        console.warn('Invalid user object for socket connection.');
+        return;
+      }
+
+      // Valider le token
+      if (token.length < 10) {
+        console.warn('Invalid token length for socket.');
+        return;
+      }
+
+      // Configuration sécurisée du socket
       this.socket = io(SOCKET_URL, {
-        transports: ['websocket'],
+        transports: ['websocket', 'polling'], // Fallback sur polling
         reconnection: true,
         reconnectionAttempts: this.maxReconnectAttempts,
         reconnectionDelay: 1000,
-        reconnectionDelayMax: 5000,
-        timeout: 20000,
+        reconnectionDelayMax: 10000,
+        timeout: 30000,
         query: {
           token,
+          userId: user.id,
+          platform: Platform.OS,
+          version: APP_VERSION
         },
+        auth: {
+          token
+        },
+        forceNew: true,
+        multiplex: false
       });
 
       this.setupEventListeners();
       this.setupSocketEvents();
 
+      // Timeout de connexion
+      const connectionTimeout = setTimeout(() => {
+        if (!this.isConnected) {
+          console.warn('Socket connection timeout');
+          this.disconnect();
+        }
+      }, 15000);
+
+      // Nettoyer le timeout
+      this.socket.on('connect', () => {
+        clearTimeout(connectionTimeout);
+      });
+
     } catch (error) {
       console.error('Error initializing socket:', error);
+      // Réinitialiser l'état en cas d'erreur
+      this.socket = null;
+      this.isConnected = false;
     }
   }
 
@@ -185,7 +234,8 @@ class SocketService {
       this.emitEvent('user_stopped_typing', data);
     });
 
-    // Notification events
+    // Notification events (Désactivés sans Firebase)
+    /*
     this.socket.on('push_notification', (data) => {
       console.log('Push notification:', data);
       this.emitEvent('push_notification', data);
@@ -195,46 +245,22 @@ class SocketService {
         Alert.alert(data.title, data.body);
       }
     });
+    */
 
     this.socket.on('user_chats', (data) => {
       console.log('User chats updated:', data);
       this.emitEvent('user_chats', data);
     });
 
-    // Call signaling events
-    this.socket.on('call:ring', (data) => {
-      console.log('Incoming call ring:', data);
-      this.emitEvent('call:ring', data);
+    // Legal & System updates
+    this.socket.on('legal_update', (data) => {
+      console.log('Legal update received:', data);
+      this.emitEvent('legal_update', data);
     });
 
-    this.socket.on('call:offered', (data) => {
-      console.log('Call offered ack:', data);
-      this.emitEvent('call:offered', data);
-    });
-
-    this.socket.on('call:accepted', (data) => {
-      console.log('Call accepted:', data);
-      this.emitEvent('call:accepted', data);
-    });
-
-    this.socket.on('call:rejected', (data) => {
-      console.log('Call rejected:', data);
-      this.emitEvent('call:rejected', data);
-    });
-
-    this.socket.on('call:hangup', (data) => {
-      console.log('Call hangup:', data);
-      this.emitEvent('call:hangup', data);
-    });
-
-    this.socket.on('call:timeout', (data) => {
-      console.log('Call timeout:', data);
-      this.emitEvent('call:timeout', data);
-    });
-
-    this.socket.on('call:callee_unavailable', (data) => {
-      console.log('Callee unavailable:', data);
-      this.emitEvent('call:callee_unavailable', data);
+    this.socket.on('app_config_update', (data) => {
+      console.log('App config update received:', data);
+      this.emitEvent('app_config_update', data);
     });
 
     // Error events
@@ -250,19 +276,33 @@ class SocketService {
 
   // Public methods
   async connect(): Promise<void> {
-    if (this.socket && !this.isConnected) {
-      this.socket.connect();
-    } else if (!this.socket) {
-      await this.initialize();
+    try {
+      if (this.socket && !this.isConnected) {
+        this.socket.connect();
+      } else if (!this.socket) {
+        await this.initialize();
+      }
+    } catch (error) {
+      console.error('Socket connect error:', error);
+      throw error;
     }
   }
 
   disconnect(): void {
-    if (this.socket) {
-      this.socket.disconnect();
+    try {
+      if (this.socket) {
+        // Supprimer tous les listeners pour éviter les memory leaks
+        this.socket.removeAllListeners();
+        this.socket.disconnect();
+        this.socket = null;
+        this.isConnected = false;
+        this.emitEvent('disconnected', { reason: 'manual' });
+      }
+    } catch (error) {
+      console.error('Socket disconnect error:', error);
+      // Forcer la réinitialisation même en cas d'erreur
       this.socket = null;
       this.isConnected = false;
-      this.emitEvent('disconnected', { reason: 'manual' });
     }
   }
 
@@ -276,27 +316,63 @@ class SocketService {
 
   // Authentication
   async authenticate(): Promise<void> {
-    if (!this.socket) {
-      await this.initialize();
-      return;
-    }
-
     try {
+      if (!this.socket) {
+        await this.initialize();
+        // Attendre que le socket soit prêt
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+
+      if (!this.socket || !this.isConnected) {
+        // Tentative de connexion si pas connecté
+        if (this.socket && !this.isConnected) {
+          this.socket.connect();
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+
+        if (!this.isConnected) {
+          throw new Error('Socket not connected for authentication');
+        }
+      }
+
       const token = await AsyncStorage.getItem('auth_token');
       const userString = await AsyncStorage.getItem('user');
-      const user = userString ? JSON.parse(userString) : null;
 
-      if (!token || !user) {
+      if (!token || !userString) {
         throw new Error('No authentication data available');
       }
 
-      this.socket.emit('authenticate', {
+      const user = JSON.parse(userString);
+
+      // Valider les données avant envoi
+      if (!user || !user.id || typeof user.id !== 'string') {
+        throw new Error('Invalid user data for authentication');
+      }
+
+      (this.socket as any).emit('authenticate', {
         userId: user.id,
         token,
+        timestamp: Date.now()
       });
+      
+      // Timeout pour l'authentification
+      setTimeout(() => {
+        if (!this.isConnected) {
+          console.warn('Authentication timeout');
+        }
+      }, 10000);
+      
     } catch (error) {
       console.error('Error authenticating socket:', error);
-      this.emitEvent('authentication_error', { error: error.message });
+      this.emitEvent('authentication_error', { 
+        error: (error as any).message || error,
+        timestamp: Date.now() 
+      });
+      
+      // Tentative de reconnexion après erreur d'authentification
+      setTimeout(() => {
+        this.reconnect();
+      }, 5000);
     }
   }
 
@@ -390,34 +466,11 @@ class SocketService {
     }
   }
 
-  // Call signaling (client)
-  sendCallOffer(toUserId: string, channelName: string, callType: 'audio' | 'video' = 'audio', callId?: string): void {
+  emit(event: string, data: any): void {
     if (this.socket && this.isConnected) {
-      this.socket.emit('call:offer', { toUserId, channelName, callType, callId });
-      console.log('Call offer sent:', { toUserId, channelName, callType, callId });
+      this.socket.emit(event, data);
     } else {
-      console.error('Cannot send call offer: socket not connected');
-    }
-  }
-
-  acceptCall(callId: string): void {
-    if (this.socket && this.isConnected) {
-      this.socket.emit('call:accept', { callId });
-      console.log('Call accept sent:', callId);
-    }
-  }
-
-  rejectCall(callId: string): void {
-    if (this.socket && this.isConnected) {
-      this.socket.emit('call:reject', { callId });
-      console.log('Call reject sent:', callId);
-    }
-  }
-
-  hangupCall(callId: string, toUserId?: string): void {
-    if (this.socket && this.isConnected) {
-      this.socket.emit('call:hangup', { callId, toUserId });
-      console.log('Call hangup sent:', { callId, toUserId });
+      console.error(`Cannot emit ${event}: socket not connected`);
     }
   }
 

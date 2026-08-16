@@ -25,7 +25,7 @@ const HELP_CATEGORIES = [
   { id: 'other', label: 'Autre question', icon: 'help-circle-outline' },
 ];
 
-export default function HelpdeskScreen({ navigation }: any) {
+export default function HelpdeskScreen({ navigation, isComponent = false }: any) {
   const { colors, normalize, isDark, fontSizeFactor } = useTheme();
   const [email, setEmail] = useState('');
   const [reason, setReason] = useState('');
@@ -70,21 +70,25 @@ export default function HelpdeskScreen({ navigation }: any) {
   const styles = createStyles(colors, normalize, fontSizeFactor, isDark);
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={colors.surface} />
+    <View style={styles.container}>
+      {!isComponent && (
+        <>
+          <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={colors.surface} />
+          <View style={styles.header}>
+            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+              <Ionicons name="arrow-back" size={24} color={colors.primary} />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Centre d'aide</Text>
+          </View>
+        </>
+      )}
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color={colors.primary} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Centre d'aide</Text>
-        </View>
-
+        {!isComponent && <View style={{ height: 1 }} />}
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
@@ -92,10 +96,29 @@ export default function HelpdeskScreen({ navigation }: any) {
         >
           <View style={styles.infoBox}>
             <Ionicons name="information-circle" size={40} color={colors.primary} />
-            <Text style={styles.infoText}>Comment pouvons-nous vous aider aujourd'hui ? Sélectionnez une catégorie et décrivez votre demande.</Text>
+            <Text style={styles.infoText}>Dites-nous ce qui ne va pas. Utilisez la barre de recherche ci-dessous pour décrire votre problème et nous l'envoyer directement.</Text>
           </View>
 
-          <Text style={styles.sectionTitle}>Catégorie du problème</Text>
+          <Text style={styles.sectionTitle}>Que cherchez-vous ?</Text>
+          <View style={styles.searchBarWrapper}>
+            <Ionicons name="search-outline" size={20} color="#999" />
+            <TextInput
+              style={styles.searchInputField}
+              placeholder="Décrivez votre problème ici..."
+              placeholderTextColor="#999"
+              value={reason}
+              onChangeText={setReason}
+              returnKeyType="send"
+              onSubmitEditing={handleSubmit}
+            />
+            {reason.length > 0 && (
+              <TouchableOpacity onPress={() => setReason('')}>
+                <Ionicons name="close-circle" size={20} color="#999" />
+              </TouchableOpacity>
+            )}
+          </View>
+
+          <Text style={styles.sectionTitle}>Catégorie (optionnel)</Text>
           <View style={styles.categoriesGrid}>
             {HELP_CATEGORIES.map((item) => (
               <TouchableOpacity
@@ -150,7 +173,7 @@ export default function HelpdeskScreen({ navigation }: any) {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -163,12 +186,14 @@ const createStyles = (colors: any, normalize: any, factor: number, isDark: boole
   infoBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: isDark ? '#333' : '#F0F2F5', padding: 20, borderRadius: 20, marginBottom: 25 },
   infoText: { flex: 1, marginLeft: 15, fontSize: normalize(13, factor), color: colors.text.secondary, lineHeight: 20 },
   sectionTitle: { fontSize: normalize(14, factor), fontWeight: 'bold', color: colors.text.primary, marginBottom: 15, marginTop: 10 },
+  searchBarWrapper: { flexDirection: 'row', alignItems: 'center', backgroundColor: isDark ? '#333' : '#F0F2F5', borderRadius: 15, paddingHorizontal: 15, height: 60, marginBottom: 25, borderWidth: 1, borderColor: colors.border },
+  searchInputField: { flex: 1, marginLeft: 10, fontSize: normalize(15, factor), color: colors.text.primary },
   categoriesGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 20 },
-  categoryItem: { width: '48%', backgroundColor: colors.surface, borderWIdth: 1, borderColor: colors.border, borderRadius: 15, padding: 15, alignItems: 'center', marginBottom: 12, elevation: 1 },
+  categoryItem: { width: '48%', backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 15, padding: 15, alignItems: 'center', marginBottom: 12, elevation: 1 },
   categoryLabel: { fontSize: normalize(11, factor), marginTop: 8, textAlign: 'center', color: colors.text.secondary },
-  inputWrapper: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderWIdth: 1, borderColor: colors.border, borderRadius: 15, paddingHorizontal: 15, height: 55, marginBottom: 10 },
+  inputWrapper: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 15, paddingHorizontal: 15, height: 55, marginBottom: 10 },
   input: { flex: 1, marginLeft: 10, fontSize: normalize(14, factor), color: colors.text.primary },
-  textArea: { backgroundColor: colors.surface, borderWIdth: 1, borderColor: colors.border, borderRadius: 15, padding: 15, fontSize: normalize(14, factor), color: colors.text.primary, minHeight: 120, marginBottom: 25 },
+  textArea: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 15, padding: 15, fontSize: normalize(14, factor), color: colors.text.primary, minHeight: 120, marginBottom: 25 },
   submitButton: { backgroundColor: colors.primary, height: 55, borderRadius: 30, justifyContent: 'center', alignItems: 'center', shadowColor: colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 5, elevation: 5 },
   submitButtonText: { color: '#fff', fontWeight: 'bold', fontSize: normalize(16, factor), letterSpacing: 1 },
   footer: { marginTop: 40, alignItems: 'center', paddingBottom: 20 },

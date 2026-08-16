@@ -12,28 +12,73 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors, normalize } from '../styles/theme';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
+import apiService from '../services/api.service';
+import { ActivityIndicator } from 'react-native';
 
-export default function PrivacyPolicyScreen({ navigation }: any) {
+export default function PrivacyPolicyScreen({ navigation, isComponent = false }: any) {
   const { colors: themeColors, isDark } = useTheme();
   const { t } = useLanguage();
+  const [loading, setLoading] = React.useState(true);
+  const [privacyDoc, setPrivacyDoc] = React.useState<any>(null);
+
+  React.useEffect(() => {
+    fetchPrivacyPolicy();
+  }, []);
+
+  const fetchPrivacyPolicy = async () => {
+    try {
+      const res = await apiService.getLegalDocs();
+      if (res.success) {
+        const doc = res.data.find((d: any) => d.type === 'privacy');
+        setPrivacyDoc(doc);
+      }
+    } catch (e) {
+      console.error('Error fetching privacy policy:', e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <View style={[styles.centered, { backgroundColor: themeColors.background }]}>
+        <ActivityIndicator size="large" color={themeColors.primary} />
+      </View>
+    );
+  }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]}>
-      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={themeColors.surface} />
-      <View style={[styles.header, { backgroundColor: themeColors.surface, borderBottomColor: themeColors.border }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={themeColors.primary} />
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: themeColors.text.primary }]}>Privacy Policy</Text>
-      </View>
+    <View style={[styles.container, { backgroundColor: themeColors.background }]}>
+      {!isComponent && (
+        <>
+          <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={themeColors.surface} />
+          <View style={[styles.header, { backgroundColor: themeColors.surface, borderBottomColor: themeColors.border }]}>
+            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+              <Ionicons name="arrow-back" size={24} color={themeColors.primary} />
+            </TouchableOpacity>
+            <Text style={[styles.headerTitle, { color: themeColors.text.primary }]}>{t('privacyPolicy')}</Text>
+          </View>
+        </>
+      )}
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <Text style={[styles.h1, { color: themeColors.text.primary }]}>Privacy Policy</Text>
-        <Text style={[styles.p, { color: themeColors.text.secondary }]}>Last updated: August 01, 2026</Text>
+        {privacyDoc ? (
+          <>
+            <Text style={[styles.h1, { color: themeColors.text.primary }]}>Privacy Policy</Text>
+            <Text style={[styles.p, { color: themeColors.text.secondary }]}>Version {privacyDoc.version}</Text>
+            <Text style={[styles.p, { color: themeColors.text.primary }]}>{privacyDoc.content}</Text>
+          </>
+        ) : (
+          <>
+            <Text style={[styles.h1, { color: themeColors.text.primary }]}>Privacy Policy</Text>
+            <Text style={[styles.p, { color: themeColors.text.secondary }]}>Last updated: August 01, 2026</Text>
 
-        <Text style={[styles.p, { color: themeColors.text.primary }]}>
-          This Privacy Policy describes Our policies and procedures on the collection, use and disclosure of Your information when You use the Service and tells You about Your privacy rights and how the law protects You.
-        </Text>
+            <Text style={[styles.p, { color: themeColors.text.primary }]}>
+              This Privacy Policy describes Our policies and procedures on the collection, use and disclosure of Your information when You use the Service and tells You about Your privacy rights and how the law protects You.
+            </Text>
+            {/* Fallback content... */}
+          </>
+        )}
 
         <Text style={[styles.p, { color: themeColors.text.primary }]}>
           We use Your Personal Data to provide and improve the Service. We collect, use, and disclose Your information as described in this Privacy Policy and, where required by applicable law, only where We have a valid legal basis to do so, including Your consent (where consent is required).
@@ -78,7 +123,7 @@ export default function PrivacyPolicyScreen({ navigation }: any) {
 
         <View style={{ height: 40 }} />
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -111,4 +156,5 @@ const styles = StyleSheet.create({
   bulletContainer: { flexDirection: 'row', marginBottom: 8 },
   bulletPoint: { fontSize: 18, marginRight: 5 },
   bullet: { fontSize: normalize(14), marginLeft: 15, marginBottom: 5 },
+  centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 });

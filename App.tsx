@@ -5,35 +5,54 @@ import AppNavigator from './src/navigation/AppNavigator';
 import * as SplashScreen from 'expo-splash-screen';
 import { ThemeProvider } from './src/context/ThemeContext';
 import { LanguageProvider } from './src/context/LanguageContext';
-import * as Notifications from 'expo-notifications';
-
-// Configuration des notifications
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-  }),
-});
-
-// Empêcher l'écran de chargement natif de se cacher automatiquement
-SplashScreen.preventAutoHideAsync();
+import * as Device from 'expo-device';
+import { Platform } from 'react-native';
+import ErrorBoundary from './src/components/ErrorBoundary';
+import ErrorScreen from './src/screens/ErrorScreen';
 
 export default function App() {
   useEffect(() => {
-    // On laisse l'écran natif (violet uni) un court instant puis on passe au composant animé
-    const hideNativeSplash = async () => {
-      await SplashScreen.hideAsync();
+    const hideSplash = async () => {
+      try {
+        // Un petit délai pour laisser le temps au moteur de rendu de s'initialiser
+        setTimeout(async () => {
+          await SplashScreen.hideAsync();
+        }, 1000);
+      } catch (hideError) {
+        // console.log('Splash hide error');
+      }
     };
-    hideNativeSplash();
+
+    // On cache le splash screen le plus tôt possible pour éviter le blocage
+    const splashTimer = setTimeout(() => {
+      hideSplash();
+    }, 500);
+
+    return () => {
+      clearTimeout(splashTimer);
+    };
   }, []);
+
+  const handleError = (error: Error, errorInfo: React.ErrorInfo) => {
+    console.error('Global error caught:', error, errorInfo);
+  };
 
   return (
     <LanguageProvider>
       <ThemeProvider>
         <SafeAreaProvider>
-          <StatusBar style="auto" />
-          <AppNavigator />
+          <ErrorBoundary
+            onError={handleError}
+            fallback={(
+              <ErrorScreen
+                error={new Error('Application error')}
+                showDetails={__DEV__}
+              />
+            )}
+          >
+            <StatusBar style="auto" />
+            <AppNavigator />
+          </ErrorBoundary>
         </SafeAreaProvider>
       </ThemeProvider>
     </LanguageProvider>

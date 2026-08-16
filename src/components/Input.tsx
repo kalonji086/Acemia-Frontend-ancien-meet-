@@ -83,13 +83,13 @@ export default function Input({
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: spacing.md,
+    marginBottom: spacing.md(),
   },
   label: {
     fontSize: 14,
     fontWeight: '500',
     color: colors.text.primary,
-    marginBottom: spacing.xs,
+    marginBottom: spacing.xs(),
   },
   inputContainer: {
     flexDirection: 'row',
@@ -98,22 +98,22 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: borderRadius.md,
     backgroundColor: colors.surface,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.md(),
   },
   inputContainerError: {
     borderColor: colors.danger,
   },
   inputWithLeftIcon: {
-    paddingLeft: spacing.sm,
+    paddingLeft: spacing.sm(),
   },
   inputWithRightIcon: {
-    paddingRight: spacing.sm,
+    paddingRight: spacing.sm(),
   },
   leftIcon: {
-    marginRight: spacing.sm,
+    marginRight: spacing.sm(),
   },
   rightIcon: {
-    marginLeft: spacing.sm,
+    marginLeft: spacing.sm(),
   },
   input: {
     flex: 1,
@@ -124,6 +124,6 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: 12,
     color: colors.danger,
-    marginTop: spacing.xs,
+    marginTop: spacing.xs(),
   },
 });

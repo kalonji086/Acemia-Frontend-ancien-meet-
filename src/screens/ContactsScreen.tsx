@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   TextInput,
   Alert,
+  Share,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import apiService from '../services/api.service';
@@ -18,6 +19,7 @@ import { SOCKET_URL } from '../utils/constants';
 import * as Contacts from 'expo-contacts';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function ContactsScreen({ navigation }: any) {
   const { colors: themeColors, normalize, isDark } = useTheme();
@@ -31,9 +33,13 @@ export default function ContactsScreen({ navigation }: any) {
   const [searchQuery, setSearchQuery] = useState('');
 
   const getFullUrl = (url: string) => {
-    if (!url) return '';
-    if (url.startsWith('http')) return url;
-    return `${SOCKET_URL}${url}`;
+    if (!url || url === 'null') return null;
+    if (url.startsWith('http') || url.startsWith('file://') || url.startsWith('content://')) return url;
+
+    const baseUrl = SOCKET_URL.endsWith('/') ? SOCKET_URL.slice(0, -1) : SOCKET_URL;
+    const path = url.startsWith('/') ? url : `/${url}`;
+
+    return `${baseUrl}${path}`;
   };
 
   useEffect(() => {
@@ -119,11 +125,21 @@ export default function ContactsScreen({ navigation }: any) {
           chatId: response.data.id,
           name: user.full_name,
           avatar: getFullUrl(user.avatar_url),
-          otherUserId: user.id
+          peerUserId: user.id
         });
       }
     } catch (error) {
       console.error('Error starting chat:', error);
+    }
+  };
+
+  const onInvite = async (name: string) => {
+    try {
+      await Share.share({
+        message: `Salut ${name}, rejoins-moi sur Meet Me ! C'est une application de messagerie géniale. Télécharge-la ici : https://meet-me.app`,
+      });
+    } catch (error) {
+      console.error('Error sharing:', error);
     }
   };
 
@@ -144,8 +160,11 @@ export default function ContactsScreen({ navigation }: any) {
     </TouchableOpacity>
   );
 
+  const insets = useSafeAreaInsets();
+
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]}>
+    <View style={[styles.container, { backgroundColor: themeColors.background }]}>
+      <View style={{ height: insets.top, backgroundColor: themeColors.primary }} />
       <StatusBar backgroundColor={themeColors.primary} barStyle="light-content" />
 
       <View style={[styles.header, { backgroundColor: themeColors.primary }]}>
@@ -189,7 +208,7 @@ export default function ContactsScreen({ navigation }: any) {
                   <Text style={[styles.userName, { color: themeColors.text.primary }]}>{item.name}</Text>
                   <Text style={[styles.userStatus, { color: themeColors.text.secondary }]}>{item.phoneNumber}</Text>
                 </View>
-                <TouchableOpacity style={[styles.inviteButton, { borderColor: themeColors.secondary }]} onPress={() => {}}>
+                <TouchableOpacity style={[styles.inviteButton, { borderColor: themeColors.secondary }]} onPress={() => onInvite(item.name)}>
                   <Text style={[styles.inviteButtonText, { color: themeColors.secondary }]}>INVITER</Text>
                 </TouchableOpacity>
               </View>
@@ -226,7 +245,7 @@ export default function ContactsScreen({ navigation }: any) {
           ) : null
         }
       />
-    </SafeAreaView>
+    </View>
   );
 }
 

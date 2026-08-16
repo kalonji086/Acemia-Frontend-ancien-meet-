@@ -28,7 +28,7 @@ interface ThemeContextType {
   setPrimaryColor: (colorId: string) => void;
   fontSizeFactor: number;
   setFontSizeFactor: (factor: number) => void;
-  normalize: (size: number) => number;
+  normalize: (size: number, factor?: number) => number;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -92,8 +92,8 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setTheme(theme === 'light' ? 'dark' : 'light');
   };
 
-  const normalize = useCallback((size: number) => {
-    const newSize = size * scale * fontSizeFactor;
+  const normalize = useCallback((size: number, factor: number = 1) => {
+    const newSize = size * scale * fontSizeFactor * factor;
     return Math.round(PixelRatio.roundToNearestPixel(newSize));
   }, [fontSizeFactor]);
 

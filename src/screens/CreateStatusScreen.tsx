@@ -56,7 +56,7 @@ export default function CreateStatusScreen({ navigation, route }: any) {
       });
 
       if (response.success) {
-        navigation.navigate('ChatList'); // Retour à l'écran principal
+        navigation.navigate('ChatList', { screen: 'status' }); // Retour à l'onglet Statuts
       } else {
         Alert.alert('Erreur', response.error || 'Impossible de publier le status');
       }
@@ -89,19 +89,7 @@ export default function CreateStatusScreen({ navigation, route }: any) {
         {!imageUri && (
           <View style={styles.headerActions}>
             <TouchableOpacity onPress={cycleColor} style={styles.actionButton}>
-              <Ionicons name="color-palette" size={24} color="#fff" />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={handlePublish}
-              disabled={loading || !content.trim()}
-              style={[styles.publishButtonTop, (!content.trim() || loading) && styles.disabled]}
-            >
-              {loading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Ionicons name="send" size={24} color="#fff" />
-              )}
+              <Ionicons name="color-palette" size={28} color="#fff" />
             </TouchableOpacity>
           </View>
         )}
@@ -110,6 +98,7 @@ export default function CreateStatusScreen({ navigation, route }: any) {
       {/* CONTENT AREA */}
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
         style={{ flex: 1 }}
       >
         <View style={imageUri ? styles.imageModeContent : styles.textModeContent}>
@@ -139,16 +128,30 @@ export default function CreateStatusScreen({ navigation, route }: any) {
               </TouchableOpacity>
             </View>
           ) : (
-            <TextInput
-              style={styles.textStatusInput}
-              placeholder="Tapez un statut"
-              placeholderTextColor="rgba(255,255,255,0.6)"
-              multiline
-              maxLength={200}
-              value={content}
-              onChangeText={setContent}
-              autoFocus
-            />
+            <>
+              <TextInput
+                style={styles.textStatusInput}
+                placeholder="Tapez un statut"
+                placeholderTextColor="rgba(255,255,255,0.6)"
+                multiline
+                maxLength={200}
+                value={content}
+                onChangeText={setContent}
+                autoFocus
+              />
+
+              <TouchableOpacity
+                onPress={handlePublish}
+                disabled={loading || !content.trim()}
+                style={[styles.floatingPublishBtn, (!content.trim() || loading) && styles.disabled]}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Ionicons name="send" size={26} color="#fff" />
+                )}
+              </TouchableOpacity>
+            </>
           )}
         </View>
       </KeyboardAvoidingView>
@@ -246,4 +249,20 @@ const styles = StyleSheet.create({
   disabled: {
     opacity: 0.5,
   },
+  floatingPublishBtn: {
+    position: 'absolute',
+    bottom: 30,
+    right: 20,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+  }
 });
