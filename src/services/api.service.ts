@@ -585,6 +585,76 @@ class ApiService {
     } catch (e: any) { return this.handleError(e); }
   }
 
+  async toggleMarketLike(postId: string): Promise<ApiResponse> {
+    try {
+      const res = await this.api.post(`/market/posts/${postId}/like`);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async addMarketComment(postId: string, content: string): Promise<ApiResponse> {
+    try {
+      const res = await this.api.post(`/market/posts/${postId}/comment`, { content });
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async toggleMarketSubscription(businessId: string): Promise<ApiResponse> {
+    try {
+      const res = await this.api.post(`/market/business/${businessId}/subscribe`);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async getMarketOrders(): Promise<ApiResponse> {
+    try {
+      const res = await this.api.get('/market/orders');
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async getMarketRequests(): Promise<ApiResponse> {
+    try {
+      const res = await this.api.get('/market/requests');
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async getMarketInventory(): Promise<ApiResponse> {
+    try {
+      const res = await this.api.get('/market/inventory');
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async getMarketChats(): Promise<ApiResponse> {
+    try {
+      const res = await this.api.get('/market/chats');
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async getMarketDocuments(): Promise<ApiResponse> {
+    try {
+      const res = await this.api.get('/market/documents');
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async uploadMarketDocument(data: { name: string, fileUrl: string, fileSize?: string, mimeType?: string }): Promise<ApiResponse> {
+    try {
+      const res = await this.api.post('/market/documents', data);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async createMarketQuote(data: any): Promise<ApiResponse> {
+    try {
+      const res = await this.api.post('/market/quotes', data);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
   async getBusinessById(id: string): Promise<ApiResponse> {
     try {
       const res = await this.api.get(`/market/business/${id}`);

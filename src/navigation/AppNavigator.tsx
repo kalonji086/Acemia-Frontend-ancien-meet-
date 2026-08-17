@@ -114,7 +114,7 @@ export default function AppNavigator() {
         return true;
       };
 
-      const APP_VERSION_CURRENT = '32.0.0';
+      const APP_VERSION_CURRENT = '35.0.0';
 
       if (!isVersionGreaterOrEqual(APP_VERSION_CURRENT, data.current_version)) {
         setTimeout(() => {

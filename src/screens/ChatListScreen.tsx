@@ -79,18 +79,31 @@ export default function ChatListScreen({ navigation, route, onChatSelect, select
 
   const fetchChats = async () => {
     try {
+      // S'assurer d'avoir les infos de l'utilisateur actuel pour la comparaison
+      let user = currentUser;
+      if (!user) {
+        user = await apiService.getCurrentUser();
+        if (user) setCurrentUser(user);
+      }
+
       const response = await apiService.getChats(1, 50, isArchivedView);
       if (response.success) {
         const formatted = response.data.map((chat: any) => {
-          const isSelf = chat.type === 'private' && chat.other_user?.id === currentUser?.id;
           const isGroup = chat.type === 'group';
+          // Détecter si c'est un message à soi-même (other_user est null pour les self-chats côté backend)
+          const isSelf = chat.type === 'private' && (!chat.other_user || chat.other_user.id === user?.id);
 
           let name = chat.name || 'Discussion';
           let avatar = chat.avatar_url;
 
           if (!isGroup) {
-            name = isSelf ? t('profile') : (chat.other_user?.full_name || 'Inconnu');
-            avatar = chat.other_user?.avatar_url;
+            if (isSelf && user) {
+              name = `${user.name} (${t('profile')})`;
+              avatar = user.avatar;
+            } else {
+              name = chat.other_user?.full_name || 'Inconnu';
+              avatar = chat.other_user?.avatar_url;
+            }
           }
 
           return {
@@ -99,9 +112,9 @@ export default function ChatListScreen({ navigation, route, onChatSelect, select
             avatar: getFullUrl(avatar) || `https://ui-avatars.com/api/?name=${name}&background=random`,
             lastMessage: chat.last_message,
             lastMessageAt: chat.last_message_at,
-            otherUserId: chat.other_user?.id,
+            otherUserId: isSelf ? user?.id : chat.other_user?.id,
             type: chat.type,
-            isVerified: !isGroup && chat.other_user?.is_verified,
+            isVerified: !isGroup && (isSelf ? user?.is_verified : chat.other_user?.is_verified),
             unreadCount: parseInt(chat.unread_count || 0),
             isSelf
           };
@@ -130,8 +143,14 @@ export default function ChatListScreen({ navigation, route, onChatSelect, select
         {
           text: isArchivedView ? "📦 Désarchiver" : "📦 Archiver",
           onPress: async () => {
-            await apiService.toggleArchiveChat(chat.id, !isArchivedView);
-            fetchChats();
+            const res = await apiService.toggleArchiveChat(chat.id, !isArchivedView);
+            if (res.success) {
+              if (isArchivedView) {
+                // Retourner à la liste principale en mettant à jour les paramètres
+                navigation.setParams({ showArchived: false });
+              }
+              fetchChats();
+            }
           }
         },
         {
@@ -244,16 +263,24 @@ export default function ChatListScreen({ navigation, route, onChatSelect, select
 
       {!isSearching ? (
         <View style={dynamicStyles.header}>
-          <View style={dynamicStyles.headerLeft} />
+          <View style={dynamicStyles.headerLeft}>
+            {isArchivedView && (
+              <TouchableOpacity onPress={() => navigation.setParams({ showArchived: false })} style={dynamicStyles.headerButton}>
+                <Ionicons name="arrow-back" size={24} color="#fff" />
+              </TouchableOpacity>
+            )}
+          </View>
 
           <View style={dynamicStyles.headerCenter}>
-            <Text style={dynamicStyles.headerTitle}>Meet Me</Text>
+            <Text style={dynamicStyles.headerTitle}>{isArchivedView ? "Archivées" : "Meet Me"}</Text>
           </View>
 
           <View style={dynamicStyles.headerRight}>
-            <TouchableOpacity style={dynamicStyles.headerButton} onPress={() => setIsSearching(true)}>
-              <Ionicons name="search-outline" size={24} color="#fff" />
-            </TouchableOpacity>
+            {!isArchivedView && (
+              <TouchableOpacity style={dynamicStyles.headerButton} onPress={() => setIsSearching(true)}>
+                <Ionicons name="search-outline" size={24} color="#fff" />
+              </TouchableOpacity>
+            )}
             {!isArchivedView && (
               <TouchableOpacity style={dynamicStyles.profileHeaderButton} onPress={() => navigation.navigate('Settings')}>
                 {currentUser?.avatar ? (

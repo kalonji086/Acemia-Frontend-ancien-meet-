@@ -88,6 +88,26 @@ export default function MarketScreen() {
     );
   }
 
+  // Si compte bloqué
+  if (business.status === 'blocked') {
+    return (
+      <View style={[styles.centered, { backgroundColor: colors.background, padding: 40 }]}>
+        <Ionicons name="lock-closed" size={80} color={colors.danger} />
+        <Text style={[styles.pendingTitle, { color: colors.text.primary, color: colors.danger }]}>Compte Suspendu</Text>
+        <Text style={[styles.pendingDesc, { color: colors.text.secondary }]}>
+          L'accès au Market pour "{business.business_name}" a été suspendu par l'administration pour non-respect des conditions d'utilisation.
+          Veuillez contacter le support pour plus d'informations.
+        </Text>
+        <TouchableOpacity
+          style={[styles.startBtn, { backgroundColor: colors.text.secondary, marginTop: 30 }]}
+          onPress={() => navigation.navigate('Helpdesk')}
+        >
+          <Text style={styles.startBtnText}>CONTACTER LE SUPPORT</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
   // Le Market réel sera ici dans la phase 2
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
