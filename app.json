@@ -2,7 +2,7 @@
   "expo": {
     "name": "Meet",
     "slug": "meet-app",
-    "version": "35.0.0",
+    "version": "40.0.0",
     "orientation": "portrait",
     "icon": "./assets/Logo.png",
     "userInterfaceStyle": "light",
@@ -30,7 +30,7 @@
     },
     "android": {
       "package": "com.deve",
-      "versionCode": 34,
+      "versionCode": 40,
       "adaptiveIcon": {
         "foregroundImage": "./assets/Logo.png",
         "backgroundColor": "#ffffff"

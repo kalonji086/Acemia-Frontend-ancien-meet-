@@ -1031,7 +1031,16 @@ export default function ChatScreen({ navigation, route }: any) {
               keyExtractor={(item) => item.id?.toString() || Math.random().toString()}
               contentContainerStyle={styles.list}
               ListHeaderComponent={<EncryptionNotice colors={themeColors} navigation={navigation} styles={styles} />}
-              onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+              onContentSizeChange={() => {
+                if (messages.length > 0) {
+                  flatListRef.current?.scrollToEnd({ animated: false });
+                }
+              }}
+              onLayout={() => {
+                if (messages.length > 0) {
+                  flatListRef.current?.scrollToEnd({ animated: false });
+                }
+              }}
             />
           )}
         </ImageBackground>

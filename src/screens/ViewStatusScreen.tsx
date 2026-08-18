@@ -201,7 +201,16 @@ export default function ViewStatusScreen({ navigation, route }: any) {
         setFloatingEmojis(prev => prev.filter(e => e.id !== id));
       }, 2000);
 
-      // Appel API silencieux
+      // Pour que ça s'affiche dans la chatlist, on crée une discussion et on envoie un message
+      try {
+        const chatRes = await apiService.createChat([userStatus.user_id]);
+        if (chatRes.success) {
+          const msgPrefix = type === 'like' ? "A aimé votre statut" : "A réagi à votre statut : ";
+          await apiService.sendMessage(chatRes.data.id, `${msgPrefix}${content}`);
+        }
+      } catch (e) { console.error('Error sending emoji message:', e); }
+
+      // Appel API de réaction
       apiService.addStatusReaction(currentStatus.id, { content, type })
         .catch(e => console.error('Silent emoji error:', e));
 
@@ -224,7 +233,7 @@ export default function ViewStatusScreen({ navigation, route }: any) {
         }
       }
     } catch (e) {
-      console.error('Send reaction error:', e);
+      console.error('Send reaction error:', error);
     } finally {
       setSending(false);
       if (type === 'comment') setIsPaused(false);

@@ -599,6 +599,13 @@ class ApiService {
     } catch (e: any) { return this.handleError(e); }
   }
 
+  async getMarketComments(postId: string): Promise<ApiResponse> {
+    try {
+      const res = await this.api.get(`/market/posts/${postId}/comments`);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
   async toggleMarketSubscription(businessId: string): Promise<ApiResponse> {
     try {
       const res = await this.api.post(`/market/business/${businessId}/subscribe`);
@@ -613,6 +620,20 @@ class ApiService {
     } catch (e: any) { return this.handleError(e); }
   }
 
+  async createMarketOrder(data: { customerName: string, items: any, totalAmount: number }): Promise<ApiResponse> {
+    try {
+      const res = await this.api.post('/market/orders', data);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async updateMarketOrder(orderId: string, data: { status?: string, trackingNumber?: string, adminNotes?: string }): Promise<ApiResponse> {
+    try {
+      const res = await this.api.put(`/market/orders/${orderId}`, data);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
   async getMarketRequests(): Promise<ApiResponse> {
     try {
       const res = await this.api.get('/market/requests');
@@ -623,6 +644,27 @@ class ApiService {
   async getMarketInventory(): Promise<ApiResponse> {
     try {
       const res = await this.api.get('/market/inventory');
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async getMarketInventoryLogs(): Promise<ApiResponse> {
+    try {
+      const res = await this.api.get('/market/inventory/logs');
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async updateMarketInventory(data: { itemName: string, quantity: number, price?: number, action: 'add' | 'remove' | 'create', reason?: string }): Promise<ApiResponse> {
+    try {
+      const res = await this.api.post('/market/inventory', data);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async deleteMarketInventoryItem(itemId: string): Promise<ApiResponse> {
+    try {
+      const res = await this.api.delete(`/market/inventory/${itemId}`);
       return res.data;
     } catch (e: any) { return this.handleError(e); }
   }

@@ -153,7 +153,11 @@ export default function BusinessRegistrationScreen({ navigation }: any) {
   };
 
   const renderStep1 = () => (
-    <View style={[styles.stepContainer, isTablet && { alignSelf: 'center', width: contentWidth }]}>
+    <ScrollView
+      style={[styles.stepContainer, isTablet && { alignSelf: 'center', width: contentWidth }]}
+      showsVerticalScrollIndicator={true}
+      persistentScrollbar={true}
+    >
       <Text style={[styles.stepTitle, { color: colors.text.primary, fontSize: normalize(24, fontSizeFactor) }]}>Quelle est votre catégorie ?</Text>
       <Text style={[styles.stepSubtitle, { color: colors.text.secondary, fontSize: normalize(14, fontSizeFactor) }]}>Choisissez le domaine qui correspond le mieux à votre activité.</Text>
       <View style={styles.categoryGrid}>
@@ -176,16 +180,20 @@ export default function BusinessRegistrationScreen({ navigation }: any) {
           </TouchableOpacity>
         ))}
       </View>
-    </View>
+    </ScrollView>
   );
 
   const renderStep2 = () => (
-    <ScrollView style={[styles.stepContainer, isTablet && { alignSelf: 'center', width: contentWidth }]} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      style={[styles.stepContainer, isTablet && { alignSelf: 'center', width: contentWidth }]}
+      showsVerticalScrollIndicator={true}
+      persistentScrollbar={true}
+    >
       <Text style={[styles.stepTitle, { color: colors.text.primary, fontSize: normalize(24, fontSizeFactor) }]}>Détails du business</Text>
 
       <Text style={[styles.label, { fontSize: normalize(12, fontSizeFactor) }]}>Nom du business *</Text>
       <TextInput
-        style={[styles.input, { color: colors.text.primary, backgroundColor: colors.surface, fontSize: normalize(16, fontSizeFactor) }]}
+        style={[styles.input, { color: colors.text.primary, backgroundColor: colors.surface, fontSize: normalize(16, fontSizeFactor), borderColor: colors.border, borderWidth: 1 }]}
         value={formData.businessName}
         onChangeText={v => updateField('businessName', v)}
         placeholder="Ex: Ma Super Boutique"
@@ -194,7 +202,7 @@ export default function BusinessRegistrationScreen({ navigation }: any) {
 
       <Text style={[styles.label, { fontSize: normalize(12, fontSizeFactor) }]}>Bref description</Text>
       <TextInput
-        style={[styles.input, { color: colors.text.primary, backgroundColor: colors.surface, fontSize: normalize(16, fontSizeFactor) }]}
+        style={[styles.input, { color: colors.text.primary, backgroundColor: colors.surface, fontSize: normalize(16, fontSizeFactor), borderColor: colors.border, borderWidth: 1 }]}
         value={formData.shortDescription}
         onChangeText={v => updateField('shortDescription', v)}
         placeholder="Une phrase pour vous présenter"
@@ -203,7 +211,7 @@ export default function BusinessRegistrationScreen({ navigation }: any) {
 
       <Text style={[styles.label, { fontSize: normalize(12, fontSizeFactor) }]}>Description complète</Text>
       <TextInput
-        style={[styles.input, { color: colors.text.primary, backgroundColor: colors.surface, minHeight: normalize(100), fontSize: normalize(16, fontSizeFactor) }]}
+        style={[styles.input, { color: colors.text.primary, backgroundColor: colors.surface, minHeight: normalize(100), fontSize: normalize(16, fontSizeFactor), borderColor: colors.border, borderWidth: 1, textAlignVertical: 'top' }]}
         value={formData.fullDescription}
         onChangeText={v => updateField('fullDescription', v)}
         placeholder="Détaillez vos services ou produits..."
@@ -232,19 +240,23 @@ export default function BusinessRegistrationScreen({ navigation }: any) {
 
       <Text style={[styles.label, { fontSize: normalize(12, fontSizeFactor) }]}>Adresse complète *</Text>
       <View style={styles.gridInputs}>
-        <TextInput style={[styles.gridInput, { fontSize: normalize(15, fontSizeFactor) }]} placeholder="Ville" value={formData.addressCity} onChangeText={v => updateField('addressCity', v)} />
-        <TextInput style={[styles.gridInput, { fontSize: normalize(15, fontSizeFactor) }]} placeholder="Commune" value={formData.addressCommune} onChangeText={v => updateField('addressCommune', v)} />
+        <TextInput style={[styles.gridInput, { fontSize: normalize(15, fontSizeFactor), color: colors.text.primary, backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 }]} placeholder="Ville" placeholderTextColor={colors.text.disabled} value={formData.addressCity} onChangeText={v => updateField('addressCity', v)} />
+        <TextInput style={[styles.gridInput, { fontSize: normalize(15, fontSizeFactor), color: colors.text.primary, backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 }]} placeholder="Commune" placeholderTextColor={colors.text.disabled} value={formData.addressCommune} onChangeText={v => updateField('addressCommune', v)} />
       </View>
       <View style={styles.gridInputs}>
-        <TextInput style={[styles.gridInput, { fontSize: normalize(15, fontSizeFactor) }]} placeholder="Province" value={formData.addressProvince} onChangeText={v => updateField('addressProvince', v)} />
-        <TextInput style={[styles.gridInput, { fontSize: normalize(15, fontSizeFactor) }]} placeholder="Quartier" value={formData.addressQuarter} onChangeText={v => updateField('addressQuarter', v)} />
+        <TextInput style={[styles.gridInput, { fontSize: normalize(15, fontSizeFactor), color: colors.text.primary, backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 }]} placeholder="Province" placeholderTextColor={colors.text.disabled} value={formData.addressProvince} onChangeText={v => updateField('addressProvince', v)} />
+        <TextInput style={[styles.gridInput, { fontSize: normalize(15, fontSizeFactor), color: colors.text.primary, backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 }]} placeholder="Quartier" placeholderTextColor={colors.text.disabled} value={formData.addressQuarter} onChangeText={v => updateField('addressQuarter', v)} />
       </View>
-      <TextInput style={[styles.input, { fontSize: normalize(16, fontSizeFactor) }]} placeholder="Code postal" value={formData.addressPostalCode} onChangeText={v => updateField('addressPostalCode', v)} keyboardType="numeric" />
+      <TextInput style={[styles.input, { fontSize: normalize(16, fontSizeFactor), color: colors.text.primary, backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 }]} placeholder="Code postal" placeholderTextColor={colors.text.disabled} value={formData.addressPostalCode} onChangeText={v => updateField('addressPostalCode', v)} keyboardType="numeric" />
     </ScrollView>
   );
 
   const renderStep3 = () => (
-    <View style={[styles.stepContainer, isTablet && { alignSelf: 'center', width: contentWidth }]}>
+    <ScrollView
+      style={[styles.stepContainer, isTablet && { alignSelf: 'center', width: contentWidth }]}
+      showsVerticalScrollIndicator={true}
+      persistentScrollbar={true}
+    >
       <Text style={[styles.stepTitle, { color: colors.text.primary, fontSize: normalize(24, fontSizeFactor) }]}>Documents légaux</Text>
       <Text style={[styles.stepSubtitle, { color: colors.text.secondary, fontSize: normalize(14, fontSizeFactor) }]}>Nous avons besoin de vérifier votre identité pour la sécurité du market.</Text>
 
@@ -268,49 +280,61 @@ export default function BusinessRegistrationScreen({ navigation }: any) {
         <View style={{ marginTop: 20 }}>
           <Text style={[styles.label, { fontSize: normalize(12, fontSizeFactor) }]}>Numéro d'identité national / ID.NAT *</Text>
           <TextInput
-            style={[styles.input, { color: colors.text.primary, backgroundColor: colors.surface, fontSize: normalize(16, fontSizeFactor) }]}
+            style={[styles.input, { color: colors.text.primary, backgroundColor: colors.surface, fontSize: normalize(16, fontSizeFactor), borderColor: colors.border, borderWidth: 1 }]}
             value={formData.nationalIdNumber}
             onChangeText={v => updateField('nationalIdNumber', v)}
             placeholder="Entrez votre numéro ID.NAT"
+            placeholderTextColor={colors.text.disabled}
           />
           <Text style={[styles.label, { fontSize: normalize(12, fontSizeFactor) }]}>Numéro RCCM *</Text>
           <TextInput
-            style={[styles.input, { color: colors.text.primary, backgroundColor: colors.surface, fontSize: normalize(16, fontSizeFactor) }]}
+            style={[styles.input, { color: colors.text.primary, backgroundColor: colors.surface, fontSize: normalize(16, fontSizeFactor), borderColor: colors.border, borderWidth: 1 }]}
             value={formData.rccmNumber}
             onChangeText={v => updateField('rccmNumber', v)}
             placeholder="Entrez votre numéro RCCM"
+            placeholderTextColor={colors.text.disabled}
           />
         </View>
       )}
-    </View>
+    </ScrollView>
   );
 
   const renderStep4 = () => (
-    <View style={[styles.stepContainer, isTablet && { alignSelf: 'center', width: contentWidth }]}>
+    <ScrollView
+      style={[styles.stepContainer, isTablet && { alignSelf: 'center', width: contentWidth }]}
+      showsVerticalScrollIndicator={true}
+      persistentScrollbar={true}
+    >
       <Text style={[styles.stepTitle, { color: colors.text.primary, fontSize: normalize(24, fontSizeFactor) }]}>Taille de l'entreprise</Text>
 
       <Text style={[styles.label, { fontSize: normalize(12, fontSizeFactor) }]}>Nombre d'employés</Text>
       <TextInput
-        style={[styles.input, { color: colors.text.primary, backgroundColor: colors.surface, fontSize: normalize(16, fontSizeFactor) }]}
+        style={[styles.input, { color: colors.text.primary, backgroundColor: colors.surface, fontSize: normalize(16, fontSizeFactor), borderColor: colors.border, borderWidth: 1 }]}
         value={formData.employeeCount}
         onChangeText={v => updateField('employeeCount', v)}
         keyboardType="numeric"
         placeholder="Ex: 5"
+        placeholderTextColor={colors.text.disabled}
       />
 
       <Text style={[styles.label, { fontSize: normalize(12, fontSizeFactor) }]}>Capital estimé (USD)</Text>
       <TextInput
-        style={[styles.input, { color: colors.text.primary, backgroundColor: colors.surface, fontSize: normalize(16, fontSizeFactor) }]}
+        style={[styles.input, { color: colors.text.primary, backgroundColor: colors.surface, fontSize: normalize(16, fontSizeFactor), borderColor: colors.border, borderWidth: 1 }]}
         value={formData.capitalAmount}
         onChangeText={v => updateField('capitalAmount', v)}
         keyboardType="numeric"
         placeholder="Ex: 1000"
+        placeholderTextColor={colors.text.disabled}
       />
-    </View>
+    </ScrollView>
   );
 
   const renderStep5 = () => (
-    <ScrollView style={[styles.stepContainer, isTablet && { alignSelf: 'center', width: contentWidth }]} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      style={[styles.stepContainer, isTablet && { alignSelf: 'center', width: contentWidth }]}
+      showsVerticalScrollIndicator={true}
+      persistentScrollbar={true}
+    >
       <Text style={[styles.stepTitle, { color: colors.text.primary, fontSize: normalize(24, fontSizeFactor) }]}>Vérification & Envoi</Text>
       <View style={styles.finalBox}>
         <Ionicons name="shield-checkmark" size={normalize(80)} color={colors.primary} />
@@ -410,7 +434,7 @@ function createStyles(colors: any, normalize: any, factor: number, isDark: boole
   container: { flex: 1 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 15 },
   headerTitle: { fontWeight: 'bold' },
-  progressBg: { height: 4, backgroundColor: '#eee', width: '100%' },
+  progressBg: { height: 4, backgroundColor: isDark ? '#333' : '#eee', width: '100%' },
   progressFill: { height: '100%' },
   stepContainer: { flex: 1, padding: 25 },
   stepTitle: { fontWeight: '900', marginBottom: 10 },
@@ -421,7 +445,7 @@ function createStyles(colors: any, normalize: any, factor: number, isDark: boole
   label: { fontWeight: 'bold', color: '#999', marginTop: 15, marginBottom: 8, textTransform: 'uppercase' },
   input: { padding: 15, borderRadius: 15 },
   gridInputs: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 },
-  gridInput: { width: '48%', padding: 15, backgroundColor: 'rgba(0,0,0,0.03)', borderRadius: 15 },
+  gridInput: { width: '48%', padding: 15, borderRadius: 15 },
   mediaButtons: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 20 },
   mediaBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 12, borderRadius: 12, marginHorizontal: 5 },
   idUpload: { width: '100%', height: 200, borderRadius: 20, borderStyle: 'dashed', borderWidth: 2, justifyContent: 'center', alignItems: 'center', marginTop: 20, overflow: 'hidden' },
@@ -434,7 +458,7 @@ function createStyles(colors: any, normalize: any, factor: number, isDark: boole
   socialRow: { flexDirection: 'row', justifyContent: 'center', gap: 20, marginBottom: 15 },
   footerLink: { fontSize: 12, fontWeight: 'bold', textDecorationLine: 'underline', marginBottom: 10 },
   addressText: { fontSize: 10, textAlign: 'center' },
-  footer: { padding: 20, borderTopWidth: 1, borderTopColor: '#eee' },
+  footer: { padding: 20, borderTopWidth: 1, borderTopColor: colors.border },
   mainBtn: { padding: 18, borderRadius: 20, alignItems: 'center', elevation: 3, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4 },
   mainBtnText: { color: '#fff', fontWeight: '900' },
 });

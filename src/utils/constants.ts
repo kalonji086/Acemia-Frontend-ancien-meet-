@@ -3,7 +3,7 @@ import Constants from 'expo-constants';
 // Constantes de l'application
 
 export const APP_NAME = 'Meet';
-export const APP_VERSION = "35.0.0";
+export const APP_VERSION = "40.0.0";
 
 // URLs API
 const extra = Constants?.expoConfig?.extra || {};

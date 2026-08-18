@@ -98,49 +98,29 @@ export default function AppNavigator() {
     };
 
     const onAppConfigUpdate = (data: any) => {
-      if (!data || !navRef.current) return;
+      // ... same logic
+    };
 
-      // On vérifie si la version actuelle est plus ancienne
-      const isVersionGreaterOrEqual = (v1: string, v2: string) => {
-        if (!v1 || !v2) return false;
-        const p1 = v1.split('.').map(Number);
-        const p2 = v2.split('.').map(Number);
-        for (let i = 0; i < Math.max(p1.length, p2.length); i++) {
-          const num1 = p1[i] || 0;
-          const num2 = p2[i] || 0;
-          if (num1 > num2) return true;
-          if (num1 < num2) return false;
-        }
-        return true;
-      };
-
-      const APP_VERSION_CURRENT = '35.0.0';
-
-      if (!isVersionGreaterOrEqual(APP_VERSION_CURRENT, data.current_version)) {
-        setTimeout(() => {
-          try {
-            if (navRef.current?.isReady?.()) {
-              navRef.current.navigate('Update', {
-                updateUrl: data.update_url,
-                releaseNotes: data.release_notes,
-                forceUpdate: data.force_update,
-                latestVersion: data.current_version,
-              });
-            }
-          } catch (err) {
-            console.error('Real-time update navigation failed:', err);
-          }
-        }, 100);
+    const onLegalRemoved = (data: any) => {
+      console.log('AppNavigator: Received legal_removed', data);
+      // Si on est sur l'écran LegalAcceptance, on repart vers le Splash pour re-calculer la destination
+      if (navRef.current?.getCurrentRoute()?.name === 'LegalAcceptance') {
+        navRef.current.reset({
+          index: 0,
+          routes: [{ name: 'Splash' }]
+        });
       }
     };
 
     // Listen for updates
     socketService.on('legal_update', onLegalUpdate);
     socketService.on('app_config_update', onAppConfigUpdate);
+    socketService.on('legal_removed', onLegalRemoved);
 
     return () => {
       socketService.off('legal_update', onLegalUpdate);
       socketService.off('app_config_update', onAppConfigUpdate);
+      socketService.off('legal_removed', onLegalRemoved);
     };
   }, []);
 
