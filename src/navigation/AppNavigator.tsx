@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, CommonActions } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 
 // Screens
@@ -30,6 +30,7 @@ import BusinessDashboardScreen from '../screens/BusinessDashboardScreen';
 import BusinessPublicProfileScreen from '../screens/BusinessPublicProfileScreen';
 import { useTheme } from '../context/ThemeContext';
 import { DefaultTheme, DarkTheme } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import socketService from '../services/socket.service';
 
 const Stack = createStackNavigator();
@@ -53,48 +54,72 @@ export default function AppNavigator() {
   };
 
   useEffect(() => {
-    const onLegalUpdate = (data: any) => {
-      console.log('AppNavigator: Received legal_update', data);
-      if (!data || !navRef.current) return;
+    // S'assurer que le socket est initialisé dès le démarrage si on a un token
+    const initSocketEarly = async () => {
+      const token = await AsyncStorage.getItem('auth_token');
+      if (token) {
+        await socketService.initialize();
+        await socketService.connect();
+        await socketService.authenticate();
+      }
+    };
+    initSocketEarly();
+
+    const onLegalUpdate = async (data: any) => {
+      console.log('AppNavigator: Received real-time legal_update', data);
 
       // On déclenche l'affichage si force_acceptance est vrai (on accepte "true" ou true)
       const isForced = data.force_acceptance === true || data.force_acceptance === 'true';
-      if (!isForced) return;
-      
-      setTimeout(() => {
-        try {
-          console.log('AppNavigator: Attempting reset to LegalAcceptance');
-          if (navRef.current?.isReady?.()) {
-            navRef.current.reset({
-              index: 0,
-              routes: [{
-                name: 'LegalAcceptance',
-                params: {
-                  documents: [{
-                    type: data.type,
-                    content: data.content,
-                    version: data.version,
-                    force_acceptance: true
-                  }]
-                }
-              }]
-            });
-          } else {
-            console.warn('AppNavigator: Navigation not ready for legal reset');
-          }
-        } catch (err) {
-          console.error('Navigation to LegalAcceptance failed:', err);
-          // Fallback vers Login
-          try {
-            navRef.current?.reset({
-              index: 0,
-              routes: [{ name: 'Login' }]
-            });
-          } catch (fallbackErr) {
-            console.error('Fallback navigation also failed:', fallbackErr);
+      if (!isForced) {
+        console.log('AppNavigator: Legal update not forced, ignoring.');
+        return;
+      }
+
+      // SÉCURITÉ : Vérifier si l'utilisateur a déjà cette version pour éviter les boucles
+      // SAUF si c'est un broadcast explicite temps réel (isRealTime)
+      try {
+        const userString = await AsyncStorage.getItem('user');
+        if (userString && !data.isRealTime) {
+          const user = JSON.parse(userString);
+          const currentVersion = data.type === 'privacy' ? user.accepted_privacy_version : user.accepted_tos_version;
+          if (currentVersion === data.version) {
+            console.log(`AppNavigator: Legal version ${data.version} already accepted, ignoring.`);
+            return;
           }
         }
-      }, 100);
+      } catch (e) { console.error('Error checking local version:', e); }
+
+      // On attend un peu que navRef soit stable
+      let attempts = 0;
+      while (!navRef.current && attempts < 20) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+        attempts++;
+      }
+
+      if (!navRef.current) return;
+
+      const currentRoute = navRef.current.getCurrentRoute();
+      if (currentRoute?.name === 'LegalAcceptance') return;
+
+      console.log('AppNavigator: Forcing navigation to LegalAcceptance (REAL-TIME)');
+      
+      navRef.current.dispatch(
+        CommonActions.reset({
+          index: 0,
+          routes: [{
+            name: 'LegalAcceptance',
+            params: {
+              isRealTime: true,
+              documents: [{
+                type: data.type,
+                content: data.content,
+                version: data.version,
+                force_acceptance: true
+              }]
+            }
+          }]
+        })
+      );
     };
 
     const onAppConfigUpdate = (data: any) => {

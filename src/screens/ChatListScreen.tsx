@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -12,9 +12,11 @@ import {
   RefreshControl,
   TextInput,
   Alert,
+  ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import apiService from '../services/api.service';
+import socketService from '../services/socket.service';
 import { supabase } from '../services/supabase.service';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -22,13 +24,15 @@ import { SOCKET_URL } from '../utils/constants';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
 
+type ChatFilter = 'all' | 'unread' | 'read' | 'favorites' | 'priority';
+
 export default function ChatListScreen({ navigation, route, onChatSelect, selectedChatId }: any) {
   const { colors: themeColors, isDark, normalize, fontSizeFactor } = useTheme();
   const { t } = useLanguage();
   const isArchivedView = route?.params?.showArchived === true;
 
   const [chats, setChats] = useState<any[]>([]);
-  const [filteredChats, setFormattedChats] = useState<any[]>([]);
+  const [activeFilter, setActiveFilter] = useState<ChatFilter>('all');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
@@ -39,10 +43,8 @@ export default function ChatListScreen({ navigation, route, onChatSelect, select
   const getFullUrl = (url: string) => {
     if (!url || url === 'null') return null;
     if (url.startsWith('http') || url.startsWith('file://') || url.startsWith('content://')) return url;
-
     const baseUrl = SOCKET_URL.endsWith('/') ? SOCKET_URL.slice(0, -1) : SOCKET_URL;
     const path = url.startsWith('/') ? url : `/${url}`;
-
     return `${baseUrl}${path}`;
   };
 
@@ -51,23 +53,26 @@ export default function ChatListScreen({ navigation, route, onChatSelect, select
       fetchChats();
       loadCurrentUser();
 
-      // Real-time subscription for global message updates
+      const onRefreshEvent = () => fetchChats();
+      socketService.on('profile_updated', onRefreshEvent);
+      socketService.on('admin_user_profile_updated', onRefreshEvent);
+      socketService.on('admin:user_verified', onRefreshEvent);
+
       const subscription = apiService.getCurrentUser().then(user => {
         if (!user) return;
-
         return supabase
           .channel('public:messages')
           .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, (payload) => {
-            // Un message a été ajouté, supprimé ou modifié -> rafraîchir la liste
             fetchChats();
           })
           .subscribe();
       });
 
       return () => {
-        subscription.then(sub => {
-          if (sub) supabase.removeChannel(sub);
-        });
+        socketService.off('profile_updated', onRefreshEvent);
+        socketService.off('admin_user_profile_updated', onRefreshEvent);
+        socketService.off('admin:user_verified', onRefreshEvent);
+        subscription.then(sub => { if (sub) supabase.removeChannel(sub); });
       };
     }, [isArchivedView])
   );
@@ -79,18 +84,16 @@ export default function ChatListScreen({ navigation, route, onChatSelect, select
 
   const fetchChats = async () => {
     try {
-      // S'assurer d'avoir les infos de l'utilisateur actuel pour la comparaison
       let user = currentUser;
       if (!user) {
         user = await apiService.getCurrentUser();
         if (user) setCurrentUser(user);
       }
 
-      const response = await apiService.getChats(1, 50, isArchivedView);
+      const response = await apiService.getChats(1, 100, isArchivedView);
       if (response.success) {
         const formatted = response.data.map((chat: any) => {
           const isGroup = chat.type === 'group';
-          // Détecter si c'est un message à soi-même (other_user est null pour les self-chats côté backend)
           const isSelf = chat.type === 'private' && (!chat.other_user || chat.other_user.id === user?.id);
 
           let name = chat.name || 'Discussion';
@@ -98,8 +101,8 @@ export default function ChatListScreen({ navigation, route, onChatSelect, select
 
           if (!isGroup) {
             if (isSelf && user) {
-              name = `${user.name} (${t('profile')})`;
-              avatar = user.avatar;
+              name = `${user.full_name || user.name} (${t('profile')})`;
+              avatar = user.avatar_url || user.avatar;
             } else {
               name = chat.other_user?.full_name || 'Inconnu';
               avatar = chat.other_user?.avatar_url;
@@ -116,11 +119,12 @@ export default function ChatListScreen({ navigation, route, onChatSelect, select
             type: chat.type,
             isVerified: !isGroup && (isSelf ? user?.is_verified : chat.other_user?.is_verified),
             unreadCount: parseInt(chat.unread_count || 0),
+            isFavorite: chat.is_favorite || false,
+            isPriority: chat.is_priority || false,
             isSelf
           };
         });
         setChats(formatted);
-        setFormattedChats(formatted);
 
         if (!isArchivedView) {
           const archRes = await apiService.getChats(1, 100, true);
@@ -135,20 +139,50 @@ export default function ChatListScreen({ navigation, route, onChatSelect, select
     }
   };
 
+  const filteredChats = useMemo(() => {
+    let result = chats;
+
+    // Search
+    if (searchQuery) {
+      result = result.filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()));
+    }
+
+    // Filter
+    switch (activeFilter) {
+      case 'unread': result = result.filter(c => c.unreadCount > 0); break;
+      case 'read': result = result.filter(c => c.unreadCount === 0); break;
+      case 'favorites': result = result.filter(c => c.isFavorite); break;
+      case 'priority': result = result.filter(c => c.isPriority); break;
+    }
+
+    return result;
+  }, [chats, activeFilter, searchQuery]);
+
   const handleLongPress = (chat: any) => {
     Alert.alert(
       chat.name,
       "Options",
       [
         {
+          text: chat.isFavorite ? "⭐ Retirer des favoris" : "⭐ Ajouter aux favoris",
+          onPress: async () => {
+            const res = await apiService.toggleFavoriteChat(chat.id, !chat.isFavorite);
+            if (res.success) fetchChats();
+          }
+        },
+        {
+          text: chat.isPriority ? "📌 Détacher" : "📌 Épingler en priorité",
+          onPress: async () => {
+            const res = await apiService.togglePriorityChat(chat.id, !chat.isPriority);
+            if (res.success) fetchChats();
+          }
+        },
+        {
           text: isArchivedView ? "📦 Désarchiver" : "📦 Archiver",
           onPress: async () => {
             const res = await apiService.toggleArchiveChat(chat.id, !isArchivedView);
             if (res.success) {
-              if (isArchivedView) {
-                // Retourner à la liste principale en mettant à jour les paramètres
-                navigation.setParams({ showArchived: false });
-              }
+              if (isArchivedView) navigation.setParams({ showArchived: false });
               fetchChats();
             }
           }
@@ -162,14 +196,7 @@ export default function ChatListScreen({ navigation, route, onChatSelect, select
               "Cette action est irréversible.",
               [
                 { text: t('cancel'), style: "cancel" },
-                {
-                  text: t('delete'),
-                  style: "destructive",
-                  onPress: async () => {
-                    await apiService.deleteChat(chat.id);
-                    fetchChats();
-                  }
-                }
+                { text: t('delete'), style: "destructive", onPress: async () => { await apiService.deleteChat(chat.id); fetchChats(); } }
               ]
             );
           }
@@ -205,11 +232,19 @@ export default function ChatListScreen({ navigation, route, onChatSelect, select
       >
         <View style={dynamicStyles.avatarContainer}>
           <Image source={{ uri: item.avatar }} style={dynamicStyles.avatar} />
+          {item.isFavorite && (
+            <View style={dynamicStyles.favoriteBadge}>
+              <Ionicons name="star" size={10} color="#FFD700" />
+            </View>
+          )}
         </View>
 
         <View style={dynamicStyles.chatInfo}>
           <View style={dynamicStyles.chatHeader}>
             <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+              {item.isPriority && (
+                <Ionicons name="pin" size={14} color={themeColors.primary} style={{ marginRight: 4 }} />
+              )}
               {item.type === 'group' && (
                 <Ionicons name="people" size={16} color={themeColors.primary} style={{ marginRight: 6 }} />
               )}
@@ -217,7 +252,7 @@ export default function ChatListScreen({ navigation, route, onChatSelect, select
                 {item.name}
               </Text>
               {item.isVerified && (
-                <Ionicons name="checkmark-circle" size={16} color={themeColors.primary} style={{ marginLeft: 4 }} />
+                <Ionicons name="checkmark-circle" size={16} color={themeColors.info} style={{ marginLeft: 4 }} />
               )}
             </View>
             <Text style={[dynamicStyles.chatTime, item.unreadCount > 0 && { color: themeColors.primary, fontWeight: 'bold' }]}>
@@ -247,12 +282,25 @@ export default function ChatListScreen({ navigation, route, onChatSelect, select
         navigation.navigate('Chat', {
           chatId: res.data.id,
           name: t('profile'),
-          avatar: getFullUrl(currentUser.avatar),
+          avatar: getFullUrl(currentUser.avatar_url || currentUser.avatar),
           otherUserId: currentUser.id
         });
       }
     } catch (e) { console.error(e); }
   };
+
+  const FilterButton = ({ type, label, icon }: { type: ChatFilter, label: string, icon: any }) => (
+    <TouchableOpacity
+      style={[
+        dynamicStyles.filterBtn,
+        activeFilter === type && { backgroundColor: themeColors.primary, borderColor: themeColors.primary }
+      ]}
+      onPress={() => setActiveFilter(type)}
+    >
+      <Ionicons name={icon} size={16} color={activeFilter === type ? '#fff' : themeColors.text.secondary} />
+      <Text style={[dynamicStyles.filterLabel, activeFilter === type && { color: '#fff' }]}>{label}</Text>
+    </TouchableOpacity>
+  );
 
   const insets = useSafeAreaInsets();
 
@@ -270,11 +318,9 @@ export default function ChatListScreen({ navigation, route, onChatSelect, select
               </TouchableOpacity>
             )}
           </View>
-
           <View style={dynamicStyles.headerCenter}>
             <Text style={dynamicStyles.headerTitle}>{isArchivedView ? "Archivées" : "Meet Me"}</Text>
           </View>
-
           <View style={dynamicStyles.headerRight}>
             {!isArchivedView && (
               <TouchableOpacity style={dynamicStyles.headerButton} onPress={() => setIsSearching(true)}>
@@ -283,8 +329,8 @@ export default function ChatListScreen({ navigation, route, onChatSelect, select
             )}
             {!isArchivedView && (
               <TouchableOpacity style={dynamicStyles.profileHeaderButton} onPress={() => navigation.navigate('Settings')}>
-                {currentUser?.avatar ? (
-                  <Image source={{ uri: getFullUrl(currentUser.avatar) || '' }} style={dynamicStyles.smallAvatar} />
+                {currentUser?.avatar_url || currentUser?.avatar ? (
+                  <Image source={{ uri: getFullUrl(currentUser.avatar_url || currentUser.avatar) || '' }} style={dynamicStyles.smallAvatar} />
                 ) : (
                   <Ionicons name="ellipsis-vertical" size={24} color="#fff" />
                 )}
@@ -303,12 +349,20 @@ export default function ChatListScreen({ navigation, route, onChatSelect, select
             placeholderTextColor={themeColors.text.disabled}
             autoFocus
             value={searchQuery}
-            onChangeText={(text) => {
-              setSearchQuery(text);
-              const filtered = chats.filter(c => c.name.toLowerCase().includes(text.toLowerCase()));
-              setFormattedChats(filtered);
-            }}
+            onChangeText={setSearchQuery}
           />
+        </View>
+      )}
+
+      {!isArchivedView && !isSearching && (
+        <View style={dynamicStyles.filterContainer}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={dynamicStyles.filterScroll}>
+            <FilterButton type="all" label="Tous" icon="chatbubbles-outline" />
+            <FilterButton type="unread" label="Non lus" icon="mail-unread-outline" />
+            <FilterButton type="read" label="Lus" icon="mail-open-outline" />
+            <FilterButton type="favorites" label="Favoris" icon="star-outline" />
+            <FilterButton type="priority" label="Priorité" icon="pin-outline" />
+          </ScrollView>
         </View>
       )}
 
@@ -320,7 +374,7 @@ export default function ChatListScreen({ navigation, route, onChatSelect, select
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchChats(); }} colors={[themeColors.primary]} />}
         ListHeaderComponent={
           <>
-            {archivedCount > 0 && !isArchivedView && !isSearching && (
+            {archivedCount > 0 && !isArchivedView && !isSearching && activeFilter === 'all' && (
               <TouchableOpacity
                 style={dynamicStyles.archivedRow}
                 onPress={() => navigation.navigate('ChatList', { showArchived: true })}
@@ -330,10 +384,10 @@ export default function ChatListScreen({ navigation, route, onChatSelect, select
                 <Text style={dynamicStyles.archivedCount}>{archivedCount}</Text>
               </TouchableOpacity>
             )}
-            {currentUser && !isSearching && !isArchivedView && (
+            {currentUser && !isSearching && !isArchivedView && activeFilter === 'all' && (
               <TouchableOpacity style={dynamicStyles.meChatItem} onPress={startSelfChat}>
                 <View style={dynamicStyles.avatarContainer}>
-                  <Image source={{ uri: getFullUrl(currentUser.avatar) || `https://ui-avatars.com/api/?name=${currentUser.name}&background=random` }} style={dynamicStyles.avatar} />
+                  <Image source={{ uri: getFullUrl(currentUser.avatar_url || currentUser.avatar) || `https://ui-avatars.com/api/?name=${currentUser.full_name || currentUser.name}&background=random` }} style={dynamicStyles.avatar} />
                 </View>
                 <View style={dynamicStyles.chatInfo}>
                   <Text style={dynamicStyles.chatName}>Vous (Envoyez-vous un message)</Text>
@@ -346,7 +400,11 @@ export default function ChatListScreen({ navigation, route, onChatSelect, select
         ListEmptyComponent={
           <View style={dynamicStyles.emptyContainer}>
             <Ionicons name={isArchivedView ? "archive-outline" : "chatbubbles-outline"} size={normalize(80)} color={themeColors.text.disabled} />
-            <Text style={dynamicStyles.emptyText}>{isArchivedView ? "Aucune discussion archivée" : "Aucun message trouvé"}</Text>
+            <Text style={dynamicStyles.emptyText}>
+              {isArchivedView ? "Aucune discussion archivée" :
+               activeFilter === 'unread' ? "Aucun message non lu" :
+               activeFilter === 'favorites' ? "Aucun favori" : "Aucune discussion trouvée"}
+            </Text>
           </View>
         }
       />
@@ -372,14 +430,19 @@ const createStyles = (colors: any, isDark: boolean, normalize: any, factor: numb
   smallAvatar: { width: normalize(32), height: normalize(32), borderRadius: normalize(16), borderWidth: 1.5, borderColor: '#fff' },
   searchHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 15, paddingVertical: 10, backgroundColor: colors.surface, elevation: 3 },
   searchInput: { flex: 1, fontSize: normalize(16, factor), marginLeft: 15, color: colors.text.primary },
+  filterContainer: { backgroundColor: colors.surface, borderBottomWidth: 0.5, borderBottomColor: colors.divider },
+  filterScroll: { paddingHorizontal: 15, paddingVertical: 10 },
+  filterBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 15, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: colors.divider, marginRight: 10 },
+  filterLabel: { marginLeft: 6, fontSize: normalize(13, factor), fontWeight: '600', color: colors.text.secondary },
   chatList: { flexGrow: 1 },
   chatItem: { flexDirection: 'row', paddingHorizontal: 15, paddingVertical: 12 },
   meChatItem: { flexDirection: 'row', paddingHorizontal: 15, paddingVertical: 15, backgroundColor: isDark ? colors.surface : '#f9f9f9', borderBottomWidth: 1, borderBottomColor: colors.border },
   archivedRow: { flexDirection: 'row', padding: 15, alignItems: 'center', borderBottomWidth: 0.5, borderBottomColor: colors.divider },
   archivedText: { flex: 1, marginLeft: 20, fontSize: normalize(16, factor), fontWeight: '600', color: colors.text.primary },
   archivedCount: { color: colors.primary, fontWeight: 'bold', fontSize: normalize(14, factor) },
-  avatarContainer: { marginRight: 15 },
+  avatarContainer: { marginRight: 15, position: 'relative' },
   avatar: { width: normalize(52), height: normalize(52), borderRadius: normalize(26) },
+  favoriteBadge: { position: 'absolute', top: -2, right: -2, backgroundColor: '#fff', borderRadius: 8, width: 16, height: 16, justifyContent: 'center', alignItems: 'center', elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.2, shadowRadius: 1 },
   chatInfo: { flex: 1, justifyContent: 'center', borderBottomWidth: 0.5, borderBottomColor: colors.divider, paddingBottom: 12 },
   chatHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
   chatName: { fontSize: normalize(15, factor), fontWeight: 'bold', color: colors.text.primary },

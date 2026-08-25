@@ -2,7 +2,7 @@
   "expo": {
     "name": "Meet",
     "slug": "meet-app",
-    "version": "40.0.0",
+    "version": "50.0.0",
     "orientation": "portrait",
     "icon": "./assets/Logo.png",
     "userInterfaceStyle": "light",
@@ -30,7 +30,7 @@
     },
     "android": {
       "package": "com.deve",
-      "versionCode": 40,
+      "versionCode": 50,
       "adaptiveIcon": {
         "foregroundImage": "./assets/Logo.png",
         "backgroundColor": "#ffffff"
@@ -79,9 +79,9 @@
       "apiUrl": "https://meet-me-backend-sg5c.onrender.com/api",
       "socketUrl": "https://meet-me-backend-sg5c.onrender.com",
       "eas": {
-        "projectId": "4e5f4af4-614b-47b0-adfb-4db990d1d6ff"
+        "projectId": "fee87e24-eba3-4ba8-8c85-828055fa7d38"
       }
     },
-    "owner": "discutions-team"
+    "owner": "bussinessess-team"
   }
 }

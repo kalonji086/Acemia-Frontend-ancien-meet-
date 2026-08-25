@@ -173,7 +173,7 @@ export default function ContactsScreen({ navigation }: any) {
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
           <Text style={styles.headerTitle}>Nouvelle discussion</Text>
-          <Text style={styles.headerSubtitle}>Recherchez par nom ou email</Text>
+          <Text style={styles.headerSubtitle}>Recherchez par nom, pseudo, tel ou email</Text>
         </View>
       </View>
 
@@ -181,7 +181,7 @@ export default function ContactsScreen({ navigation }: any) {
         <Ionicons name="search" size={20} color={themeColors.text.secondary} style={styles.searchIcon} />
         <TextInput
           style={[styles.searchInput, { color: themeColors.text.primary }]}
-          placeholder="Rechercher sur Meet Me..."
+          placeholder="Pseudo, nom, tel, email..."
           placeholderTextColor={themeColors.text.disabled}
           value={searchQuery}
           onChangeText={handleSearch}

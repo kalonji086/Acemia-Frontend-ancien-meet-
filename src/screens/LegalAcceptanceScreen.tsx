@@ -12,18 +12,30 @@ const { width, height } = Dimensions.get('window');
 const LegalAcceptanceScreen = () => {
   const route = useRoute();
   const navigation = useNavigation();
-  const { documents } = route.params as any;
+  const { documents = [] } = (route.params || {}) as any;
   const [loading, setLoading] = useState(false);
   const [hasScrolledToBottom, setHasScrolledToBottom] = useState(false);
   const [acceptedChecked, setAcceptedChecked] = useState(false);
 
-  // SÉCURITÉ VERSION 40 : Si l'utilisateur est déjà en v40, on bypass
+  // SÉCURITÉ VERSION 50 : Uniquement si on n'est pas en train de forcer via real-time
   useEffect(() => {
-    const checkV40 = async () => {
+    const checkAlreadyAccepted = async () => {
+      // Si on vient d'un reset temps réel, on ne bypass pas
+      if (route.params && (route.params as any).isRealTime) return;
+
       const userString = await AsyncStorage.getItem('user');
       if (userString) {
         const user = JSON.parse(userString);
-        if (user.accepted_tos_version === '40.0.0' || user.accepted_tos_version === '40') {
+
+        // Vérifier si tous les documents affichés sont déjà acceptés
+        const allAccepted = documents.every((d: any) => {
+          if (d.type === 'tos') return user.accepted_tos_version === d.version;
+          if (d.type === 'privacy') return user.accepted_privacy_version === d.version;
+          return user.accepted_legal_version === d.version;
+        });
+
+        if (allAccepted) {
+           console.log('LegalAcceptance: All documents already accepted, bypassing.');
            navigation.dispatch(CommonActions.reset({
               index: 0,
               routes: [{ name: 'ChatList' }]
@@ -31,7 +43,7 @@ const LegalAcceptanceScreen = () => {
         }
       }
     };
-    checkV40();
+    checkAlreadyAccepted();
   }, []);
 
   const handleScroll = (event: any) => {
@@ -51,12 +63,14 @@ const LegalAcceptanceScreen = () => {
     setLoading(true);
     try {
       const updates: any = {};
-      const latestVersion = '40.0.0'; // Version cible forcée
 
+      // On utilise les versions réelles des documents affichés
       documents.forEach((d: any) => {
         if (d.type === 'tos') updates.accepted_tos_version = d.version;
         if (d.type === 'privacy') updates.accepted_privacy_version = d.version;
       });
+
+      const latestVersion = updates.accepted_tos_version || updates.accepted_privacy_version || '50.0.0';
 
       const { isGuest } = route.params as any;
       if (isGuest) {
@@ -65,20 +79,20 @@ const LegalAcceptanceScreen = () => {
       } else {
         const res = await apiService.updateProfile({
           accepted_legal_version: latestVersion,
-          accepted_tos_version: latestVersion,
-          accepted_privacy_version: latestVersion
+          ...updates
         });
 
         if (res.success) {
           const userString = await AsyncStorage.getItem('user');
           if (userString) {
             const user = JSON.parse(userString);
-            await AsyncStorage.setItem('user', JSON.stringify({
+            const updatedUser = {
               ...user,
+              ...res.data, // Utiliser les données renvoyées par le serveur (qui incluent maintenant les versions)
               accepted_legal_version: latestVersion,
-              accepted_tos_version: latestVersion,
-              accepted_privacy_version: latestVersion
-            }));
+              ...updates
+            };
+            await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
           }
           navigation.dispatch(CommonActions.reset({ index: 0, routes: [{ name: 'ChatList' }] }));
         } else {

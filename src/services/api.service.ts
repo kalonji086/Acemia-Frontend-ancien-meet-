@@ -379,6 +379,20 @@ class ApiService {
     } catch (e: any) { return this.handleError(e); }
   }
 
+  async toggleFavoriteChat(chatId: string, favorite: boolean = true): Promise<ApiResponse> {
+    try {
+      const res = await this.api.put(`/chats/${chatId}/favorite`, { favorite });
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async togglePriorityChat(chatId: string, priority: boolean = true): Promise<ApiResponse> {
+    try {
+      const res = await this.api.put(`/chats/${chatId}/priority`, { priority });
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
   async deleteChat(chatId: string): Promise<ApiResponse> {
     try {
       const res = await this.api.delete(`/chats/${chatId}`);
@@ -581,6 +595,13 @@ class ApiService {
   async getMarketFeed(): Promise<ApiResponse> {
     try {
       const res = await this.api.get('/market/feed');
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async getMarketDiscovery(): Promise<ApiResponse> {
+    try {
+      const res = await this.api.get('/market/discovery');
       return res.data;
     } catch (e: any) { return this.handleError(e); }
   }

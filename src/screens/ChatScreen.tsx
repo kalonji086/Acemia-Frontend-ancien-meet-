@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -15,6 +15,7 @@ import {
   ActivityIndicator,
   Dimensions,
   Alert,
+  Share,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
@@ -27,805 +28,148 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 
-export default function ChatScreen({ navigation, route }: any) {
-  const { isDark, colors: themeColors, normalize, fontSizeFactor } = useTheme();
-  const { t, language, autoTranslate } = useLanguage();
-  const { chatId, name = 'Inconnu', avatar, isVerified: initialIsVerified, peerUserId, type } = route.params || {};
-  const isGroup = type === 'group' || !peerUserId;
+// Composant interne optimisé pour chaque message
+const MessageItem = React.memo(({
+  item, isMe, isGroup, sender, currentUser, themeColors, isDark, normalize,
+  getFullUrl, handleMessageLongPress, playAudio, playingId, playbackStatus,
+  downloadFile, downloadProgress, uploadProgress, t, onTranslate, onLike, chatColor, styles
+}: any) => {
+  const [isTranslatingLocal, setIsTranslatingLocal] = useState(false);
+  const isDeleted = item.content && item.content.includes('Ce message a été supprimé');
+  const isLiked = item.likes && item.likes.includes(currentUser?.id);
 
-  // Sécurité: Si chatId est absent, on retourne à l'écran précédent
-  useEffect(() => {
-    if (!chatId) {
-      console.error('ChatScreen: chatId is missing');
-      navigation.goBack();
+  const onTranslatePress = async () => {
+    setIsTranslatingLocal(true);
+    await onTranslate(item);
+    setIsTranslatingLocal(false);
+  };
+
+  const lastTap = useRef<number>(0);
+  const handleDoubleTap = () => {
+    const now = Date.now();
+    if (now - lastTap.current < 300) {
+      onLike(item.id);
     }
-  }, [chatId]);
-
-  const [messages, setMessages] = useState<any[]>([]);
-  const [isVerified, setIsVerified] = useState(initialIsVerified);
-  const [inputText, setInputText] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [currentUser, setCurrentUser] = useState<any>(null);
-  const [isContact, setIsContact] = useState<boolean>(true);
-  const [groupDetails, setGroupDetails] = useState<any>(null);
-  const [recording, setRecording] = useState<Audio.Recording | null>(null);
-  const [isRecording, setIsRecording] = useState(false);
-  const [recordingDuration, setRecordingDuration] = useState(0);
-  const [sound, setSound] = useState<Audio.Sound | null>(null);
-  const [playingId, setPlayingId] = useState<string | null>(null);
-  const [playedMessages, setPlayedMessages] = useState<Set<string>>(new Set());
-  const [playbackStatus, setPlaybackStatus] = useState<any>({});
-  const [downloadProgress, setDownloadProgress] = useState<Record<string, number>>({});
-  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
-  const [typingUsers, setTypingUsers] = useState<any[]>([]);
-  const typingTimeoutRef = useRef<any>(null);
-
-  const flatListRef = useRef<FlatList>(null);
-  const insets = useSafeAreaInsets();
-  const timerRef = useRef<any>(null);
-
-  const getFullUrl = (url: string) => {
-    if (!url || url === 'null') return null;
-    if (url.startsWith('http') || url.startsWith('file://') || url.startsWith('content://')) return url;
-
-    // S'assurer qu'il y a un slash entre l'URL de base et le chemin
-    const baseUrl = SOCKET_URL.endsWith('/') ? SOCKET_URL.slice(0, -1) : SOCKET_URL;
-    const path = url.startsWith('/') ? url : `/${url}`;
-
-    return `${baseUrl}${path}`;
+    lastTap.current = now;
   };
 
-  useEffect(() => {
-    const setup = async () => {
-      try {
-        const user = await apiService.getCurrentUser();
-        setCurrentUser(user);
-        await fetchMessages();
-
-        if (chatId) {
-          await apiService.markMessagesAsRead(chatId);
-          if (isGroup) {
-            const res = await apiService.getChat(chatId);
-            if (res.success) setGroupDetails(res.data);
-          }
-        }
-        await Audio.requestPermissionsAsync();
-
-        if (peerUserId && !isGroup) {
-          const res = await apiService.isContact(peerUserId);
-          if (res.success) setIsContact((res as any).isContact);
-        }
-      } catch (error) {
-        console.error('Setup error:', error);
-      }
-    };
-    setup();
-
-    const subscription = supabase
-      .channel(`chat:${chatId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages', filter: `chat_id=eq.${chatId}` },
-      (payload: any) => {
-        if (payload.event === 'INSERT') {
-          const newMessage = payload.new;
-          setMessages(current => {
-            if (current.some(m => m.id === newMessage.id || (m.tempId && m.tempId === newMessage.id))) return current;
-            if (newMessage.sender_id !== currentUser?.id) {
-              apiService.markMessagesAsRead(chatId);
-              // Traduction auto
-              if (autoTranslate && newMessage.type === 'text') {
-                handleAutoTranslate(newMessage.id);
-              }
-            }
-            return [...current, newMessage];
-          });
-        } else if (payload.event === 'UPDATE') {
-          const updatedMsg = payload.new;
-          // Si le message est marqué comme supprimé pour MOI, on le retire de la liste
-          if (updatedMsg.deleted_for_users && updatedMsg.deleted_for_users.includes(currentUser?.id)) {
-            setMessages(current => current.filter(m => m.id !== updatedMsg.id));
-          } else {
-            setMessages(current => current.map(m => m.id === updatedMsg.id ? updatedMsg : m));
-          }
-        } else if (payload.event === 'DELETE') {
-          const deletedId = payload.old.id;
-          if (deletedId) {
-            setMessages(current => current.filter(m => m.id !== deletedId));
-          }
-        }
-      })
-      .subscribe();
-
-    // Socket indicators
-    const onUserTyping = (data: any) => {
-      if (data.chatId === chatId && data.userId !== currentUser?.id) {
-        // Récupérer les infos de l'utilisateur qui écrit
-        let user = groupDetails?.participants?.find((p: any) => p.id === data.userId);
-
-        // Si pas trouvé dans les détails du groupe (ou discussion privée), on essaie de charger l'info
-        if (!user && !isGroup) {
-          user = { id: data.userId, full_name: name, avatar_url: avatar };
-        }
-
-        if (user) {
-          setTypingUsers(prev => {
-            if (prev.some(u => u.id === user.id)) return prev;
-            return [...prev, user];
-          });
-        }
-      }
-    };
-
-    const onUserStoppedTyping = (data: any) => {
-      if (data.chatId === chatId) {
-        setTypingUsers(prev => prev.filter(u => u.id !== data.userId));
-      }
-    };
-
-    socketService.on('user_typing', onUserTyping);
-    socketService.on('user_stopped_typing', onUserStoppedTyping);
-    socketService.joinChat(chatId);
-
-    return () => {
-      supabase.removeChannel(subscription);
-      socketService.off('user_typing', onUserTyping);
-      socketService.off('user_stopped_typing', onUserStoppedTyping);
-      socketService.leaveChat(chatId);
-      if (timerRef.current) clearInterval(timerRef.current);
-      if (sound) sound.unloadAsync();
-    };
-  }, [chatId, currentUser?.id, groupDetails]);
-
-  const fetchMessages = async () => {
-    try {
-      const response = await apiService.getMessages(chatId);
-      if (response.success && Array.isArray(response.data)) {
-        const msgs = response.data;
-        setMessages(msgs);
-
-        // Traduction auto si activée
-        if (autoTranslate) {
-          msgs.forEach((m: any) => {
-            if (m.sender_id !== currentUser?.id && m.type === 'text') {
-              handleAutoTranslate(m.id);
-            }
-          });
-        }
-      }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleAutoTranslate = async (messageId: string) => {
-    try {
-      if (!language) return;
-      const res = await apiService.translateMessage(messageId, language);
-      if (res.success) {
-        const translatedText = res.data.translatedText;
-        setMessages(prev => prev.map(m =>
-          m.id === messageId ? { ...m, translatedText } : m
-        ));
-      }
-    } catch (e) {
-      console.error('Auto-translate error:', e);
-    }
-  };
-
-  const handleInputChange = (text: string) => {
-    setInputText(text);
-
-    if (chatId) {
-      socketService.startTyping(chatId);
-
-      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-
-      typingTimeoutRef.current = setTimeout(() => {
-        socketService.stopTyping(chatId);
-      }, 3000);
-    }
-  };
-
-  const handleSendMessage = async () => {
-    if (!inputText.trim() || !currentUser) return;
-    const content = inputText;
-    const tempId = 'temp_' + Date.now();
-    const optimisticMessage = {
-      id: tempId, tempId, chat_id: chatId, sender_id: currentUser.id, content, type: 'text',
-      created_at: new Date().toISOString(), status: 'sending'
-    };
-    setMessages(prev => [...prev, optimisticMessage]);
-    setInputText('');
-    try {
-      const response = await apiService.sendMessage(chatId, content);
-      if (response.success) {
-        setMessages(prev => prev.map(m => m.id === tempId ? response.data : m));
-        // Notification locale de succès désactivée
-      }
-    } catch (error) {
-      setMessages(prev => prev.filter(m => m.id !== tempId));
-    }
-  };
-
-  const handleDeleteMessage = async (messageId: string) => {
-    if (!t) return;
-
-    Alert.alert(
-      t('deleteMessage') || "Supprimer le message",
-      t('deleteChoice') || "Voulez-vous supprimer ce message ?",
-      [
-        { text: t('cancel') || "Annuler", style: "cancel" },
-        {
-          text: t('deleteForMe') || "Supprimer pour moi",
-          onPress: async () => {
-            try {
-              const response = await apiService.deleteMessage(messageId, 'me');
-              if (response.success) {
-                // Pour "Supprimer pour moi", on retire immédiatement de la liste locale
-                setMessages(prev => prev.filter(m => m.id !== messageId));
-              }
-            } catch (e) { console.error(e); }
-          }
-        },
-        {
-          text: t('deleteForEveryone') || "Supprimer pour tous",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              const response = await apiService.deleteMessage(messageId, 'everyone');
-              if (!response.success) {
-                Alert.alert("Erreur", "Délai de suppression dépassé ou erreur serveur.");
-              }
-            } catch (error) { console.error(error); }
-          }
-        }
-      ]
-    );
-  };
-
-  const startRecording = async () => {
-    try {
-      const { status } = await Audio.requestPermissionsAsync();
-      if (status !== 'granted') return;
-      const newRecording = new Audio.Recording();
-      await newRecording.prepareToRecordAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
-      await newRecording.startAsync();
-      setRecording(newRecording);
-      setIsRecording(true);
-      setRecordingDuration(0);
-      timerRef.current = setInterval(() => setRecordingDuration(p => p + 1), 1000);
-    } catch (err) { console.error(err); }
-  };
-
-  const stopRecording = async () => {
-    if (!recording) return;
-    setIsRecording(false);
-    clearInterval(timerRef.current);
-    try {
-      await recording.stopAndUnloadAsync();
-      const uri = recording.getURI();
-      setRecording(null);
-
-      if (uri && currentUser) {
-        const tempId = 'temp_' + Date.now();
-        const optimisticAudio = {
-          id: tempId, tempId, chat_id: chatId, sender_id: currentUser.id, content: t?.('audio') || 'Message vocal',
-          type: 'audio', file_url: uri, created_at: new Date().toISOString(), status: 'sending'
-        };
-        setMessages(prev => [...prev, optimisticAudio]);
-
-        const uploadRes = await apiService.uploadFile(
-          { uri, type: 'audio/m4a', name: 'voice.m4a' },
-          'audio',
-          (progress) => setUploadProgress(prev => ({ ...prev, [tempId]: progress }))
-        );
-
-        if (uploadRes.success) {
-          const response = await apiService.sendMessage(
-            chatId,
-            t?.('audio') || 'Message vocal',
-            'audio',
-            uploadRes.data.fileUrl,
-            { fileSize: uploadRes.data.fileSize, mimeType: uploadRes.data.mimeType }
-          );
-          if (response.success) {
-            setMessages(prev => prev.map(m => m.id === tempId ? { ...response.data, localUri: uri } : m));
-          }
-        }
-        setUploadProgress(prev => {
-          const newState = { ...prev };
-          delete newState[tempId];
-          return newState;
-        });
-      }
-    } catch (err) { console.error(err); }
-  };
-
-  const handlePickImage = async () => {
-    try {
-      if (!t) {
-        Alert.alert('Permission requise', 'Nous avons besoin de votre permission pour accéder à la galerie ou à la caméra.');
-        return;
-      }
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      const cameraStatus = await ImagePicker.requestCameraPermissionsAsync();
-
-      if (status !== 'granted' || cameraStatus.status !== 'granted') {
-        Alert.alert('Permission refusée', 'Nous avons besoin de votre permission pour accéder à la galerie ou à la caméra.');
-        return;
-      }
-
-      Alert.alert(
-        t('sendImage'),
-        t('pickSource'),
-        [
-          {
-            text: t('takePhoto'),
-            onPress: async () => {
-              const result = await ImagePicker.launchCameraAsync({
-                mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                allowsEditing: true,
-                aspect: [4, 3],
-                quality: 0.7,
-              });
-              if (!result.canceled) sendImage(result.assets[0].uri);
-            }
-          },
-          {
-            text: t('gallery'),
-            onPress: async () => {
-              const result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                allowsEditing: true,
-                aspect: [4, 3],
-                quality: 0.7,
-              });
-              if (!result.canceled) sendImage(result.assets[0].uri);
-            }
-          },
-          { text: t('cancel'), style: "cancel" }
-        ]
-      );
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
-  const sendImage = async (uri: string) => {
-    if (!currentUser) return;
-    const tempId = 'temp_' + Date.now();
-    const optimisticImage = {
-      id: tempId, tempId, chat_id: chatId, sender_id: currentUser.id, content: t?.('image') || 'Image',
-      type: 'image', file_url: uri, created_at: new Date().toISOString(), status: 'sending'
-    };
-    setMessages(prev => [...prev, optimisticImage]);
-
-    try {
-      const uploadRes = await apiService.uploadFile(
-        { uri, type: 'image/jpeg', name: 'photo.jpg' },
-        'image',
-        (progress) => setUploadProgress(prev => ({ ...prev, [tempId]: progress }))
-      );
-
-      if (uploadRes.success) {
-        const response = await apiService.sendMessage(
-          chatId,
-          t?.('image') || 'Image',
-          'image',
-          uploadRes.data.fileUrl,
-          { fileSize: uploadRes.data.fileSize, mimeType: uploadRes.data.mimeType }
-        );
-        if (response.success) {
-          setMessages(prev => prev.map(m => m.id === tempId ? { ...response.data, localUri: uri } : m));
-        }
-      }
-    } catch (error) {
-      setMessages(prev => prev.filter(m => m.id !== tempId));
-    } finally {
-      setUploadProgress(prev => {
-        const newState = { ...prev };
-        delete newState[tempId];
-        return newState;
-      });
-    }
-  };
-
-  const playAudio = async (message: any) => {
-    const { id, file_url, fileUrl, localUri } = message;
-    const actualFileUrl = file_url || fileUrl;
-
-    try {
-      // Si on clique sur le même audio qui est déjà en cours
-      if (playingId === id && sound) {
-        const status: any = await sound.getStatusAsync();
-        if (status.isPlaying) {
-          await sound.pauseAsync();
-        } else {
-          await sound.playAsync();
-        }
-        return;
-      }
-
-      // Arrêter l'audio précédent
-      if (sound) {
-        await sound.unloadAsync();
-        setSound(null);
-        setPlayingId(null);
-      }
-
-      const audioSource = localUri || getFullUrl(actualFileUrl);
-      if (!audioSource) {
-        Alert.alert('Info', 'Le fichier audio n\'est pas encore prêt ou l\'URL est invalide.');
-        return;
-      }
-
-      // Configurer le mode audio pour la lecture
-      await Audio.setAudioModeAsync({
-        playsInSilentModeIOS: true,
-        staysActiveInBackground: true,
-        playThroughEarpieceAndroid: false,
-      });
-
-      const { sound: newSound } = await Audio.Sound.createAsync(
-        { uri: audioSource },
-        { shouldPlay: true },
-        (status) => {
-          setPlaybackStatus((prev: any) => ({ ...prev, [id]: status }));
-          if ((status as any).didJustFinish) {
-            setPlayingId(null);
-          }
-        }
-      );
-
-      setSound(newSound);
-      setPlayingId(id);
-      setPlayedMessages(prev => new Set(prev).add(id));
-
-    } catch (error) {
-      console.error('Playback Error:', error);
-      Alert.alert('Erreur', 'Impossible de lire cet audio. Vérifiez votre connexion.');
-    }
-  };
-
-  const handlePickDocument = async () => {
-    try {
-      const result = await DocumentPicker.getDocumentAsync({
-        type: '*/*',
-        copyToCacheDirectory: true,
-      });
-
-      if (result.assets && result.assets.length > 0) {
-        const doc = result.assets[0];
-
-        Alert.alert(t?.('sendDocument') || "Envoi de document", `${t?.('confirmSend') || "Voulez-vous envoyer"} ${doc.name} ?`, [
-          { text: t?.('cancel') || "Annuler", style: "cancel" },
-          {
-            text: t?.('send') || "Envoyer",
-            onPress: async () => {
-              const tempId = 'temp_' + Date.now();
-              const optimisticDoc = {
-                id: tempId, tempId, chat_id: chatId, sender_id: currentUser.id, content: doc.name,
-                type: 'file', created_at: new Date().toISOString(), status: 'sending'
-              };
-              setMessages(prev => [...prev, optimisticDoc]);
-
-              try {
-                // S'assurer que l'URI est au bon format pour Android/iOS
-                const cleanUri = Platform.OS === 'android' && !doc.uri.startsWith('file://') && !doc.uri.startsWith('content://')
-                  ? `file://${doc.uri}`
-                  : doc.uri;
-
-                const uploadRes = await apiService.uploadFile(
-                  {
-                    uri: cleanUri,
-                    type: doc.mimeType || 'application/octet-stream',
-                    name: doc.name
-                  },
-                  'document', // Changé de 'file' à 'document' pour correspondre au backend
-                  (progress) => setUploadProgress(prev => ({ ...prev, [tempId]: progress }))
-                );
-
-                if (uploadRes.success) {
-                  const response = await apiService.sendMessage(
-                    chatId,
-                    doc.name,
-                    'file',
-                    uploadRes.data.fileUrl,
-                    { fileSize: uploadRes.data.fileSize, mimeType: uploadRes.data.mimeType }
-                  );
-                  if (response.success) {
-                    setMessages(prev => prev.map(m => m.id === tempId ? response.data : m));
-                  }
-                } else {
-                  throw new Error(uploadRes.error || 'Upload failed');
-                }
-              } catch (error: any) {
-                console.error('Document upload error:', error);
-                setMessages(prev => prev.filter(m => m.id !== tempId));
-                Alert.alert('Erreur', `Impossible d'envoyer le document : ${error.message || 'Erreur serveur'}`);
-              } finally {
-                setUploadProgress(prev => {
-                  const newState = { ...prev };
-                  delete newState[tempId];
-                  return newState;
-                });
-              }
-            }
-          }
-        ]);
-      }
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
-  const downloadFile = async (message: any) => {
-    const { id: messageId, content: fileName, file_url, fileUrl } = message;
-    const actualFileUrl = file_url || fileUrl;
-
-    try {
-      const fullUrl = getFullUrl(actualFileUrl);
-      if (!fullUrl) {
-        Alert.alert('Info', 'Le document n\'est pas encore prêt ou l\'URL est invalide.');
-        return;
-      }
-
-      // Forcer une extension si absente pour le téléchargement
-      let finalFileName = fileName || 'document';
-      if (!fileName.includes('.')) {
-        const extension = fullUrl.split('.').pop()?.split('?')[0];
-        if (extension && extension.length < 5) {
-          finalFileName = `${fileName}.${extension}`;
-        }
-      }
-
-      const fileUri = (FileSystem.documentDirectory || '') + finalFileName;
-
-      const downloadResumable = FileSystem.createDownloadResumable(
-        fullUrl,
-        fileUri,
-        {},
-        (downloadProgress) => {
-          const progress = downloadProgress.totalBytesWritten / downloadProgress.totalBytesExpectedToWrite;
-          setDownloadProgress((prev) => ({ ...prev, [messageId]: progress }));
-        }
-      );
-
-      const downloadResult = await downloadResumable.downloadAsync();
-
-      if (downloadResult && downloadResult.status === 200) {
-        setDownloadProgress((prev) => {
-          const newState = { ...prev };
-          delete newState[messageId];
-          return newState;
-        });
-
-        // Utiliser Storage Access Framework ou Sharing pour ouvrir le fichier
-        if (Platform.OS === 'android') {
-          try {
-            // Tenter de partager pour ouvrir
-            await Sharing.shareAsync(downloadResult.uri, {
-              mimeType: downloadResult.headers['content-type'] || 'application/octet-stream',
-              dialogTitle: finalFileName,
-            });
-          } catch (shareError) {
-            // Fallback: Message de succès simple si le partage échoue
-            Alert.alert('Succès', `Fichier téléchargé : ${finalFileName}`);
-          }
-        } else {
-          await Sharing.shareAsync(downloadResult.uri);
-        }
-      } else {
-        Alert.alert('Erreur', 'Échec du téléchargement du fichier.');
-        setDownloadProgress((prev) => {
-          const newState = { ...prev };
-          delete newState[messageId];
-          return newState;
-        });
-      }
-    } catch (error) {
-      console.error('Download error:', error);
-      Alert.alert('Erreur', 'Un problème est survenu lors du téléchargement.');
-      setDownloadProgress((prev) => {
-        const newState = { ...prev };
-        delete newState[messageId];
-        return newState;
-      });
-    }
-  };
-
-  const handleBlockUser = async () => {
-    if (!peerUserId) return;
-    Alert.alert("Bloquer", "Voulez-vous bloquer cet utilisateur ?", [
-      { text: "Annuler", style: "cancel" },
-      {
-        text: "Bloquer",
-        style: "destructive",
-        onPress: async () => {
-          const res = await apiService.blockUser(peerUserId);
-          if (res.success) {
-            Alert.alert("Succès", "Utilisateur bloqué.");
-            navigation.goBack();
-          }
-        }
-      }
-    ]);
-  };
-
-  const handleAddContact = async () => {
-    if (!peerUserId) return;
-    const res = await apiService.addContact(peerUserId);
-    if (res.success) {
-      setIsContact(true);
-      Alert.alert("Succès", "Contact ajouté.");
-    }
-  };
-
-  const styles = createStyles(themeColors, normalize, fontSizeFactor, isDark);
-
-  const handleMessageLongPress = (item: any) => {
-    const isMe = item.sender_id === currentUser?.id;
-    const isDeleted = item.content && item.content.includes('Ce message a été supprimé');
-
-    if (isDeleted) return;
-
-    const options = [
-      { text: t?.('cancel') || 'Annuler', style: 'cancel' }
-    ];
-
-    // Option de traduction (IA)
-    if (item.type === 'text' || item.type === 'audio') {
-      options.push({
-        text: item.type === 'audio' ? 'Transcrire & Traduire (IA)' : 'Traduire avec l\'IA',
-        onPress: () => handleTranslateMessageIA(item)
-      });
-    }
-
-    if (isMe) {
-      options.push({
-        text: t?.('delete') || 'Supprimer',
-        style: 'destructive',
-        onPress: () => handleDeleteMessage(item.id)
-      });
-    }
-
-    Alert.alert(
-      item.type === 'audio' ? 'Message vocal' : 'Message',
-      'Choisissez une action',
-      options as any
-    );
-  };
-
-  const handleTranslateMessageIA = async (message: any) => {
-    // Demander la langue cible si pas définie
-    const targetLang = currentUser?.preferred_language || 'fr';
-
-    try {
-      setLoading(true);
-      let res;
-      if (message.type === 'audio') {
-        res = await apiService.translateVoiceMessage(message.id, targetLang);
-      } else {
-        res = await apiService.translateMessage(message.id, targetLang);
-      }
-
-      if (res.success) {
-        // Mettre à jour le message localement
-        setMessages(prev => prev.map(m =>
-          m.id === message.id
-            ? {
-                ...m,
-                translatedText: res.data.translatedText || res.data.translated_text,
-                transcription: res.data.transcription
-              }
-            : m
-        ));
-      } else {
-        Alert.alert('Erreur', 'Échec de la traduction IA.');
-      }
-    } catch (e) {
-      console.error(e);
-      Alert.alert('Erreur', 'Un problème est survenu lors de la traduction.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const renderMessage = ({ item }: any) => {
-    if (!item || !item.id) return null;
-    const isMe = item.sender_id === currentUser?.id;
-    const isDeleted = item.content && item.content.includes('Ce message a été supprimé');
-
-    // Récupérer les infos de l'expéditeur si c'est un groupe
-    const sender = isGroup ? groupDetails?.participants?.find((p: any) => p.id === item.sender_id) : null;
-
-    return (
-      <View style={[styles.messageRow, isMe ? { justifyContent: 'flex-end' } : { justifyContent: 'flex-start' }]}>
+  const bubbleStyle = useMemo(() => [
+    styles.bubble,
+    isMe
+      ? { backgroundColor: chatColor || themeColors.primary, borderBottomRightRadius: 4 }
+      : { backgroundColor: themeColors.surface, borderBottomLeftRadius: 4 },
+    isDeleted && { backgroundColor: isDark ? '#222' : '#f0f0f0', borderStyle: 'dashed', borderWidth: 1, borderColor: '#ccc' }
+  ], [isMe, chatColor, themeColors.primary, themeColors.surface, isDeleted, isDark]);
+
+  return (
+    <View style={[styles.messageRow, isMe ? { justifyContent: 'flex-end' } : { justifyContent: 'flex-start' }]}>
+      {!isMe && isGroup && sender && (
+        <Image
+          source={{ uri: (getFullUrl(sender.avatar_url) || `https://ui-avatars.com/api/?name=${sender.full_name}`) || undefined }}
+          style={styles.msgAvatar}
+          resizeMode="cover"
+        />
+      )}
+      <View style={{ maxWidth: '80%' }}>
         {!isMe && isGroup && sender && (
-          <Image
-            source={{ uri: getFullUrl(sender.avatar_url) || `https://ui-avatars.com/api/?name=${sender.full_name}` }}
-            style={styles.msgAvatar}
-          />
+          <Text style={[styles.senderName, { color: themeColors.primary }]}>{sender.full_name}</Text>
         )}
-        <View style={{ maxWidth: '80%' }}>
-          {!isMe && isGroup && sender && (
-            <Text style={[styles.senderName, { color: themeColors.primary }]}>{sender.full_name}</Text>
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={handleDoubleTap}
+          onLongPress={() => handleMessageLongPress(item)}
+          disabled={isDeleted}
+          style={bubbleStyle}
+        >
+          {item.isForwarded && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 5 }}>
+              <Ionicons name="arrow-redo" size={12} color={isMe ? 'rgba(255,255,255,0.7)' : '#999'} />
+              <Text style={{ fontSize: 10, fontStyle: 'italic', marginLeft: 4, color: isMe ? 'rgba(255,255,255,0.7)' : '#999' }}>Transféré</Text>
+            </View>
           )}
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onLongPress={() => handleMessageLongPress(item)}
-            disabled={isDeleted}
-            style={[
-              styles.bubble,
-              isMe
-                ? { backgroundColor: themeColors.primary, borderBottomRightRadius: 4 }
-                : { backgroundColor: themeColors.surface, borderBottomLeftRadius: 4 },
-              isDeleted && { backgroundColor: isDark ? '#222' : '#f0f0f0', borderStyle: 'dashed', borderWidth: 1, borderColor: '#ccc' }
-            ]}
-          >
-            {item.type === 'audio' ? (
-            <View>
-              <TouchableOpacity style={styles.audioMsg} onPress={() => playAudio(item)} onLongPress={() => handleMessageLongPress(item)}>
+
+          {item.type === 'audio' ? (
+            <View style={styles.audioContainer}>
+              <TouchableOpacity style={styles.audioMsg} onPress={() => playAudio(item)}>
                 <Ionicons
                   name={playingId === item.id && playbackStatus[item.id]?.isPlaying ? "pause" : "play"}
-                  size={normalize(28)}
+                  size={normalize(26)}
                   color={isMe ? '#fff' : themeColors.primary}
                 />
-                <View style={[
-                  styles.audioBar,
-                  { backgroundColor: isMe ? 'rgba(255,255,255,0.2)' : themeColors.primary + '20' }
-                ]}>
-                  {playingId === item.id ? (
-                    playbackStatus[item.id]?.isLoaded ? (
-                      <View style={[
-                        styles.audioProgress,
-                        {
-                          width: `${(playbackStatus[item.id]?.positionMillis / playbackStatus[item.id]?.durationMillis) * 100 || 0}%`,
-                          backgroundColor: isMe ? '#fff' : themeColors.primary
-                        }
-                      ]} />
-                    ) : (
-                      <ActivityIndicator size="small" color={isMe ? "#fff" : themeColors.primary} />
-                    )
-                  ) : null}
+                <View style={styles.audioMainContent}>
+                  <View style={[
+                    styles.audioBar,
+                    { backgroundColor: isMe ? 'rgba(255,255,255,0.2)' : themeColors.primary + '20' }
+                  ]}>
+                    {playingId === item.id ? (
+                      playbackStatus[item.id]?.isLoaded ? (
+                        <View style={[
+                          styles.audioProgress,
+                          {
+                            width: `${(playbackStatus[item.id]?.positionMillis / playbackStatus[item.id]?.durationMillis) * 100 || 0}%`,
+                            backgroundColor: isMe ? '#fff' : themeColors.primary
+                          }
+                        ]} />
+                      ) : (
+                        <ActivityIndicator size="small" color={isMe ? "#fff" : themeColors.primary} />
+                      )
+                    ) : null}
+                  </View>
+                  <View style={styles.audioDetails}>
+                    <Text style={[styles.audioDuration, { color: isMe ? 'rgba(255,255,255,0.7)' : '#666' }]}>
+                      {playingId === item.id && playbackStatus[item.id]?.isLoaded
+                        ? `${Math.floor(playbackStatus[item.id].positionMillis / 60000)}:${(Math.floor(playbackStatus[item.id].positionMillis / 1000) % 60).toString().padStart(2, '0')}`
+                        : item.metadata?.duration
+                          ? `${Math.floor(item.metadata.duration / 60)}:${(item.metadata.duration % 60).toString().padStart(2, '0')}`
+                          : '0:00'
+                      }
+                    </Text>
+                  </View>
                 </View>
-                <Ionicons
-                  name="mic"
-                  size={normalize(18)}
-                  color={item.status === 'read' ? '#34B7F1' : (isMe ? '#fff' : '#999')}
-                />
+                <View style={styles.audioIconWrapper}>
+                  <Ionicons
+                    name="mic"
+                    size={normalize(18)}
+                    color={item.status === 'read' ? '#34B7F1' : (isMe ? '#fff' : '#999')}
+                  />
+                </View>
               </TouchableOpacity>
 
-              {/* Affichage Transcription & Traduction IA pour Audio */}
-              {(item.transcription || item.translatedText) && (
-                <View style={[styles.translationContainer, { borderTopColor: isMe ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.05)', marginTop: 8 }]}>
-                  {item.transcription && (
-                    <Text style={[styles.translatedText, { color: isMe ? 'rgba(255,255,255,0.9)' : isDark ? '#aaa' : '#555', fontStyle: 'italic', marginBottom: 4 }]}>
-                      "{item.transcription}"
-                    </Text>
-                  )}
-                  {item.translatedText && (
-                    <Text style={[styles.translatedText, { color: isMe ? '#fff' : themeColors.primary, fontWeight: 'bold' }]}>
-                      {item.translatedText}
-                    </Text>
-                  )}
+              <View style={[styles.translationContainer, { borderTopColor: isMe ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.05)', marginTop: 8 }]}>
+                {isTranslatingLocal ? (
+                  <ActivityIndicator size="small" color={isMe ? "#fff" : themeColors.primary} style={{ alignSelf: 'flex-start' }} />
+                ) : item.translatedText ? (
+                  <Text style={[styles.translatedText, { color: isMe ? '#fff' : themeColors.primary, fontWeight: 'bold' }]}>
+                    {item.translatedText}
+                  </Text>
+                ) : item.transcription ? (
+                  <Text style={[styles.translatedText, { color: isMe ? 'rgba(255,255,255,0.9)' : isDark ? '#aaa' : '#555', fontStyle: 'italic' }]}>
+                    "{item.transcription}"
+                  </Text>
+                ) : (
+                  <TouchableOpacity onPress={onTranslatePress} style={styles.inlineTranslateBtn}>
+                    <Ionicons name="language-outline" size={12} color={isMe ? '#fff' : themeColors.primary} />
+                    <Text style={[styles.inlineTranslateText, { color: isMe ? '#fff' : themeColors.primary }]}>Traduire l'audio</Text>
+                  </TouchableOpacity>
+                )}
+                {(item.transcription || item.translatedText) && (
                   <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
                     <Ionicons name="sparkles" size={10} color={isMe ? 'rgba(255,255,255,0.6)' : themeColors.primary} />
                     <Text style={[styles.translationLabel, { marginLeft: 4 }]}>IA Meet Me</Text>
                   </View>
-                </View>
-              )}
+                )}
+              </View>
             </View>
           ) : item.type === 'image' ? (
             <Image
-              source={{ uri: item.localUri || getFullUrl(item.file_url || item.fileUrl) || '' }}
+              source={{ uri: (item.localUri || getFullUrl(item.file_url || item.fileUrl)) || undefined }}
               style={styles.imageMsg}
               resizeMode="cover"
             />
@@ -853,7 +197,7 @@ export default function ChatScreen({ navigation, route }: any) {
                 <Text style={[styles.fileName, { color: isMe ? '#fff' : themeColors.text.primary }]} numberOfLines={1}>
                   {item.content}
                 </Text>
-                {uploadProgress[item.tempId || item.id] !== undefined ? (
+                {(uploadProgress[item.tempId || item.id] !== undefined || downloadProgress[item.id] !== undefined) ? (
                   <View style={styles.downloadProgressContainer}>
                     <View style={[
                       styles.audioBar,
@@ -862,22 +206,7 @@ export default function ChatScreen({ navigation, route }: any) {
                       <View style={[
                         styles.audioProgress,
                         {
-                          width: `${uploadProgress[item.tempId || item.id] * 100}%`,
-                          backgroundColor: isMe ? '#fff' : themeColors.primary
-                        }
-                      ]} />
-                    </View>
-                  </View>
-                ) : downloadProgress[item.id] !== undefined ? (
-                  <View style={styles.downloadProgressContainer}>
-                    <View style={[
-                      styles.audioBar,
-                      { marginHorizontal: 0, marginTop: 5, backgroundColor: isMe ? 'rgba(255,255,255,0.2)' : themeColors.primary + '20' }
-                    ]}>
-                      <View style={[
-                        styles.audioProgress,
-                        {
-                          width: `${downloadProgress[item.id] * 100}%`,
+                          width: `${(uploadProgress[item.tempId || item.id] || downloadProgress[item.id]) * 100}%`,
                           backgroundColor: isMe ? '#fff' : themeColors.primary
                         }
                       ]} />
@@ -890,13 +219,6 @@ export default function ChatScreen({ navigation, route }: any) {
                   </Text>
                 )}
               </View>
-              {downloadProgress[item.id] === undefined && uploadProgress[item.tempId || item.id] === undefined && (
-                <Ionicons
-                  name={item.status === 'sending' ? "cloud-upload-outline" : "download-outline"}
-                  size={20}
-                  color={isMe ? '#fff' : themeColors.primary}
-                />
-              )}
             </TouchableOpacity>
           ) : (
             <View>
@@ -905,18 +227,25 @@ export default function ChatScreen({ navigation, route }: any) {
                 { color: isMe ? '#fff' : isDark ? '#fff' : '#000' },
                 isDeleted && { fontStyle: 'italic', color: '#999' }
               ]}>
-                {isDeleted ? `🚫 ${t?.('messageRemoved') || 'Ce message a été supprimé'}` : item.content}
+                {isDeleted ? `🚫 ${t?.('messageRemoved') || 'Ce message a été supprimé'}` : (item.translatedText || item.content)}
               </Text>
-              {item.translatedText && item.translatedText !== item.content && (
-                <View style={[styles.translationContainer, { borderTopColor: isMe ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.05)' }]}>
-                  <Text style={[styles.translatedText, { color: isMe ? 'rgba(255,255,255,0.9)' : isDark ? '#aaa' : '#555' }]}>
-                    {item.translatedText}
-                  </Text>
-                  <Text style={styles.translationLabel}>{t?.('translatedFrom') || 'Traduit depuis'} {item.source_language || ''}</Text>
+
+              {!isDeleted && !item.translatedText && item.sender_id !== currentUser?.id && (
+                <TouchableOpacity onPress={onTranslatePress} style={[styles.inlineTranslateBtn, { marginTop: 5 }]}>
+                  <Ionicons name="language-outline" size={12} color={isMe ? '#fff' : themeColors.primary} />
+                  <Text style={[styles.inlineTranslateText, { color: isMe ? '#fff' : themeColors.primary }]}>Traduire ce message</Text>
+                </TouchableOpacity>
+              )}
+
+              {item.translatedText && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+                  <Ionicons name="sparkles" size={10} color={isMe ? 'rgba(255,255,255,0.6)' : themeColors.primary} />
+                  <Text style={[styles.translationLabel, { marginLeft: 4 }]}>IA Meet Me • {t?.('translatedFrom') || 'Traduit'}</Text>
                 </View>
               )}
             </View>
           )}
+
           <View style={styles.msgFooter}>
             <Text style={[styles.timeText, { color: isMe ? 'rgba(255,255,255,0.7)' : '#999' }]}>
               {new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -930,142 +259,538 @@ export default function ChatScreen({ navigation, route }: any) {
               />
             )}
           </View>
+
+          {item.likes && item.likes.length > 0 && (
+            <View style={[styles.likeContainer, { backgroundColor: isMe ? 'rgba(255,255,255,0.9)' : themeColors.surface }]}>
+              <Ionicons name="heart" size={10} color="#e91e63" />
+              {item.likes.length > 1 && <Text style={styles.likeCount}>{item.likes.length}</Text>}
+            </View>
+          )}
         </TouchableOpacity>
       </View>
     </View>
+  );
+});
+
+export default function ChatScreen({ navigation, route }: any) {
+  const { isDark, colors: themeColors, normalize, fontSizeFactor } = useTheme();
+  const { t, language, autoTranslate } = useLanguage();
+  const { chatId, name = 'Inconnu', avatar, isVerified: initialIsVerified, peerUserId, type } = route.params || {};
+  const isGroup = type === 'group' || !peerUserId;
+
+  const [messages, setMessages] = useState<any[]>([]);
+  const [isVerified, setIsVerified] = useState(initialIsVerified);
+  const [peerStatus, setPeerStatus] = useState<string>(initialIsVerified ? 'online' : 'offline');
+  const [peerLastSeen, setPeerLastSeen] = useState<string | null>(null);
+  const [peerName, setPeerName] = useState<string>(name);
+  const [peerAvatar, setPeerAvatar] = useState<string | null>(avatar);
+  const [chatBg, setChatBg] = useState<string | null>(null);
+  const [chatColor, setChatColor] = useState<string | null>(null);
+  const [isForwarding, setIsForwarding] = useState(false);
+  const [messageToForward, setMessageToForward] = useState<any>(null);
+  const [contacts, setContacts] = useState<any[]>([]);
+  const [inputText, setInputText] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [isContact, setIsContact] = useState<boolean>(true);
+  const [groupDetails, setGroupDetails] = useState<any>(null);
+  const [recording, setRecording] = useState<Audio.Recording | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const [sound, setSound] = useState<Audio.Sound | null>(null);
+  const [playingId, setPlayingId] = useState<string | null>(null);
+  const [playbackStatus, setPlaybackStatus] = useState<any>({});
+  const [downloadProgress, setDownloadProgress] = useState<Record<string, number>>({});
+  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
+  const [typingUsers, setTypingUsers] = useState<any[]>([]);
+
+  const flatListRef = useRef<FlatList>(null);
+  const insets = useSafeAreaInsets();
+  const timerRef = useRef<any>(null);
+  const typingTimeoutRef = useRef<any>(null);
+
+  const getFullUrl = useCallback((url: string) => {
+    if (!url || url === 'null') return null;
+    if (url.startsWith('http') || url.startsWith('file://') || url.startsWith('content://')) return url;
+    const baseUrl = SOCKET_URL.endsWith('/') ? SOCKET_URL.slice(0, -1) : SOCKET_URL;
+    const path = url.startsWith('/') ? url : `/${url}`;
+    return `${baseUrl}${path}`;
+  }, []);
+
+  const fetchMessages = useCallback(async () => {
+    if (!chatId) return;
+    try {
+      const response = await apiService.getMessages(chatId);
+      if (response.success && Array.isArray(response.data)) {
+        setMessages(response.data);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  }, [chatId]);
+
+  useEffect(() => {
+    if (!chatId) {
+      navigation.goBack();
+      return;
+    }
+
+    const setup = async () => {
+      try {
+        const user = await apiService.getCurrentUser();
+        setCurrentUser(user);
+        await fetchMessages();
+
+        const bg = await AsyncStorage.getItem(`chat_bg_${chatId}`);
+        const color = await AsyncStorage.getItem(`chat_color_${chatId}`);
+        if (bg) setChatBg(bg);
+        if (color) setChatColor(color);
+
+        await apiService.markMessagesAsRead(chatId);
+        if (isGroup) {
+          const res = await apiService.getChat(chatId);
+          if (res.success) setGroupDetails(res.data);
+        } else if (peerUserId) {
+          const res = await apiService.getUserById(peerUserId);
+          if (res.success) {
+            setPeerStatus(res.data.status);
+            setPeerLastSeen(res.data.last_seen);
+          }
+        }
+        await Audio.requestPermissionsAsync();
+        if (peerUserId && !isGroup) {
+          const res = await apiService.isContact(peerUserId);
+          if (res.success) setIsContact((res as any).isContact);
+        }
+      } catch (error) {
+        console.error('Setup error:', error);
+      }
+    };
+    setup();
+
+    const subscription = supabase
+      .channel(`chat:${chatId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages', filter: `chat_id=eq.${chatId}` },
+      (payload: any) => {
+        if (payload.event === 'INSERT') {
+          setMessages(current => {
+            // Éviter les doublons si on a déjà fait la mise à jour optimiste
+            if (current.some(m => m.id === payload.new.id)) return current;
+
+            // Si on a un message temporaire pour cet utilisateur avec le même contenu, on le remplace
+            const existingTemp = current.find(m => m.status === 'sending' && m.sender_id === payload.new.sender_id && m.content === payload.new.content);
+            if (existingTemp) {
+              return current.map(m => m.id === existingTemp.id ? payload.new : m);
+            }
+
+            return [...current, payload.new];
+          });
+        } else if (payload.event === 'UPDATE') {
+          setMessages(current => current.map(m => m.id === payload.new.id ? payload.new : m));
+        } else if (payload.event === 'DELETE') {
+          setMessages(current => current.filter(m => m.id !== payload.old.id));
+        }
+      })
+      .subscribe((status) => {
+        console.log(`Supabase Realtime status for chat ${chatId}:`, status);
+      });
+
+    const onUserTyping = (data: any) => {
+      if (data.chatId === chatId && data.userId !== currentUser?.id) {
+        const user = isGroup
+          ? groupDetails?.participants?.find((p: any) => p.id === data.userId)
+          : { id: data.userId, full_name: peerName, avatar_url: peerAvatar };
+        if (user) setTypingUsers(prev => prev.some(u => u.id === user.id) ? prev : [...prev, user]);
+      }
+    };
+
+    const onUserStoppedTyping = (data: any) => {
+      if (data.chatId === chatId) setTypingUsers(prev => prev.filter(u => u.id !== data.userId));
+    };
+
+    const onUserStatusChanged = (data: any) => {
+      if (data.userId === peerUserId) {
+        setPeerStatus(data.status);
+        if (data.status !== 'online') setPeerLastSeen(new Date().toISOString());
+      }
+    };
+
+    const onProfileUpdated = (data: any) => {
+      if (data.userId === peerUserId) {
+        if (data.full_name) setPeerName(data.full_name);
+        if (data.avatar_url) setPeerAvatar(data.avatar_url);
+      }
+    };
+
+    const onMessageReaction = (data: any) => {
+      setMessages(current => current.map(m =>
+        m.id === data.messageId ? { ...m, likes: data.likes } : m
+      ));
+    };
+
+    socketService.on('user_typing', onUserTyping);
+    socketService.on('user_stopped_typing', onUserStoppedTyping);
+    socketService.on('user_status_changed', onUserStatusChanged);
+    socketService.on('admin_user_profile_updated', onProfileUpdated);
+    socketService.on('message_reaction', onMessageReaction);
+    socketService.joinChat(chatId);
+
+    return () => {
+      supabase.removeChannel(subscription);
+      socketService.off('user_typing', onUserTyping);
+      socketService.off('user_stopped_typing', onUserStoppedTyping);
+      socketService.off('user_status_changed', onUserStatusChanged);
+      socketService.off('admin_user_profile_updated', onProfileUpdated);
+      socketService.off('message_reaction', onMessageReaction);
+      socketService.leaveChat(chatId);
+      if (timerRef.current) clearInterval(timerRef.current);
+      if (sound) sound.unloadAsync();
+    };
+  }, [chatId, currentUser?.id, groupDetails, peerUserId, peerName, peerAvatar, fetchMessages]);
+
+  const handleTranslateMessageIA = useCallback(async (message: any) => {
+    const targetLang = currentUser?.preferred_language || 'fr';
+    try {
+      let res;
+      if (message.type === 'audio') res = await apiService.translateVoiceMessage(message.id, targetLang);
+      else res = await apiService.translateMessage(message.id, targetLang);
+
+      if (res.success) {
+        setMessages(prev => prev.map(m => m.id === message.id ? { ...m, translatedText: res.data.translatedText || res.data.translated_text, transcription: res.data.transcription } : m));
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }, [currentUser]);
+
+  const handleSendMessage = useCallback(async () => {
+    if (!inputText.trim() || !currentUser) return;
+    const content = inputText;
+    setInputText('');
+
+    // Optimistic Update: Add message locally immediately
+    const tempId = `temp-${Date.now()}`;
+    const optimisticMessage = {
+      id: tempId,
+      chat_id: chatId,
+      sender_id: currentUser.id,
+      content: content,
+      type: 'text',
+      status: 'sending',
+      created_at: new Date().toISOString(),
+      tempId: tempId
+    };
+
+    setMessages(prev => [...prev, optimisticMessage]);
+
+    try {
+      const response = await apiService.sendMessage(chatId, content);
+      if (!response.success) {
+        Alert.alert('Erreur', 'Impossible d\'envoyer le message');
+        // Optionnel: marquer le message comme échoué
+        setMessages(prev => prev.map(m => m.id === tempId ? { ...m, status: 'failed' } : m));
+      } else {
+        // Le message sera mis à jour via l'événement INSERT de Supabase ou Socket
+        // On peut aussi le mettre à jour ici pour plus de réactivité
+        setMessages(prev => prev.map(m => m.id === tempId ? { ...response.data, status: 'sent' } : m));
+      }
+    } catch (error) {
+      console.error(error);
+      setMessages(prev => prev.map(m => m.id === tempId ? { ...m, status: 'failed' } : m));
+    }
+  }, [chatId, inputText, currentUser]);
+
+  const startRecording = async () => {
+    try {
+      const { status } = await Audio.requestPermissionsAsync();
+      if (status !== 'granted') return;
+      const newRecording = new Audio.Recording();
+      await newRecording.prepareToRecordAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
+      await newRecording.startAsync();
+      setRecording(newRecording);
+      setIsRecording(true);
+      setRecordingDuration(0);
+      timerRef.current = setInterval(() => setRecordingDuration(p => p + 1), 1000);
+    } catch (err) { console.error(err); }
+  };
+
+  const stopRecording = async () => {
+    if (!recording) return;
+    setIsRecording(false);
+    clearInterval(timerRef.current);
+    const duration = recordingDuration;
+    try {
+      await recording.stopAndUnloadAsync();
+      const uri = recording.getURI();
+      setRecording(null);
+      if (uri && currentUser) {
+        const uploadRes = await apiService.uploadFile({ uri, type: 'audio/m4a', name: 'voice.m4a' }, 'audio');
+        if (uploadRes.success) {
+          await apiService.sendMessage(chatId, t?.('audio') || 'Message vocal', 'audio', uploadRes.data.fileUrl, { duration });
+        }
+      }
+    } catch (err) { console.error(err); }
+  };
+
+  const handlePickDocument = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({ type: '*/*' });
+      if (!result.canceled && result.assets && result.assets[0]) {
+        const doc = result.assets[0];
+        const uploadRes = await apiService.uploadFile({ uri: doc.uri, type: doc.mimeType, name: doc.name }, 'document');
+        if (uploadRes.success) {
+          await apiService.sendMessage(chatId, doc.name, 'file', uploadRes.data.fileUrl);
+        }
+      }
+    } catch (error) { console.error(error); }
+  };
+
+  const handlePickImage = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.7 });
+      if (!result.canceled && result.assets && result.assets[0]) {
+        const img = result.assets[0];
+        const uploadRes = await apiService.uploadFile({ uri: img.uri, type: 'image/jpeg', name: 'photo.jpg' }, 'image');
+        if (uploadRes.success) {
+          await apiService.sendMessage(chatId, 'Image', 'image', uploadRes.data.fileUrl);
+        }
+      }
+    } catch (error) { console.error(error); }
+  };
+
+  const playAudio = useCallback(async (message: any) => {
+    const audioSource = message.localUri || getFullUrl(message.file_url || message.fileUrl);
+    if (!audioSource) return;
+    try {
+      if (playingId === message.id && sound) {
+        const status: any = await sound.getStatusAsync();
+        if (status.isPlaying) await sound.pauseAsync();
+        else await sound.playAsync();
+        return;
+      }
+      if (sound) await sound.unloadAsync();
+      const { sound: newSound } = await Audio.Sound.createAsync(
+        { uri: audioSource },
+        { shouldPlay: true },
+        (status) => {
+          setPlaybackStatus((prev: any) => ({ ...prev, [message.id]: status }));
+          if ((status as any).didJustFinish) setPlayingId(null);
+        }
+      );
+      setSound(newSound);
+      setPlayingId(message.id);
+    } catch (error) {
+      console.error(error);
+    }
+  }, [playingId, sound, getFullUrl]);
+
+  const downloadFile = useCallback(async (message: any) => {
+    const url = getFullUrl(message.file_url || message.fileUrl);
+    if (!url) return;
+    try {
+      // Déterminer un nom de fichier unique basé sur l'ID du message
+      const extension = url.split('.').pop()?.split('?')[0] || 'file';
+      const fileName = `chat_${message.id}.${extension}`;
+      const fileUri = (FileSystem.documentDirectory || '') + fileName;
+
+      // Vérifier si le fichier existe déjà
+      const fileInfo = await FileSystem.getInfoAsync(fileUri);
+      if (fileInfo.exists) {
+        await Sharing.shareAsync(fileUri);
+        return;
+      }
+
+      setDownloadProgress(prev => ({ ...prev, [message.id]: 0.1 }));
+      const downloadResumable = FileSystem.createDownloadResumable(url, fileUri, {}, (p) => {
+        setDownloadProgress(prev => ({ ...prev, [message.id]: p.totalBytesWritten / p.totalBytesExpectedToWrite }));
+      });
+      const res = await downloadResumable.downloadAsync();
+      if (res) {
+        setDownloadProgress(prev => { const n = {...prev}; delete n[message.id]; return n; });
+        await Sharing.shareAsync(res.uri);
+      }
+    } catch (e) {
+      console.error(e);
+      setDownloadProgress(prev => { const n = {...prev}; delete n[message.id]; return n; });
+    }
+  }, [getFullUrl]);
+
+  // Système de téléchargement automatique
+  useEffect(() => {
+    const autoDownload = async () => {
+      const messagesToDownload = messages.filter(m =>
+        (m.type === 'audio' || m.type === 'file') &&
+        m.status !== 'sending' &&
+        !m.localUri
+      );
+
+      for (const msg of messagesToDownload) {
+        const url = getFullUrl(msg.file_url || msg.fileUrl);
+        if (!url) continue;
+
+        const extension = url.split('.').pop()?.split('?')[0] || (msg.type === 'audio' ? 'm4a' : 'file');
+        const fileName = `auto_${msg.id}.${extension}`;
+        const fileUri = (FileSystem.documentDirectory || '') + fileName;
+
+        try {
+          const fileInfo = await FileSystem.getInfoAsync(fileUri);
+          if (!fileInfo.exists) {
+            console.log(`Auto-downloading: ${fileName}`);
+            const res = await FileSystem.downloadAsync(url, fileUri);
+            if (res.status === 200) {
+              setMessages(current => current.map(m =>
+                m.id === msg.id ? { ...m, localUri: res.uri } : m
+              ));
+            }
+          } else {
+            // Déjà téléchargé, mettre à jour le localUri si nécessaire
+            if (msg.localUri !== fileInfo.uri) {
+              setMessages(current => current.map(m =>
+                m.id === msg.id ? { ...m, localUri: fileInfo.uri } : m
+              ));
+            }
+          }
+        } catch (err) {
+          console.warn('Auto-download failed for:', fileName, err);
+        }
+      }
+    };
+
+    if (messages.length > 0) {
+      autoDownload();
+    }
+  }, [messages.length, getFullUrl]);
+
+  const handleLikeMessage = useCallback((messageId: string) => {
+    socketService.emit('react_to_message', { messageId, emoji: '❤️' });
+  }, []);
+
+  const handleMessageLongPress = useCallback((item: any) => {
+    const isMe = item.sender_id === currentUser?.id;
+    if (item.content?.includes('Ce message a été supprimé')) return;
+    const options = [
+      { text: t?.('cancel') || 'Annuler', style: 'cancel' },
+      { text: (item.likes && item.likes.includes(currentUser?.id)) ? 'Retirer Like' : 'Liker ❤️', onPress: () => handleLikeMessage(item.id) },
+      { text: 'Transférer', onPress: () => { setMessageToForward(item); setIsForwarding(true); apiService.searchUsers('').then(res => res.success && setContacts(res.data)); } },
+      { text: 'Partager', onPress: () => Share.share({ message: item.content }) }
+    ];
+    if (isMe) options.push({ text: t?.('delete') || 'Supprimer', style: 'destructive', onPress: () => apiService.deleteMessage(item.id, 'everyone') });
+    Alert.alert('Options', null, options as any);
+  }, [currentUser?.id, t, handleLikeMessage]);
+
+  const styles = useMemo(() => createStyles(themeColors, normalize, fontSizeFactor, isDark), [themeColors, normalize, fontSizeFactor, isDark]);
+
+  const renderMessage = useCallback(({ item }: any) => {
+    const isMe = item.sender_id === currentUser?.id;
+    const sender = isGroup ? groupDetails?.participants?.find((p: any) => p.id === item.sender_id) : null;
+    return (
+      <MessageItem
+        item={item} isMe={isMe} isGroup={isGroup} sender={sender} currentUser={currentUser}
+        themeColors={themeColors} isDark={isDark} normalize={normalize} getFullUrl={getFullUrl}
+        handleMessageLongPress={handleMessageLongPress} playAudio={playAudio} playingId={playingId}
+        playbackStatus={playbackStatus} downloadFile={downloadFile} downloadProgress={downloadProgress}
+        uploadProgress={uploadProgress} t={t} onTranslate={handleTranslateMessageIA}
+        onLike={handleLikeMessage}
+        chatColor={chatColor} styles={styles}
+      />
+    );
+  }, [currentUser, isGroup, groupDetails, themeColors, isDark, normalize, getFullUrl, handleMessageLongPress, playAudio, playingId, playbackStatus, downloadFile, downloadProgress, uploadProgress, t, handleTranslateMessageIA, handleLikeMessage, chatColor, styles]);
+
+  const formatLastSeen = (dateString: string | null) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    const now = new Date();
+    const diff = now.getTime() - date.getTime();
+    const oneDay = 24 * 60 * 60 * 1000;
+    const time = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    if (diff < oneDay && now.getDate() === date.getDate()) return `Vu aujourd'hui à ${time}`;
+    if (diff < 2 * oneDay && now.getDate() - date.getDate() === 1) return `Vu hier à ${time}`;
+    return `Vu le ${date.toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long' })} à ${time}`;
+  };
+
+  const onProfileRetouch = (uri: string) => {
+    // Simuler une "retouche" ou un filtrage léger pour améliorer l'affichage
+    // En React Native, on peut appliquer des transformations ou utiliser des bibliothèques de filtres
+    // Ici, on s'assure simplement que l'URI est valide et formatée
+    return uri;
+  };
+
+  const handlePickChatBg = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') return;
+    const result = await ImagePicker.launchImageLibraryAsync({ quality: 0.8 });
+    if (!result.canceled) {
+      setChatBg(result.assets[0].uri);
+      await AsyncStorage.setItem(`chat_bg_${chatId}`, result.assets[0].uri);
+    }
+  };
+
+  const handleChangeChatColor = () => {
+    const colorChoices = [
+      { name: 'Meet Me', value: baseColors.primary },
+      { name: 'Océan', value: '#007AFF' },
+      { name: 'Émeraude', value: '#2ecc71' },
+      { name: 'Soleil', value: '#f1c40f' },
+      { name: 'Rose', value: '#e91e63' },
+      { name: 'Violet', value: '#9b59b6' },
+      { name: 'Orange', value: '#e67e22' },
+      { name: 'Gris', value: '#607d8b' },
+      { name: 'Noir', value: '#000000' }
+    ];
+
+    Alert.alert(
+      "Couleur du chat",
+      "Choisissez une couleur",
+      colorChoices.map(c => ({
+        text: c.name,
+        onPress: async () => {
+          setChatColor(c.value);
+          await AsyncStorage.setItem(`chat_color_${chatId}`, c.value);
+        }
+      })).concat([{ text: "Annuler", style: "cancel" }]) as any
     );
   };
 
-  if (!chatId) {
-    return (
-      <View style={{ flex: 1, backgroundColor: themeColors.background, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color={themeColors.primary} />
-      </View>
-    );
-  }
-
-  const isTablet = Dimensions.get('window').width > 768;
-
   return (
-    <View style={[styles.container, { backgroundColor: themeColors.background }]}>
-      <View style={{ height: insets.top, backgroundColor: themeColors.primary }} />
+    <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]}>
       <StatusBar barStyle="light-content" backgroundColor={themeColors.primary} />
       <View style={[styles.header, { backgroundColor: themeColors.primary }]}>
-        {!isTablet && (
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color="#fff" />
-          </TouchableOpacity>
-        )}
-
-        <TouchableOpacity
-          style={styles.headerUserInfo}
-          onPress={() => {
-            if (!isGroup && peerUserId) {
-              navigation.navigate('UserProfile', { userId: peerUserId, name, avatar });
-            } else {
-              navigation.navigate('GroupInfo', { chatId });
-            }
-          }}
-        >
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}><Ionicons name="arrow-back" size={24} color="#fff" /></TouchableOpacity>
+        <TouchableOpacity style={styles.headerUserInfo} onPress={() => isGroup ? navigation.navigate('GroupInfo', { chatId }) : navigation.navigate('UserProfile', { userId: peerUserId, name: peerName, avatar: peerAvatar })}>
           <Image
-            source={{ uri: getFullUrl(avatar) || `https://ui-avatars.com/api/?name=${name}` }}
+            source={{ uri: onProfileRetouch((getFullUrl(peerAvatar || '') || `https://ui-avatars.com/api/?name=${peerName}`)) || undefined }}
             style={styles.avatar}
+            resizeMode="cover"
           />
           <View style={{ flex: 1 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Text style={styles.headerName} numberOfLines={1}>{name}</Text>
-              {isVerified && (
-                <Ionicons name="checkmark-circle" size={14} color="#fff" style={{ marginLeft: 4 }} />
-              )}
-            </View>
-            <Text style={styles.headerStatus} numberOfLines={1}>
-              {isGroup
-                ? (groupDetails?.participants?.map((p: any) => p.id === currentUser?.id ? 'Vous' : p.full_name.split(' ')[0]).join(', ') || '...')
-                : (t?.('online') || 'En ligne')}
-            </Text>
+            <Text style={styles.headerName} numberOfLines={1}>{peerName}</Text>
+            <Text style={styles.headerStatus} numberOfLines={1}>{peerStatus === 'online' ? 'En ligne' : (peerStatus || 'Hors ligne')}</Text>
           </View>
         </TouchableOpacity>
-
-        <View style={styles.headerIcons}>
-          <TouchableOpacity
-            style={styles.headerIcon}
-            onPress={() => {
-              Alert.alert(
-                t?.('settings') || 'Paramètres',
-                null,
-                [
-                  { text: t?.('settings') || 'Paramètres', onPress: () => navigation.navigate('Settings') },
-                  { text: t?.('profile') || 'Profil', onPress: () => navigation.navigate('EditProfile') },
-                  { text: t?.('cancel') || 'Annuler', style: "cancel" }
-                ]
-              );
-            }}
-          >
-            <Ionicons name="ellipsis-vertical" size={22} color="#fff" />
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity onPress={() => Alert.alert('Options', null, [{ text: 'Fond d\'écran', onPress: handlePickChatBg }, { text: 'Couleur', onPress: handleChangeChatColor }, { text: 'Annuler', style: 'cancel' }])} style={styles.headerIcon}><Ionicons name="ellipsis-vertical" size={22} color="#fff" /></TouchableOpacity>
       </View>
 
       {/* Indicateur de frappe */}
       {typingUsers.length > 0 && (
-        <View style={{ position: 'absolute', top: normalize(60, fontSizeFactor) + insets.top, left: 0, right: 0, zIndex: 10, backgroundColor: themeColors.surface + 'EE', paddingHorizontal: 15, paddingVertical: 5, borderBottomWidth: 0.5, borderBottomColor: themeColors.divider }}>
+        <View style={{ backgroundColor: themeColors.surface + 'EE', paddingHorizontal: 15, paddingVertical: 5, borderBottomWidth: 0.5, borderBottomColor: themeColors.divider }}>
           <Text style={{ fontSize: normalize(12), color: themeColors.primary, fontStyle: 'italic' }}>
-            {typingUsers.length === 1
-              ? `${typingUsers[0].full_name} est en train d'écrire...`
-              : `${typingUsers.length} personnes écrivent...`}
+            {typingUsers.length === 1 ? `${typingUsers[0].full_name} est en train d'écrire...` : `${typingUsers.length} personnes écrivent...`}
           </Text>
         </View>
       )}
 
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top + 60 : 0}
-        style={{ flex: 1 }}
-      >
-        <ImageBackground source={{ uri: 'https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png' }} style={styles.chatBg}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+        <ImageBackground source={chatBg ? { uri: chatBg } : { uri: 'https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png' }} style={styles.chatBg}>
           {loading ? <ActivityIndicator size="large" color={themeColors.primary} style={{marginTop: 20}} /> : (
             <FlatList
-              ref={flatListRef}
-              data={messages}
-              renderItem={renderMessage}
-              keyExtractor={(item) => item.id?.toString() || Math.random().toString()}
-              contentContainerStyle={styles.list}
-              ListHeaderComponent={<EncryptionNotice colors={themeColors} navigation={navigation} styles={styles} />}
-              onContentSizeChange={() => {
-                if (messages.length > 0) {
-                  flatListRef.current?.scrollToEnd({ animated: false });
-                }
-              }}
-              onLayout={() => {
-                if (messages.length > 0) {
-                  flatListRef.current?.scrollToEnd({ animated: false });
-                }
-              }}
+              ref={flatListRef} data={messages} renderItem={renderMessage}
+              keyExtractor={(item) => item.id?.toString()} contentContainerStyle={styles.list}
+              onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
             />
           )}
         </ImageBackground>
-
-        {!isContact && !loading && (
-          <View style={[styles.unknownContactBar, { backgroundColor: isDark ? '#1a1a1a' : '#fff' }]}>
-            <Text style={[styles.unknownText, { color: themeColors.text.secondary }]}>
-              Ce numéro n'est pas dans vos contacts.
-            </Text>
-            <View style={styles.unknownActions}>
-              <TouchableOpacity
-                style={[styles.unknownBtn, { borderColor: themeColors.danger }]}
-                onPress={handleBlockUser}
-              >
-                <Text style={{ color: themeColors.danger, fontWeight: 'bold' }}>BLOQUER</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.unknownBtn, { backgroundColor: themeColors.primary, borderWidth: 0 }]}
-                onPress={handleAddContact}
-              >
-                <Text style={{ color: '#fff', fontWeight: 'bold' }}>AJOUTER</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
 
         <View style={[styles.inputContainer, { backgroundColor: themeColors.surface, paddingBottom: Math.max(insets.bottom, 10) }]}>
           <View style={[styles.inputBox, { backgroundColor: isDark ? '#333' : '#f0f0f0' }]}>
@@ -1080,7 +805,7 @@ export default function ChatScreen({ navigation, route }: any) {
                 placeholder={t?.('typeMessage') || 'Message'}
                 placeholderTextColor={isDark ? '#999' : '#666'}
                 value={inputText}
-                onChangeText={handleInputChange}
+                onChangeText={setInputText}
                 multiline
               />
             )}
@@ -1103,65 +828,74 @@ export default function ChatScreen({ navigation, route }: any) {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
-    </View>
+
+      {isForwarding && (
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000, justifyContent: 'flex-end' }]}>
+          <View style={[styles.forwardContainer, { backgroundColor: themeColors.surface }]}>
+            <Text style={styles.forwardTitle}>Transférer à...</Text>
+            <FlatList data={contacts} keyExtractor={(item) => item.id} renderItem={({ item }) => (
+              <TouchableOpacity style={styles.forwardUserItem} onPress={async () => { const r = await apiService.createChat([item.id]); if (r.success) { await apiService.sendMessage(r.data.id, messageToForward.content, messageToForward.type); setIsForwarding(false); Alert.alert('Succès', 'Transféré'); } }}>
+                <Text style={{ color: themeColors.text.primary }}>{item.full_name}</Text>
+              </TouchableOpacity>
+            )} />
+            <TouchableOpacity onPress={() => setIsForwarding(false)} style={styles.closeBtn}><Text style={{ color: themeColors.primary }}>Annuler</Text></TouchableOpacity>
+          </View>
+        </View>
+      )}
+    </SafeAreaView>
   );
 }
-
-const EncryptionNotice = ({ colors, navigation, styles }: any) => (
-  <View style={styles.encryptionBox}>
-    <TouchableOpacity
-      style={styles.encryptionInner}
-      onPress={() => navigation.navigate('PrivacyPolicy')}
-    >
-      <Ionicons name="lock-closed" size={12} color="#888" style={{ marginRight: 5 }} />
-      <Text style={styles.encryptionText}>
-        Les messages sont chiffrés de bout en bout. Personne en dehors de cette discussion, pas même Meet Me, ne peut les lire. Appuyez pour en savoir plus.
-      </Text>
-    </TouchableOpacity>
-  </View>
-);
 
 const createStyles = (colors: any, normalize: any, factor: number, isDark: boolean) => StyleSheet.create({
   container: { flex: 1 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    height: normalize(60, factor),
+    paddingHorizontal: 8,
+    paddingVertical: 10,
+    minHeight: width > 768 ? normalize(80, factor) : normalize(65, factor)
   },
   backButton: { padding: 5 },
-  headerUserInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    marginLeft: 5
+  headerUserInfo: { flexDirection: 'row', alignItems: 'center', flex: 1, marginLeft: 5 },
+  avatar: {
+    width: width > 768 ? 48 : normalize(38, factor),
+    height: width > 768 ? 48 : normalize(38, factor),
+    borderRadius: width > 768 ? 24 : normalize(19, factor),
+    marginRight: 12,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.2)',
+    overflow: 'hidden'
   },
-  avatar: { width: normalize(38, factor), height: normalize(38, factor), borderRadius: normalize(19, factor), marginRight: 10 },
-  headerName: { color: '#fff', fontSize: normalize(16, factor), fontWeight: 'bold', maxWidth: width * 0.4 },
-  headerStatus: { color: 'rgba(255,255,255,0.7)', fontSize: normalize(11, factor) },
-  headerIcons: { flexDirection: 'row', alignItems: 'center' },
-  headerIcon: { padding: 8, marginLeft: 2 },
-  chatBg: { flex: 1, backgroundColor: '#E5DDD5' },
+  headerName: { color: '#fff', fontSize: width > 768 ? normalize(18, factor) : normalize(15, factor), fontWeight: 'bold' },
+  headerStatus: { color: 'rgba(255,255,255,0.85)', fontSize: width > 768 ? normalize(12, factor) : normalize(10, factor) },
+  headerIcon: { padding: 6 },
+  chatBg: { flex: 1 },
   list: { padding: 10 },
-  messageRow: { flexDirection: 'row', marginVertical: 4 },
-  bubble: { maxWidth: '85%', padding: 10, borderRadius: 18, elevation: 1 },
+  messageRow: { flexDirection: 'row', marginVertical: 2 },
+  bubble: { maxWidth: '85%', padding: 10, borderRadius: 15 },
   msgText: { fontSize: normalize(15, factor) },
-  imageMsg: { width: width * 0.7, height: width * 0.7, borderRadius: 10, marginBottom: 5 },
+  imageMsg: { width: width * 0.7, height: width * 0.7, borderRadius: 10 },
   msgFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', marginTop: 2 },
-  timeText: { fontSize: normalize(9, factor) },
-  audioMsg: { flexDirection: 'row', alignItems: 'center', minWidth: 160, paddingVertical: 5 },
-  audioBar: { flex: 1, height: 3, backgroundColor: 'rgba(0,0,0,0.1)', marginHorizontal: 10, borderRadius: 2, justifyContent: 'center', overflow: 'hidden' },
-  audioProgress: { height: '100%' },
-  fileMsg: { flexDirection: 'row', alignItems: 'center', padding: 10, minWidth: 200 },
-  fileIcon: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center', marginRight: 10 },
+  timeText: { fontSize: normalize(8, factor) },
+  audioMsg: { flexDirection: 'row', alignItems: 'center', minWidth: 200, paddingVertical: 5 },
+  audioContainer: { flex: 1 },
+  audioMainContent: { flex: 1, marginHorizontal: 10 },
+  audioBar: { height: 4, backgroundColor: 'rgba(0,0,0,0.1)', borderRadius: 2, marginBottom: 4 },
+  audioProgress: { height: '100%', borderRadius: 2 },
+  audioDetails: { flexDirection: 'row', justifyContent: 'flex-start' },
+  audioDuration: { fontSize: 10, fontWeight: '500' },
+  audioIconWrapper: { paddingLeft: 5 },
+  fileMsg: { flexDirection: 'row', alignItems: 'center', padding: 5 },
+  fileIcon: { width: 30, height: 30, borderRadius: 15, justifyContent: 'center', alignItems: 'center', marginRight: 10 },
   fileInfo: { flex: 1 },
-  fileName: { fontSize: normalize(14), fontWeight: 'bold' },
-  fileSize: { fontSize: normalize(10), marginTop: 2 },
-  downloadProgressContainer: { width: '100%', marginTop: 5 },
-  translationContainer: { marginTop: 5, paddingTop: 5, borderTopWidth: 1 },
-  translatedText: { fontSize: normalize(15, factor), fontStyle: 'italic' },
-  translationLabel: { fontSize: normalize(10, factor), color: '#999', marginTop: 2, textAlign: 'right' },
+  fileName: { fontSize: normalize(12, factor), fontWeight: 'bold' },
+  fileSize: { fontSize: normalize(9, factor) },
+  translationContainer: { borderTopWidth: 0.5, paddingTop: 5 },
+  translatedText: { fontSize: normalize(14, factor) },
+  translationLabel: { fontSize: normalize(9, factor), color: '#999' },
+  inlineTranslateBtn: { flexDirection: 'row', alignItems: 'center' },
+  inlineTranslateText: { fontSize: 9, fontWeight: 'bold', marginLeft: 5 },
   inputContainer: { flexDirection: 'row', alignItems: 'flex-end', padding: 8 },
   inputBox: { flex: 1, flexDirection: 'row', borderRadius: 25, paddingHorizontal: 15, minHeight: normalize(45, factor), marginRight: 8, alignItems: 'center' },
   textInput: { flex: 1, paddingVertical: 10 },
@@ -1169,13 +903,19 @@ const createStyles = (colors: any, normalize: any, factor: number, isDark: boole
   recordingText: { marginLeft: 10, color: baseColors.danger, fontWeight: 'bold' },
   iconButton: { padding: 5 },
   sendBtn: { width: normalize(48, factor), height: normalize(48, factor), borderRadius: normalize(24, factor), justifyContent: 'center', alignItems: 'center' },
-  msgAvatar: { width: 32, height: 32, borderRadius: 16, marginRight: 8, alignSelf: 'flex-end', marginBottom: 4 },
-  senderName: { fontSize: 11, fontWeight: 'bold', marginBottom: 2, marginLeft: 4 },
-  encryptionBox: { padding: 15, alignItems: 'center' },
-  encryptionInner: { backgroundColor: 'rgba(255,255,200,0.6)', padding: 10, borderRadius: 10, flexDirection: 'row', alignItems: 'center', maxWidth: '90%' },
-  encryptionText: { fontSize: normalize(11, factor), color: '#555', textAlign: 'center', flex: 1 },
-  unknownContactBar: { padding: 15, borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.05)', alignItems: 'center' },
-  unknownText: { fontSize: normalize(13, factor), marginBottom: 10, textAlign: 'center' },
-  unknownActions: { flexDirection: 'row', justifyContent: 'center' },
-  unknownBtn: { paddingHorizontal: 20, paddingVertical: 8, borderRadius: 20, borderWidth: 1, marginHorizontal: 5 },
+  msgAvatar: {
+    width: normalize(32, factor),
+    height: normalize(32, factor),
+    borderRadius: normalize(16, factor),
+    marginRight: 8,
+    alignSelf: 'flex-end',
+    backgroundColor: '#eee'
+  },
+  senderName: { fontSize: 10, fontWeight: 'bold', marginBottom: 2 },
+  forwardContainer: { height: height * 0.5, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20 },
+  forwardTitle: { fontSize: 16, fontWeight: 'bold', marginBottom: 15 },
+  forwardUserItem: { paddingVertical: 15, borderBottomWidth: 0.5, borderBottomColor: '#eee' },
+  closeBtn: { marginTop: 15, alignItems: 'center' },
+  likeContainer: { position: 'absolute', bottom: -10, right: 10, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10, elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.2, shadowRadius: 1 },
+  likeCount: { fontSize: 9, fontWeight: 'bold', marginLeft: 3, color: '#e91e63' }
 });

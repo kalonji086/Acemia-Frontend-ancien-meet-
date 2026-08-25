@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import apiService from '../services/api.service';
+import socketService from '../services/socket.service';
 import { SOCKET_URL } from '../utils/constants';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -42,6 +43,17 @@ export default function UserProfileScreen({ navigation, route }: any) {
 
   useEffect(() => {
     fetchUserDetails();
+
+    const onVerifiedUpdate = (data: any) => {
+      if (data.userId === userId) {
+        fetchUserDetails();
+      }
+    };
+
+    socketService.on('admin:user_verified', onVerifiedUpdate);
+    return () => {
+      socketService.off('admin:user_verified', onVerifiedUpdate);
+    };
   }, [userId]);
 
   const fetchUserDetails = async () => {
@@ -137,7 +149,7 @@ export default function UserProfileScreen({ navigation, route }: any) {
               <View style={styles.nameSection}>
                 <Text style={styles.userName}>{displayName}</Text>
                 {user?.is_verified && (
-                  <Ionicons name="checkmark-circle" size={20} color={colors.primary} style={{ marginLeft: 8 }} />
+                  <Ionicons name="checkmark-circle" size={20} color={colors.info} style={{ marginLeft: 8 }} />
                 )}
               </View>
             </View>

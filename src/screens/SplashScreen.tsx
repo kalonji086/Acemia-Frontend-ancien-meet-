@@ -165,18 +165,8 @@ const SplashScreen = () => {
           });
 
           if (mustAccept) {
-            // Ne pas montrer si c'est du contenu placeholder par défaut (31.0.0 ou vieux résidus)
-            const isPlaceholder = docs.every((d: any) =>
-              d.content === `Conditions Générales d'Utilisation - Version ${d.version}` ||
-              d.content === `Politique de Confidentialité - Version ${d.version}` ||
-              d.content.includes('Version 5.0.0') ||
-              d.content.includes('Version 40.0.0')
-            );
-
-            if (!isPlaceholder || docs.some((d: any) => d.force_acceptance === true)) {
-              safeNavigate('LegalAcceptance', { documents: docs });
-              return;
-            }
+            safeNavigate('LegalAcceptance', { documents: docs });
+            return;
           }
         }
       } catch (legalErr) {

@@ -45,14 +45,76 @@ export default function MainScreen({ navigation, route }: any) {
         await socketService.connect();
         await socketService.authenticate();
 
+        // Écouter les mises à jour de profil (badge, etc.) en temps réel
+        socketService.on('profile_updated', async () => {
+          const res = await apiService.getMe();
+          if (res.success) {
+            await AsyncStorage.setItem('user', JSON.stringify(res.data));
+          }
+        });
+
+        // Synchronisation globale du profil (photo, nom, pseudo)
+        socketService.on('admin_user_profile_updated', async (data) => {
+          const currentUserStr = await AsyncStorage.getItem('user');
+          if (currentUserStr) {
+            const userObj = JSON.parse(currentUserStr);
+            if (userObj.id === data.userId) {
+              // Mettre à jour les données locales
+              const updatedUser = {
+                ...userObj,
+                full_name: data.full_name || userObj.full_name,
+                name: data.full_name || userObj.full_name,
+                avatar_url: data.avatar_url || userObj.avatar_url,
+                avatar: data.avatar_url || userObj.avatar_url,
+                username: data.username || userObj.username
+              };
+              await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
+            }
+          }
+        });
+
+        // Écouter si un autre utilisateur est vérifié pour mettre à jour les icônes badge
+        socketService.on('admin:user_verified', () => {
+          // On peut émettre un événement local ou simplement laisser le polling/refresh faire
+          // Mais pour le temps réel pur, on pourrait déclencher un refresh global
+        });
+
         // Vérification immédiate des mises à jour légales après connexion/re-connexion
         checkLegalUpdates();
+
+        // Écouter les mises à jour légales en temps réel
+        socketService.on('legal_update', (data) => {
+          console.log('MainScreen: Received real-time legal_update', data);
+          if (data.force_acceptance === true || data.force_acceptance === 'true') {
+             navigation.reset({
+                index: 0,
+                routes: [{
+                  name: 'LegalAcceptance',
+                  params: {
+                    documents: [{
+                      type: data.type,
+                      content: data.content,
+                      version: data.version,
+                      force_acceptance: true
+                    }],
+                    isRealTime: true
+                  }
+                }]
+             });
+          }
+        });
       } catch (err) {
         console.error('MainScreen: Socket start error', err);
       }
     };
 
     startSocket();
+
+    return () => {
+      socketService.off('profile_updated');
+      socketService.off('admin:user_verified');
+      socketService.off('legal_update');
+    };
   }, []);
 
   const checkLegalUpdates = async () => {
@@ -80,17 +142,7 @@ export default function MainScreen({ navigation, route }: any) {
         });
 
         if (mustAccept) {
-          // Double vérification : on ne montre pas si c'est du contenu placeholder par défaut
-          // Un placeholder contient généralement le mot "Version" suivi du numéro de version par défaut
-          const isPlaceholder = docs.every((d: any) =>
-            d.content === `Conditions Générales d'Utilisation - Version ${d.version}` ||
-            d.content === `Politique de Confidentialité - Version ${d.version}` ||
-            d.content.includes('Version 5.0.0') ||
-            d.content.includes('Version 40.0.0')
-          );
-
-          if (isPlaceholder && !docs.some((d: any) => d.force_acceptance === true)) return;
-
+          console.log('MainScreen: Mandatory legal acceptance required.');
           navigation.reset({
             index: 0,
             routes: [{ name: 'LegalAcceptance', params: { documents: docs } }]
@@ -132,15 +184,17 @@ export default function MainScreen({ navigation, route }: any) {
                 </View>
                 <View style={styles.detailPane}>
                   {selectedChat ? (
-                    <ChatScreen
-                      navigation={navigation}
-                      route={{ params: {
-                        chatId: selectedChat.id,
-                        name: selectedChat.name,
-                        avatar: selectedChat.avatar,
-                        peerUserId: selectedChat.otherUserId
-                      } }}
-                    />
+                    <View style={{ flex: 1, overflow: 'visible' }}>
+                      <ChatScreen
+                        navigation={navigation}
+                        route={{ params: {
+                          chatId: selectedChat.id,
+                          name: selectedChat.name,
+                          avatar: selectedChat.avatar,
+                          peerUserId: selectedChat.otherUserId
+                        } }}
+                      />
+                    </View>
                   ) : (
                     <View style={styles.emptyDetail}>
                       <Ionicons name="chatbubbles-outline" size={80} color={colors.text.disabled} />
@@ -216,7 +270,7 @@ export default function MainScreen({ navigation, route }: any) {
         <TabItem
           active={activeTab === 'market'}
           icon="cart"
-          label="Market"
+          label={t('market')}
           onPress={() => setActiveTab('market')}
           activeColor={colors.primary}
           inactiveColor={colors.text.secondary}
@@ -231,16 +285,22 @@ export default function MainScreen({ navigation, route }: any) {
 }
 
 const TabItem = ({ active, icon, label, onPress, activeColor, inactiveColor, activeBg, badge, styles, normalize }: any) => (
-  <TouchableOpacity style={styles.tabItem} onPress={onPress}>
+  <TouchableOpacity style={styles.tabItem} onPress={onPress} activeOpacity={0.7}>
     <View style={[styles.iconContainer, active && { backgroundColor: activeBg }]}>
-      <Ionicons name={active ? icon : `${icon}-outline`} size={normalize(22)} color={active ? activeColor : inactiveColor} />
+      <Ionicons name={active ? icon : `${icon}-outline`} size={normalize(20)} color={active ? activeColor : inactiveColor} />
       {badge > 0 && (
         <View style={styles.badgeContainer}>
-          <Text style={styles.badgeText}>{badge > 99 ? '9+' : badge}</Text>
+          <Text style={styles.badgeText} numberOfLines={1}>{badge > 99 ? '9+' : badge}</Text>
         </View>
       )}
     </View>
-    <Text style={[styles.tabLabel, { color: active ? activeColor : inactiveColor }, active && styles.activeLabel]}>{label}</Text>
+    <Text
+      style={[styles.tabLabel, { color: active ? activeColor : inactiveColor }, active && styles.activeLabel]}
+      numberOfLines={1}
+      ellipsizeMode="tail"
+    >
+      {label}
+    </Text>
   </TouchableOpacity>
 );
 
@@ -256,18 +316,19 @@ const createStyles = (colors: any, normalize: any, isDark: boolean) => StyleShee
     flexDirection: 'row',
     backgroundColor: colors.surface,
     borderTopWidth: 1,
-    paddingTop: 10,
+    paddingTop: 8,
+    width: '100%',
   },
-  tabItem: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  tabItem: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 2 },
   iconContainer: {
-    width: normalize(50),
-    height: normalize(30),
-    borderRadius: 15,
+    width: normalize(48),
+    height: normalize(28),
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: 2,
   },
-  tabLabel: { fontSize: normalize(11), fontWeight: '500' },
+  tabLabel: { fontSize: normalize(10), fontWeight: '500', textAlign: 'center' },
   activeLabel: { fontWeight: 'bold' },
   badgeContainer: {
     position: 'absolute',

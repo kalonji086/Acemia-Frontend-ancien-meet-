@@ -340,8 +340,8 @@ export default function EditProfileScreen({ navigation, isComponent = false }: a
           {/* SECTION VÉRIFICATION */}
           <View style={dynamicStyles.verificationSection}>
             <View style={dynamicStyles.verificationHeader}>
-              <Ionicons name="checkmark-circle" size={24} color={user?.is_verified ? colors.primary : colors.text.disabled} />
-              <Text style={[dynamicStyles.verificationTitle, user?.is_verified && { color: colors.primary }]}>
+              <Ionicons name="checkmark-circle" size={24} color={user?.is_verified ? colors.info : colors.text.disabled} />
+              <Text style={[dynamicStyles.verificationTitle, user?.is_verified && { color: colors.info }]}>
                 {user?.is_verified ? "Compte Vérifié" : "Vérifier mon compte"}
               </Text>
             </View>
