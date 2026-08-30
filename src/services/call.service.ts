@@ -85,7 +85,7 @@ class CallService {
       }
 
       if (type === 'video') {
-        const { status: videoStatus } = await ExpoCamera.requestCameraPermissionsAsync().catch((err) => {
+        const { status: videoStatus } = await ExpoCamera.Camera.requestCameraPermissionsAsync().catch((err) => {
           console.error('CallService: Camera permission error', err);
           return { status: 'denied' };
         });

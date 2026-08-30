@@ -72,14 +72,22 @@ export default function BusinessDashboardScreen({ navigation }: any) {
   });
 
   useEffect(() => {
-    fetchDashboardData();
-    socketService.on('market:new_like', () => fetchDashboardData());
-    socketService.on('market:new_comment', () => fetchDashboardData());
-    socketService.on('market:new_follower', () => fetchDashboardData());
+    fetchDashboardData(true); // Initial load with parallel fetching
+
+    socketService.on('market:new_like', () => fetchDashboardData(false));
+    socketService.on('market:new_comment', () => fetchDashboardData(false));
+    socketService.on('market:new_follower', () => fetchDashboardData(false));
+    socketService.on('market:order_updated', () => fetchOrders());
+    socketService.on('market:new_order', () => { fetchOrders(); fetchDashboardData(false); });
+    socketService.on('market:new_request', () => { fetchRequests(); fetchDashboardData(false); });
+
     return () => {
       socketService.off('market:new_like');
       socketService.off('market:new_comment');
       socketService.off('market:new_follower');
+      socketService.off('market:order_updated');
+      socketService.off('market:new_order');
+      socketService.off('market:new_request');
     };
   }, []);
 
@@ -88,24 +96,49 @@ export default function BusinessDashboardScreen({ navigation }: any) {
       if (!publishForm.title) {
          setPublishForm(prev => ({ ...prev, type: data.business.category === 'Boutique' ? 'announcement' : 'exploit' }));
       }
-      if (activeMenu === 'orders') fetchOrders();
-      if (activeMenu === 'requests') fetchRequests();
-      if (activeMenu === 'stock') {
-        if (stockTab === 'current') fetchInventory();
-        else fetchInventoryLogs();
-      }
-      if (activeMenu === 'messages') fetchChats();
-      if (activeMenu === 'docs') fetchDocuments();
-    }
-  }, [data, activeMenu, stockTab]);
 
-  const fetchDashboardData = async () => {
+      // On ne recharge que si on change de menu et que les données sont vides
+      // ou pour forcer le rafraîchissement
+      if (activeMenu === 'orders' && orders.length === 0) fetchOrders();
+      if (activeMenu === 'requests' && requests.length === 0) fetchRequests();
+      if (activeMenu === 'stock' && inventory.length === 0) fetchInventory();
+      if (activeMenu === 'messages' && chats.length === 0) fetchChats();
+      if (activeMenu === 'docs' && documents.length === 0) fetchDocuments();
+    }
+  }, [activeMenu]);
+
+  const fetchDashboardData = async (isInitial = false) => {
     try {
       const res = await apiService.getMarketDashboard();
-      if (res.success) setData(res.data);
+      if (res.success) {
+        setData(res.data);
+
+        // Initialisation instantanée des listes depuis le dashboard
+        if (res.data.initialData) {
+          if (res.data.initialData.orders) setOrders(res.data.initialData.orders);
+          if (res.data.initialData.requests) setRequests(res.data.initialData.requests);
+          if (res.data.initialData.inventory) setInventory(res.data.initialData.inventory);
+        }
+
+        // Si c'est le premier chargement, on lance les autres requêtes en tâche de fond
+        if (isInitial) {
+          fetchAllModulesInBackground();
+        }
+      }
       else { Alert.alert('Erreur', res.message); navigation.goBack(); }
-    } catch (e) { Alert.alert('Erreur', 'Connexion au serveur échouée.'); navigation.goBack(); }
+    } catch (e) { console.warn('Dashboard fetch error', e); }
     finally { setLoading(false); }
+  };
+
+  const fetchAllModulesInBackground = async () => {
+     // Lancer tout en parallèle pour que tout soit prêt quand on clique
+     Promise.all([
+       fetchOrders(),
+       fetchRequests(),
+       fetchInventory(),
+       fetchChats(),
+       fetchDocuments()
+     ]).catch(e => console.log('Background fetch silent error', e));
   };
 
   const fetchOrders = async () => { const res = await apiService.getMarketOrders(); if (res.success) setOrders(res.data); };
