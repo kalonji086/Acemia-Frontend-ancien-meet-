@@ -1016,6 +1016,35 @@ const createStyles = (colors: any, normalize: any, factor: number, isDark: boole
   audioInfoRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 },
   audioTime: { fontSize: 10, fontWeight: '600' },
   uploadOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'center', alignItems: 'center' },
+  msgFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', marginTop: 4 },
+  timeText: { fontSize: 9 },
+  whatsappAudioContainer: { flexDirection: 'row', alignItems: 'center', paddingVertical: 5, minWidth: width * 0.5 },
+  audioAvatar: { width: 34, height: 34, borderRadius: 17, marginRight: 10 },
+  playButtonCircle: { width: 38, height: 38, borderRadius: 19, justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.2, shadowRadius: 1, elevation: 2 },
+  audioWaveformContainer: { flex: 1, marginLeft: 12, justifyContent: 'center' },
+  waveformTrack: { height: 3, backgroundColor: 'rgba(0,0,0,0.1)', borderRadius: 1.5, width: '100%' },
+  waveformProgress: { height: 3, borderRadius: 1.5 },
+  audioInfoRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 },
+  audioTime: { fontSize: 10, fontWeight: '600' },
+  uploadOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'center', alignItems: 'center' },
+
+  // Nouveau Menu Message
+  menuOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.1)', justifyContent: 'center', alignItems: 'center' },
+  menuCard: { width: '80%', borderRadius: 25, padding: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.3, shadowRadius: 20, elevation: 10 },
+  reactionRow: { flexDirection: 'row', justifyContent: 'space-around', paddingVertical: 15, borderBottomWidth: 0.5, borderBottomColor: 'rgba(0,0,0,0.05)' },
+  reactionBtn: { padding: 5 },
+  menuActions: { padding: 10 },
+  menuItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 15, paddingHorizontal: 10 },
+  menuText: { fontSize: 16, fontWeight: '600', marginLeft: 15 },
+
+  // Système de Réponse (Quoting)
+  replyInputPreview: { flexDirection: 'row', alignItems: 'center', padding: 10, backgroundColor: 'rgba(0,0,0,0.03)', borderLeftWidth: 4, marginBottom: 5, borderRadius: 10, marginHorizontal: 10 },
+  replyName: { fontSize: 12, fontWeight: 'bold', marginBottom: 2 },
+  replyText: { fontSize: 12, color: '#666' },
+  quotedContainer: { padding: 8, borderLeftWidth: 3, borderRadius: 8, marginBottom: 5, marginTop: 2 },
+  quotedName: { fontSize: 11, fontWeight: 'bold', marginBottom: 2 },
+  quotedText: { fontSize: 11 },
+
   msgAvatar: {
     width: normalize(32, factor),
     height: normalize(32, factor),
