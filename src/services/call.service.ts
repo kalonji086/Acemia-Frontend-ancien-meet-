@@ -31,6 +31,10 @@ class CallService {
    * Initialiser les écouteurs de socket pour les appels globaux
    */
   setupCallListeners() {
+    // DÉSACTIVÉ TEMPORAIREMENT POUR STABILITÉ
+    console.log('CallService: Signaling listeners disabled');
+    return;
+
     socketService.on('call:ring', (data) => {
       console.log('Incoming call received:', data);
       this.handleIncomingCall(data);

@@ -8,6 +8,7 @@ import {
   StatusBar,
   ActivityIndicator,
   Dimensions,
+  SafeAreaView
 } from 'react-native';
 import { ArrowLeft } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
@@ -17,7 +18,7 @@ import apiService from '../services/api.service';
 const { width } = Dimensions.get('window');
 
 export default function TermsOfServiceScreen({ navigation, isComponent = false }: any) {
-  const { colors, isDark, normalize, fontSizeFactor } = useTheme();
+  const { colors, isDark, normalize } = useTheme();
   const { t } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [tosDoc, setTosDoc] = useState<any>(null);
@@ -28,10 +29,18 @@ export default function TermsOfServiceScreen({ navigation, isComponent = false }
 
   const fetchTOS = async () => {
     try {
+      console.log('Fetching TOS...');
       const res = await apiService.getLegalDocs();
       if (res.success && Array.isArray(res.data)) {
         const doc = res.data.find((d: any) => d.type === 'tos');
-        if (doc) setTosDoc(doc);
+        if (doc) {
+           console.log('TOS found, version:', doc.version);
+           setTosDoc(doc);
+        } else {
+           console.log('No TOS doc found in array');
+        }
+      } else {
+        console.log('TOS fetch failed or data not array:', res);
       }
     } catch (e) {
       console.error('Error fetching TOS:', e);
@@ -44,12 +53,15 @@ export default function TermsOfServiceScreen({ navigation, isComponent = false }
     return (
       <View style={[styles.centered, { backgroundColor: colors.background }]}>
         <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={{ marginTop: 10, color: colors.text.secondary }}>Chargement...</Text>
       </View>
     );
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
+
       {!isComponent && (
         <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
@@ -60,19 +72,19 @@ export default function TermsOfServiceScreen({ navigation, isComponent = false }
       )}
 
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
         style={{ flex: 1 }}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={true}
       >
         <Text style={[styles.h1, { color: colors.text.primary }]}>Conditions Générales d'Utilisation</Text>
 
         {tosDoc ? (
-          <View>
+          <View style={styles.contentBlock}>
             <Text style={[styles.version, { color: colors.text.secondary }]}>Version {tosDoc.version}</Text>
             <Text style={[styles.p, { color: colors.text.primary }]}>{tosDoc.content}</Text>
           </View>
         ) : (
-          <View>
+          <View style={styles.contentBlock}>
             <Text style={[styles.version, { color: colors.text.secondary }]}>Dernière mise à jour : 30 Août 2026</Text>
 
             <Text style={[styles.h2, { color: colors.text.primary }]}>1. Objet</Text>
@@ -111,9 +123,9 @@ export default function TermsOfServiceScreen({ navigation, isComponent = false }
             </Text>
           </View>
         )}
-        <View style={{ height: 100 }} />
+        <View style={{ height: 50 }} />
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -122,17 +134,18 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 15,
     borderBottomWidth: 1,
-    paddingTop: 40
   },
   backButton: { marginRight: 20 },
   headerTitle: { fontSize: 18, fontWeight: 'bold' },
-  scrollContent: { padding: 25 },
-  h1: { fontSize: 24, fontWeight: 'black', marginBottom: 20 },
-  h2: { fontSize: 20, fontWeight: 'bold', marginTop: 30, marginBottom: 10 },
-  h3: { fontSize: 18, fontWeight: 'bold', marginTop: 15, marginBottom: 5 },
+  scrollContent: { padding: 20 },
+  contentBlock: { width: '100%' },
+  h1: { fontSize: 24, fontWeight: '800', marginBottom: 15 },
+  h2: { fontSize: 18, fontWeight: '700', marginTop: 25, marginBottom: 10 },
+  h3: { fontSize: 16, fontWeight: '700', marginTop: 15, marginBottom: 5 },
   version: { fontSize: 12, marginBottom: 20, fontStyle: 'italic' },
-  p: { fontSize: 15, lineHeight: 24, marginBottom: 15 },
-  bullet: { fontSize: 15, marginLeft: 15, marginBottom: 10 },
+  p: { fontSize: 15, lineHeight: 22, marginBottom: 15 },
+  bullet: { fontSize: 15, marginLeft: 15, marginBottom: 8 },
 });
