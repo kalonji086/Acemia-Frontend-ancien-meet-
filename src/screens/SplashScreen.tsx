@@ -11,7 +11,7 @@ import Animated, {
 import { useNavigation, CommonActions } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors, normalize } from '../styles/theme';
-import { Ionicons } from '@expo/vector-icons';
+import { MessageSquare, Heart } from 'lucide-react-native';
 import apiService from '../services/api.service';
 import { APP_VERSION } from '../utils/constants';
 
@@ -174,12 +174,26 @@ const SplashScreen = () => {
       }
 
       const lastLogin = user?.last_login_at ? new Date(user.last_login_at).getTime() : Date.now();
+      const lastAppOpenStr = await AsyncStorage.getItem('last_app_open');
+      const lastAppOpen = lastAppOpenStr ? parseInt(lastAppOpenStr) : lastLogin;
+
       const now = Date.now();
+      const twoDaysInMs = 2 * 24 * 60 * 60 * 1000;
       const tenDaysInMs = 10 * 24 * 60 * 60 * 1000;
 
       if (now - lastLogin > tenDaysInMs) {
+        // Session trop ancienne (10 jours), reconnexion totale requise
         safeNavigate('Login');
+      } else if (now - lastAppOpen > twoDaysInMs) {
+        // Plus de 2 jours d'inactivité, demander seulement le mot de passe
+        safeNavigate('Login', {
+          mode: 'password_only',
+          email: user.email,
+          name: user.full_name || user.name
+        });
       } else {
+        // Connexion auto, on met à jour le temps d'ouverture
+        await AsyncStorage.setItem('last_app_open', now.toString());
         safeNavigate('ChatList');
       }
     } catch (error) {
@@ -237,8 +251,8 @@ const SplashScreen = () => {
       <StatusBar hidden />
       <Animated.View style={[styles.logoContainer, animatedLogoStyle]}>
         <View style={styles.iconStack}>
-          <Ionicons name="chatbubble" size={normalize(80)} color="#fff" style={styles.backIcon} />
-          <Ionicons name="heart" size={normalize(35)} color={colors.secondary} style={styles.frontIcon} />
+          <MessageSquare size={normalize(80)} color="#fff" style={styles.backIcon} />
+          <Heart size={normalize(35)} color={colors.secondary} style={styles.frontIcon} />
         </View>
         <Text style={styles.appName}>Meet</Text>
       </Animated.View>

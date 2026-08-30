@@ -15,7 +15,11 @@ import {
   FlatList,
   Switch,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import {
+  ArrowLeft, Camera, User, Info, Phone,
+  Calendar, Globe, MapPin, Landmark, Map, Languages,
+  ChevronDown, CheckCircle, Check, X, Search
+} from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -23,6 +27,8 @@ import apiService from '../services/api.service';
 import socketService from '../services/socket.service';
 import { SOCKET_URL, SUPPORTED_LANGUAGES } from '../utils/constants';
 import * as ImagePicker from 'expo-image-picker';
+import { RDC_PROVINCES, GENDERS } from '../utils/locations';
+import { CountryPicker } from 'react-native-country-codes-picker';
 
 const STATUS_OPTIONS = [
   "Disponible",
@@ -40,20 +46,42 @@ const STATUS_OPTIONS = [
 
 export default function EditProfileScreen({ navigation, isComponent = false }: any) {
   const { colors, normalize, isDark, fontSizeFactor } = useTheme();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const insets = useSafeAreaInsets();
   const [user, setUser] = useState<any>(null);
   const [name, setName] = useState('');
   const [status, setStatus] = useState('');
   const [pseudo, setPseudo] = useState('');
   const [phone, setPhone] = useState('');
+  const [callingCode, setCallingCode] = useState('243');
+  const [countryFlag, setCountryFlag] = useState('🇨🇩');
+  const [showPhoneCountryPicker, setShowPhoneCountryPicker] = useState(false);
+
+  const [gender, setGender] = useState('');
+  const [country, setCountry] = useState('');
+  const [province, setProvince] = useState('');
+  const [city, setCity] = useState('');
+  const [commune, setCommune] = useState('');
+  const [birthDate, setBirthDate] = useState('');
+
   const [preferredLang, setPreferredLang] = useState('fr');
   const [autoTranslate, setAutoTranslate] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [pseudoError, setPseudoError] = useState('');
+
+  // Modals Visibility
   const [statusModalVisible, setStatusModalVisible] = useState(false);
   const [langModalVisible, setLangModalVisible] = useState(false);
+  const [genderModalVisible, setGenderModalVisible] = useState(false);
+  const [countryPickerVisible, setCountryPickerVisible] = useState(false);
+  const [provinceModalVisible, setProvinceModalVisible] = useState(false);
+  const [cityModalVisible, setCityModalVisible] = useState(false);
+  const [communeModalVisible, setCommuneModalVisible] = useState(false);
+  const [birthDateModalVisible, setBirthDateModalVisible] = useState(false);
+
   const [imgKey, setImgKey] = useState(Date.now());
+  const [searchLoc, setSearchLoc] = useState('');
 
   useEffect(() => {
     fetchProfile();
@@ -68,7 +96,29 @@ export default function EditProfileScreen({ navigation, isComponent = false }: a
         setName(userData.name || '');
         setStatus(userData.status || 'Disponible');
         setPseudo(userData.username || '');
-        setPhone(userData.phone_number || '');
+
+        // Gérer le numéro de téléphone et le code pays
+        const rawPhone = userData.phone_number || '';
+        if (rawPhone.startsWith('+')) {
+           // On tente de détecter le code pays (simplifié)
+           if (rawPhone.startsWith('+243')) {
+              setCallingCode('243');
+              setPhone(rawPhone.replace('+243', ''));
+              setCountryFlag('🇨🇩');
+           } else {
+              // Fallback : on met tout dans le champ phone pour l'instant
+              setPhone(rawPhone);
+           }
+        } else {
+           setPhone(rawPhone);
+        }
+
+        setGender(userData.gender || '');
+        setCountry(userData.country || '');
+        setProvince(userData.province || '');
+        setCity(userData.city || '');
+        setCommune(userData.commune || '');
+        setBirthDate(userData.birth_date ? userData.birth_date.split('T')[0] : '');
         setPreferredLang(userData.preferred_language || 'fr');
         setAutoTranslate(userData.auto_translate === true);
       } else {
@@ -170,10 +220,19 @@ export default function EditProfileScreen({ navigation, isComponent = false }: a
     setPseudoError('');
 
     try {
+      const fullPhone = phone ? (`+${callingCode.replace('+', '')}${phone.replace(/^0+/, '')}`) : null;
+
       const res = await apiService.updateProfile({
         name,
         status,
         username: pseudo !== user?.username ? pseudo : undefined,
+        phone_number: fullPhone,
+        gender,
+        country,
+        province,
+        city,
+        commune,
+        birth_date: birthDate || null,
         preferred_language: preferredLang,
         auto_translate: autoTranslate
       });
@@ -233,11 +292,11 @@ export default function EditProfileScreen({ navigation, isComponent = false }: a
     <View style={dynamicStyles.container}>
       {!isComponent && (
         <>
-          <View style={{ height: useSafeAreaInsets().top, backgroundColor: colors.surface }} />
+          <View style={{ height: insets.top, backgroundColor: colors.surface }} />
           <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={colors.surface} />
           <View style={dynamicStyles.header}>
             <TouchableOpacity onPress={() => navigation.goBack()}>
-              <Ionicons name="arrow-back" size={24} color={colors.primary} />
+              <ArrowLeft size={24} color={colors.primary} />
             </TouchableOpacity>
             <Text style={dynamicStyles.headerTitle}>Profil</Text>
           </View>
@@ -253,7 +312,7 @@ export default function EditProfileScreen({ navigation, isComponent = false }: a
               style={dynamicStyles.avatar}
             />
             <View style={dynamicStyles.cameraIcon}>
-              <Ionicons name="camera" size={20} color="#fff" />
+              <Camera size={20} color="#fff" />
             </View>
           </TouchableOpacity>
         </View>
@@ -274,7 +333,7 @@ export default function EditProfileScreen({ navigation, isComponent = false }: a
           {pseudoError ? <Text style={dynamicStyles.errorText}>{pseudoError}</Text> : null}
 
           <View style={dynamicStyles.inputGroup}>
-            <Ionicons name="person-outline" size={22} color={colors.primary} />
+            <User size={22} color={colors.primary} />
             <View style={dynamicStyles.inputWrapper}>
               <Text style={dynamicStyles.label}>Nom</Text>
               <TextInput
@@ -288,22 +347,122 @@ export default function EditProfileScreen({ navigation, isComponent = false }: a
           </View>
 
           <TouchableOpacity style={dynamicStyles.inputGroup} onPress={() => setStatusModalVisible(true)}>
-            <Ionicons name="information-circle-outline" size={22} color={colors.primary} />
+            <Info size={22} color={colors.primary} />
             <View style={dynamicStyles.inputWrapper}>
               <Text style={dynamicStyles.label}>Actus</Text>
               <View style={dynamicStyles.statusSelect}>
                 <Text style={dynamicStyles.input}>{status}</Text>
-                <Ionicons name="chevron-down" size={18} color={colors.text.disabled} />
+                <ChevronDown size={18} color={colors.text.disabled} />
               </View>
             </View>
           </TouchableOpacity>
 
           <View style={dynamicStyles.inputGroup}>
-            <Ionicons name="call-outline" size={22} color={colors.text.disabled} />
-            <View style={[dynamicStyles.inputWrapper, { borderBottomColor: 'transparent' }]}>
+            <Phone size={22} color={colors.primary} />
+            <View style={[dynamicStyles.inputWrapper, { borderBottomWidth: 0 }]}>
               <Text style={dynamicStyles.label}>Téléphone</Text>
-              <Text style={dynamicStyles.phoneText}>{phone || 'Non renseigné'}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 5 }}>
+                <TouchableOpacity
+                  style={[dynamicStyles.countryBtn, { borderColor: colors.border, padding: 8, borderWidth: 1, borderRadius: 10, flexDirection: 'row', alignItems: 'center' }]}
+                  onPress={() => setShowPhoneCountryPicker(true)}
+                >
+                  <Text style={{ fontSize: 18 }}>{countryFlag}</Text>
+                  <Text style={{ color: colors.text.primary, marginLeft: 5, fontWeight: 'bold' }}>+{callingCode.replace('+', '')}</Text>
+                </TouchableOpacity>
+                <TextInput
+                  style={[dynamicStyles.input, { flex: 1, borderBottomWidth: 1, borderBottomColor: colors.divider, marginLeft: 10 }]}
+                  value={phone}
+                  onChangeText={setPhone}
+                  placeholder="812345678"
+                  keyboardType="phone-pad"
+                  placeholderTextColor={colors.text.disabled}
+                />
+              </View>
             </View>
+          </View>
+
+          <TouchableOpacity style={dynamicStyles.inputGroup} onPress={() => setGenderModalVisible(true)}>
+            <User size={22} color={colors.primary} />
+            <View style={dynamicStyles.inputWrapper}>
+              <Text style={dynamicStyles.label}>Sexe</Text>
+              <View style={dynamicStyles.statusSelect}>
+                <Text style={dynamicStyles.input}>{gender === 'M' ? 'Homme' : (gender === 'F' ? 'Femme' : 'Sélectionner')}</Text>
+                <ChevronDown size={18} color={colors.text.disabled} />
+              </View>
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={dynamicStyles.inputGroup} onPress={() => setBirthDateModalVisible(true)}>
+            <Calendar size={22} color={colors.primary} />
+            <View style={dynamicStyles.inputWrapper}>
+              <Text style={dynamicStyles.label}>Date de naissance / Âge</Text>
+              <View style={dynamicStyles.statusSelect}>
+                <Text style={dynamicStyles.input}>
+                  {birthDate ? `${birthDate} (${Math.floor((Date.now() - new Date(birthDate).getTime()) / (1000 * 60 * 60 * 24 * 365.25))} ans)` : 'Sélectionner'}
+                </Text>
+                <ChevronDown size={18} color={colors.text.disabled} />
+              </View>
+            </View>
+          </TouchableOpacity>
+
+          <View style={[dynamicStyles.section, { marginTop: 10, borderTopWidth: 1, borderTopColor: colors.divider, paddingTop: 20 }]}>
+            <Text style={[dynamicStyles.sectionLabel, { color: colors.primary }]}>LOCALISATION</Text>
+
+            <TouchableOpacity style={dynamicStyles.inputGroup} onPress={() => setCountryPickerVisible(true)}>
+              <Globe size={22} color={colors.primary} />
+              <View style={dynamicStyles.inputWrapper}>
+                <Text style={dynamicStyles.label}>Pays</Text>
+                <View style={dynamicStyles.statusSelect}>
+                  <Text style={dynamicStyles.input}>{country || 'Sélectionner'}</Text>
+                  <ChevronDown size={18} color={colors.text.disabled} />
+                </View>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[dynamicStyles.inputGroup, !country && { opacity: 0.5 }]}
+              onPress={() => country && setProvinceModalVisible(true)}
+              disabled={!country}
+            >
+              <MapPin size={22} color={colors.primary} />
+              <View style={dynamicStyles.inputWrapper}>
+                <Text style={dynamicStyles.label}>Province</Text>
+                <View style={dynamicStyles.statusSelect}>
+                  <Text style={dynamicStyles.input}>{province || 'Sélectionner'}</Text>
+                  <ChevronDown size={18} color={colors.text.disabled} />
+                </View>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[dynamicStyles.inputGroup, !province && { opacity: 0.5 }]}
+              onPress={() => province && setCityModalVisible(true)}
+              disabled={!province}
+            >
+              <Landmark size={22} color={colors.primary} />
+              <View style={dynamicStyles.inputWrapper}>
+                <Text style={dynamicStyles.label}>Ville</Text>
+                <View style={dynamicStyles.statusSelect}>
+                  <Text style={dynamicStyles.input}>{city || 'Sélectionner'}</Text>
+                  <ChevronDown size={18} color={colors.text.disabled} />
+                </View>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[dynamicStyles.inputGroup, !city && { opacity: 0.5 }]}
+              onPress={() => city && setCommuneModalVisible(true)}
+              disabled={!city}
+            >
+              <Map size={22} color={colors.primary} />
+              <View style={dynamicStyles.inputWrapper}>
+                <Text style={dynamicStyles.label}>Commune</Text>
+                <View style={dynamicStyles.statusSelect}>
+                  <Text style={dynamicStyles.input}>{commune || 'Sélectionner'}</Text>
+                  <ChevronDown size={18} color={colors.text.disabled} />
+                </View>
+              </View>
+            </TouchableOpacity>
           </View>
 
           {/* AI TRANSLATION SETTINGS */}
@@ -311,14 +470,14 @@ export default function EditProfileScreen({ navigation, isComponent = false }: a
             <Text style={[dynamicStyles.sectionLabel, { color: colors.primary }]}>INTELLIGENCE ARTIFICIELLE</Text>
 
             <TouchableOpacity style={dynamicStyles.inputGroup} onPress={() => setLangModalVisible(true)}>
-              <Ionicons name="language-outline" size={22} color={colors.primary} />
+              <Languages size={22} color={colors.primary} />
               <View style={dynamicStyles.inputWrapper}>
                 <Text style={dynamicStyles.label}>Langue de traduction préférée</Text>
                 <View style={dynamicStyles.statusSelect}>
                   <Text style={dynamicStyles.input}>
                     {SUPPORTED_LANGUAGES.find(l => l.code === preferredLang)?.name || 'Français'}
                   </Text>
-                  <Ionicons name="chevron-down" size={18} color={colors.text.disabled} />
+                  <ChevronDown size={18} color={colors.text.disabled} />
                 </View>
               </View>
             </TouchableOpacity>
@@ -340,7 +499,7 @@ export default function EditProfileScreen({ navigation, isComponent = false }: a
           {/* SECTION VÉRIFICATION */}
           <View style={dynamicStyles.verificationSection}>
             <View style={dynamicStyles.verificationHeader}>
-              <Ionicons name="checkmark-circle" size={24} color={user?.is_verified ? colors.info : colors.text.disabled} />
+              {user?.is_verified ? <CheckCircle size={24} color={colors.info} /> : <CheckCircle size={24} color={colors.text.disabled} />}
               <Text style={[dynamicStyles.verificationTitle, user?.is_verified && { color: colors.info }]}>
                 {user?.is_verified ? "Compte Vérifié" : "Vérifier mon compte"}
               </Text>
@@ -374,7 +533,7 @@ export default function EditProfileScreen({ navigation, isComponent = false }: a
             <View style={dynamicStyles.modalHeader}>
               <Text style={dynamicStyles.modalTitle}>Sélectionnez votre actu</Text>
               <TouchableOpacity onPress={() => setStatusModalVisible(false)}>
-                <Ionicons name="close" size={24} color={colors.text.primary} />
+                <X size={24} color={colors.text.primary} />
               </TouchableOpacity>
             </View>
             <FlatList
@@ -386,7 +545,7 @@ export default function EditProfileScreen({ navigation, isComponent = false }: a
                   onPress={() => { setStatus(item); setStatusModalVisible(false); }}
                 >
                   <Text style={[dynamicStyles.statusText, status === item && { fontWeight: 'bold', color: colors.primary }]}>{item}</Text>
-                  {status === item && <Ionicons name="checkmark" size={20} color={colors.primary} />}
+                  {status === item && <Check size={20} color={colors.primary} />}
                 </TouchableOpacity>
               )}
               contentContainerStyle={{ paddingBottom: 20 }}
@@ -402,7 +561,7 @@ export default function EditProfileScreen({ navigation, isComponent = false }: a
             <View style={dynamicStyles.modalHeader}>
               <Text style={dynamicStyles.modalTitle}>Langue de traduction</Text>
               <TouchableOpacity onPress={() => setLangModalVisible(false)}>
-                <Ionicons name="close" size={24} color={colors.text.primary} />
+                <X size={24} color={colors.text.primary} />
               </TouchableOpacity>
             </View>
             <FlatList
@@ -411,12 +570,12 @@ export default function EditProfileScreen({ navigation, isComponent = false }: a
               renderItem={({ item }) => (
                 <TouchableOpacity
                   style={[dynamicStyles.statusItem, preferredLang === item.code && dynamicStyles.selectedStatusItem]}
-                  onPress={() => { setPreferredLang(item.code); setLangModalVisible(false); }}
+                  onPress={() => { setPreferredLang(item.code); setLangModalVisible(false); handleSaveInfo(); }}
                 >
                   <Text style={[dynamicStyles.statusText, preferredLang === item.code && { fontWeight: 'bold', color: colors.primary }]}>
                     {item.flag} {item.name}
                   </Text>
-                  {preferredLang === item.code && <Ionicons name="checkmark" size={20} color={colors.primary} />}
+                  {preferredLang === item.code && <Check size={20} color={colors.primary} />}
                 </TouchableOpacity>
               )}
               contentContainerStyle={{ paddingBottom: 20 }}
@@ -424,6 +583,137 @@ export default function EditProfileScreen({ navigation, isComponent = false }: a
           </View>
         </View>
       </Modal>
+
+      {/* Modal Sexe */}
+      <Modal visible={genderModalVisible} transparent animationType="fade" onRequestClose={() => setGenderModalVisible(false)}>
+        <View style={dynamicStyles.modalOverlay}>
+          <View style={dynamicStyles.modalContent}>
+            <Text style={dynamicStyles.modalTitle}>Sélectionnez votre sexe</Text>
+            {GENDERS.map(g => (
+              <TouchableOpacity key={g.value} style={dynamicStyles.statusItem} onPress={() => { setGender(g.value); setGenderModalVisible(false); handleSaveInfo(); }}>
+                <Text style={dynamicStyles.statusText}>{g.label}</Text>
+                {gender === g.value && <Check size={20} color={colors.primary} />}
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity style={dynamicStyles.closeBtn} onPress={() => setGenderModalVisible(false)}><Text style={dynamicStyles.closeBtnText}>Annuler</Text></TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Country Picker */}
+      <CountryPicker
+        show={countryPickerVisible}
+        pickerButtonOnPress={(item) => {
+          setCountry(item.name[language as keyof typeof item.name] || item.name.en);
+          setCountryPickerVisible(false);
+          setProvince(''); setCity(''); setCommune('');
+          handleSaveInfo();
+        }}
+        onBackdropPress={() => setCountryPickerVisible(false)}
+        style={{
+          modal: { height: 500, backgroundColor: isDark ? '#1E1E1E' : '#FFFFFF' },
+          countryName: { color: colors.text.primary },
+          dialCode: { color: colors.text.secondary },
+          searchInput: { backgroundColor: isDark ? '#333' : '#F0F2F5', color: colors.text.primary }
+        }}
+      />
+
+      {/* Modal Province */}
+      <Modal visible={provinceModalVisible} transparent animationType="slide" onRequestClose={() => setProvinceModalVisible(false)}>
+        <View style={dynamicStyles.modalOverlay}>
+          <View style={dynamicStyles.modalContent}>
+            <Text style={dynamicStyles.modalTitle}>Sélectionnez la province</Text>
+            <FlatList
+              data={country === 'République Démocratique du Congo' ? RDC_PROVINCES : []}
+              keyExtractor={(item) => item.name}
+              renderItem={({ item }) => (
+                <TouchableOpacity style={dynamicStyles.statusItem} onPress={() => { setProvince(item.name); setProvinceModalVisible(false); setCity(''); setCommune(''); handleSaveInfo(); }}>
+                  <Text style={dynamicStyles.statusText}>{item.name}</Text>
+                  {province === item.name && <Check size={20} color={colors.primary} />}
+                </TouchableOpacity>
+              )}
+              ListEmptyComponent={<Text style={{ textAlign: 'center', padding: 20, color: colors.text.disabled }}>Aucune province répertoriée pour ce pays.</Text>}
+            />
+            <TouchableOpacity style={dynamicStyles.closeBtn} onPress={() => setProvinceModalVisible(false)}><Text style={dynamicStyles.closeBtnText}>Fermer</Text></TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal Ville */}
+      <Modal visible={cityModalVisible} transparent animationType="slide" onRequestClose={() => setCityModalVisible(false)}>
+        <View style={dynamicStyles.modalOverlay}>
+          <View style={dynamicStyles.modalContent}>
+            <Text style={dynamicStyles.modalTitle}>Sélectionnez la ville</Text>
+            <FlatList
+              data={RDC_PROVINCES.find(p => p.name === province)?.cities || []}
+              keyExtractor={(item) => item}
+              renderItem={({ item }) => (
+                <TouchableOpacity style={dynamicStyles.statusItem} onPress={() => { setCity(item); setCityModalVisible(false); setCommune(''); handleSaveInfo(); }}>
+                  <Text style={dynamicStyles.statusText}>{item}</Text>
+                  {city === item && <Check size={20} color={colors.primary} />}
+                </TouchableOpacity>
+              )}
+            />
+            <TouchableOpacity style={dynamicStyles.closeBtn} onPress={() => setCityModalVisible(false)}><Text style={dynamicStyles.closeBtnText}>Fermer</Text></TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal Commune */}
+      <Modal visible={communeModalVisible} transparent animationType="slide" onRequestClose={() => setCommuneModalVisible(false)}>
+        <View style={dynamicStyles.modalOverlay}>
+          <View style={dynamicStyles.modalContent}>
+            <Text style={dynamicStyles.modalTitle}>Sélectionnez la commune</Text>
+            <FlatList
+              data={RDC_PROVINCES.find(p => p.name === province)?.communes || []}
+              keyExtractor={(item) => item}
+              renderItem={({ item }) => (
+                <TouchableOpacity style={dynamicStyles.statusItem} onPress={() => { setCommune(item); setCommuneModalVisible(false); handleSaveInfo(); }}>
+                  <Text style={dynamicStyles.statusText}>{item}</Text>
+                  {commune === item && <Check size={20} color={colors.primary} />}
+                </TouchableOpacity>
+              )}
+            />
+            <TouchableOpacity style={dynamicStyles.closeBtn} onPress={() => setCommuneModalVisible(false)}><Text style={dynamicStyles.closeBtnText}>Fermer</Text></TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal Age / Birth Date Selection */}
+      <Modal visible={birthDateModalVisible} transparent animationType="fade" onRequestClose={() => setBirthDateModalVisible(false)}>
+        <View style={dynamicStyles.modalOverlay}>
+          <View style={dynamicStyles.modalContent}>
+             <Text style={dynamicStyles.modalTitle}>Sélectionnez l'année de naissance</Text>
+             <FlatList
+               data={Array.from({ length: 100 }, (_, i) => (new Date().getFullYear() - 10 - i).toString())}
+               keyExtractor={(item) => item}
+               renderItem={({ item }) => (
+                 <TouchableOpacity style={dynamicStyles.statusItem} onPress={() => { setBirthDate(`${item}-01-01`); setBirthDateModalVisible(false); handleSaveInfo(); }}>
+                   <Text style={dynamicStyles.statusText}>{item} ({new Date().getFullYear() - parseInt(item)} ans)</Text>
+                 </TouchableOpacity>
+               )}
+             />
+             <TouchableOpacity style={dynamicStyles.closeBtn} onPress={() => setBirthDateModalVisible(false)}><Text style={dynamicStyles.closeBtnText}>Fermer</Text></TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Phone Country Picker */}
+      <CountryPicker
+        show={showPhoneCountryPicker}
+        pickerButtonOnPress={(item) => {
+          setCountryFlag(item.flag);
+          setCallingCode(item.dial_code);
+          setShowPhoneCountryPicker(false);
+        }}
+        onBackdropPress={() => setShowPhoneCountryPicker(false)}
+        style={{
+          modal: { height: 500, backgroundColor: isDark ? '#1E1E1E' : '#FFFFFF' },
+          countryName: { color: colors.text.primary },
+          dialCode: { color: colors.text.secondary },
+          searchInput: { backgroundColor: isDark ? '#333' : '#F0F2F5', color: colors.text.primary }
+        }}
+      />
     </View>
   );
 }
@@ -445,6 +735,7 @@ const createStyles = (colors: any, normalize: any, factor: number, isDark: boole
   inputWrapper: { flex: 1, marginLeft: 20, borderBottomWidth: 1, borderBottomColor: colors.divider, paddingBottom: 10 },
   statusSelect: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   label: { fontSize: normalize(12, factor), color: colors.text.secondary, marginBottom: 5 },
+  countryBtn: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 12, height: normalize(45), paddingHorizontal: 10, marginRight: 5 },
   input: { fontSize: normalize(16, factor), fontWeight: '600', paddingVertical: 5, color: colors.text.primary },
   phoneText: { fontSize: normalize(16, factor), fontWeight: '600', paddingVertical: 5, color: colors.text.primary },
   verificationSection: { marginTop: 10, padding: 15, backgroundColor: isDark ? '#222' : '#f8f9fa', borderRadius: 15, marginBottom: 20 },

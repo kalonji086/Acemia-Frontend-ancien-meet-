@@ -14,7 +14,10 @@ import {
   Alert,
   ScrollView,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import {
+  Archive, Star, Pin, Users, Search, Plus, MoreHorizontal, CheckCheck,
+  ArrowLeft, MoreVertical, MessageSquare, BadgeCheck
+} from 'lucide-react-native';
 import apiService from '../services/api.service';
 import socketService from '../services/socket.service';
 import { supabase } from '../services/supabase.service';
@@ -50,10 +53,12 @@ export default function ChatListScreen({ navigation, route, onChatSelect, select
 
   useFocusEffect(
     useCallback(() => {
-      fetchChats();
+      // Déterminer si on doit charger les archives
+      const isViewingArchived = isArchivedView || activeFilter === 'archived';
+      fetchChats(isViewingArchived);
       loadCurrentUser();
 
-      const onRefreshEvent = () => fetchChats();
+      const onRefreshEvent = () => fetchChats(isViewingArchived);
       socketService.on('profile_updated', onRefreshEvent);
       socketService.on('admin_user_profile_updated', onRefreshEvent);
       socketService.on('admin:user_verified', onRefreshEvent);
@@ -74,7 +79,7 @@ export default function ChatListScreen({ navigation, route, onChatSelect, select
         socketService.off('admin:user_verified', onRefreshEvent);
         subscription.then(sub => { if (sub) supabase.removeChannel(sub); });
       };
-    }, [isArchivedView])
+    }, [isArchivedView, activeFilter])
   );
 
   const loadCurrentUser = async () => {
@@ -82,7 +87,7 @@ export default function ChatListScreen({ navigation, route, onChatSelect, select
     if (user) setCurrentUser(user);
   };
 
-  const fetchChats = async () => {
+  const fetchChats = async (forceArchived?: boolean) => {
     try {
       let user = currentUser;
       if (!user) {
@@ -90,7 +95,8 @@ export default function ChatListScreen({ navigation, route, onChatSelect, select
         if (user) setCurrentUser(user);
       }
 
-      const response = await apiService.getChats(1, 100, isArchivedView);
+      const viewingArchived = forceArchived !== undefined ? forceArchived : (isArchivedView || activeFilter === 'archived');
+      const response = await apiService.getChats(1, 100, viewingArchived);
       if (response.success) {
         const formatted = response.data.map((chat: any) => {
           const isGroup = chat.type === 'group';
@@ -126,7 +132,7 @@ export default function ChatListScreen({ navigation, route, onChatSelect, select
         });
         setChats(formatted);
 
-        if (!isArchivedView) {
+        if (!viewingArchived) {
           const archRes = await apiService.getChats(1, 100, true);
           if (archRes.success) setArchivedCount(archRes.data.length);
         }
@@ -153,34 +159,40 @@ export default function ChatListScreen({ navigation, route, onChatSelect, select
       case 'read': result = result.filter(c => c.unreadCount === 0); break;
       case 'favorites': result = result.filter(c => c.isFavorite); break;
       case 'priority': result = result.filter(c => c.isPriority); break;
+      case 'archived':
+        // Si on filtre par "archived", on ne fait rien car fetchChats s'en charge déjà avec isArchivedView
+        break;
     }
 
     return result;
   }, [chats, activeFilter, searchQuery]);
 
   const handleLongPress = (chat: any) => {
+    // Si on est dans le filtre "archived", on considère qu'on est en vue archives
+    const effectiveArchivedView = isArchivedView || activeFilter === 'archived';
+
     Alert.alert(
       chat.name,
       "Options",
       [
         {
-          text: chat.isFavorite ? "⭐ Retirer des favoris" : "⭐ Ajouter aux favoris",
+          text: chat.isFavorite ? "Retirer des favoris" : "Ajouter aux favoris",
           onPress: async () => {
             const res = await apiService.toggleFavoriteChat(chat.id, !chat.isFavorite);
             if (res.success) fetchChats();
           }
         },
         {
-          text: chat.isPriority ? "📌 Détacher" : "📌 Épingler en priorité",
+          text: chat.isPriority ? "Détacher" : "Épingler en priorité",
           onPress: async () => {
             const res = await apiService.togglePriorityChat(chat.id, !chat.isPriority);
             if (res.success) fetchChats();
           }
         },
         {
-          text: isArchivedView ? "📦 Désarchiver" : "📦 Archiver",
+          text: effectiveArchivedView ? "Désarchiver" : "Archiver",
           onPress: async () => {
-            const res = await apiService.toggleArchiveChat(chat.id, !isArchivedView);
+            const res = await apiService.toggleArchiveChat(chat.id, !effectiveArchivedView);
             if (res.success) {
               if (isArchivedView) navigation.setParams({ showArchived: false });
               fetchChats();
@@ -188,7 +200,7 @@ export default function ChatListScreen({ navigation, route, onChatSelect, select
           }
         },
         {
-          text: "🗑️ Supprimer",
+          text: "Supprimer",
           style: "destructive",
           onPress: () => {
             Alert.alert(
@@ -234,7 +246,7 @@ export default function ChatListScreen({ navigation, route, onChatSelect, select
           <Image source={{ uri: item.avatar }} style={dynamicStyles.avatar} />
           {item.isFavorite && (
             <View style={dynamicStyles.favoriteBadge}>
-              <Ionicons name="star" size={10} color="#FFD700" />
+              <Star size={8} fill="#FFD700" color="#FFD700" />
             </View>
           )}
         </View>
@@ -243,16 +255,16 @@ export default function ChatListScreen({ navigation, route, onChatSelect, select
           <View style={dynamicStyles.chatHeader}>
             <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
               {item.isPriority && (
-                <Ionicons name="pin" size={14} color={themeColors.primary} style={{ marginRight: 4 }} />
+                <Pin size={12} color={themeColors.primary} style={{ marginRight: 4 }} />
               )}
               {item.type === 'group' && (
-                <Ionicons name="people" size={16} color={themeColors.primary} style={{ marginRight: 6 }} />
+                <Users size={14} color={themeColors.primary} style={{ marginRight: 6 }} />
               )}
               <Text style={[dynamicStyles.chatName, item.isSelf && { color: themeColors.primary }]} numberOfLines={1}>
                 {item.name}
               </Text>
               {item.isVerified && (
-                <Ionicons name="checkmark-circle" size={16} color={themeColors.info} style={{ marginLeft: 4 }} />
+                <BadgeCheck size={14} color={themeColors.info} style={{ marginLeft: 4 }} />
               )}
             </View>
             <Text style={[dynamicStyles.chatTime, item.unreadCount > 0 && { color: themeColors.primary, fontWeight: 'bold' }]}>
@@ -289,20 +301,39 @@ export default function ChatListScreen({ navigation, route, onChatSelect, select
     } catch (e) { console.error(e); }
   };
 
-  const FilterButton = ({ type, label, icon }: { type: ChatFilter, label: string, icon: any }) => (
-    <TouchableOpacity
-      style={[
-        dynamicStyles.filterBtn,
-        activeFilter === type && { backgroundColor: themeColors.primary, borderColor: themeColors.primary }
-      ]}
-      onPress={() => setActiveFilter(type)}
-    >
-      <Ionicons name={icon} size={16} color={activeFilter === type ? '#fff' : themeColors.text.secondary} />
-      <Text style={[dynamicStyles.filterLabel, activeFilter === type && { color: '#fff' }]}>{label}</Text>
-    </TouchableOpacity>
-  );
+  const FilterButton = ({ type, label, icon }: { type: ChatFilter, label: string, icon: any }) => {
+    // Calculer le nombre réel pour chaque filtre en temps réel
+    const count = useMemo(() => {
+      switch (type) {
+        case 'unread': return chats.filter(c => c.unreadCount > 0).length;
+        case 'favorites': return chats.filter(c => c.isFavorite).length;
+        case 'priority': return chats.filter(c => c.isPriority).length;
+        case 'archived': return archivedCount;
+        default: return 0;
+      }
+    }, [chats, type, archivedCount]);
+
+    return (
+      <TouchableOpacity
+        style={[
+          dynamicStyles.filterBtn,
+          activeFilter === type && { backgroundColor: themeColors.primary, borderColor: themeColors.primary }
+        ]}
+        onPress={() => setActiveFilter(type)}
+      >
+        {React.cloneElement(icon, { color: activeFilter === type ? '#fff' : themeColors.text.secondary })}
+        <Text style={[dynamicStyles.filterLabel, activeFilter === type && { color: '#fff' }]}>{label}</Text>
+        {count > 0 && (
+          <View style={[dynamicStyles.filterBadge, activeFilter === type && { backgroundColor: '#fff' }]}>
+            <Text style={[dynamicStyles.filterBadgeText, activeFilter === type && { color: themeColors.primary }]}>{count}</Text>
+          </View>
+        )}
+      </TouchableOpacity>
+    );
+  };
 
   const insets = useSafeAreaInsets();
+  const favoriteChats = useMemo(() => chats.filter(c => c.isFavorite), [chats]);
 
   return (
     <View style={dynamicStyles.container}>
@@ -314,7 +345,7 @@ export default function ChatListScreen({ navigation, route, onChatSelect, select
           <View style={dynamicStyles.headerLeft}>
             {isArchivedView && (
               <TouchableOpacity onPress={() => navigation.setParams({ showArchived: false })} style={dynamicStyles.headerButton}>
-                <Ionicons name="arrow-back" size={24} color="#fff" />
+                <ArrowLeft size={24} color="#fff" />
               </TouchableOpacity>
             )}
           </View>
@@ -324,7 +355,7 @@ export default function ChatListScreen({ navigation, route, onChatSelect, select
           <View style={dynamicStyles.headerRight}>
             {!isArchivedView && (
               <TouchableOpacity style={dynamicStyles.headerButton} onPress={() => setIsSearching(true)}>
-                <Ionicons name="search-outline" size={24} color="#fff" />
+                <Search size={22} color="#fff" />
               </TouchableOpacity>
             )}
             {!isArchivedView && (
@@ -332,7 +363,7 @@ export default function ChatListScreen({ navigation, route, onChatSelect, select
                 {currentUser?.avatar_url || currentUser?.avatar ? (
                   <Image source={{ uri: getFullUrl(currentUser.avatar_url || currentUser.avatar) || '' }} style={dynamicStyles.smallAvatar} />
                 ) : (
-                  <Ionicons name="ellipsis-vertical" size={24} color="#fff" />
+                  <MoreVertical size={24} color="#fff" />
                 )}
               </TouchableOpacity>
             )}
@@ -341,7 +372,7 @@ export default function ChatListScreen({ navigation, route, onChatSelect, select
       ) : (
         <View style={dynamicStyles.searchHeader}>
           <TouchableOpacity onPress={() => { setIsSearching(false); setSearchQuery(''); fetchChats(); }}>
-            <Ionicons name="arrow-back" size={24} color={themeColors.primary} />
+            <ArrowLeft size={24} color={themeColors.primary} />
           </TouchableOpacity>
           <TextInput
             style={dynamicStyles.searchInput}
@@ -354,14 +385,39 @@ export default function ChatListScreen({ navigation, route, onChatSelect, select
         </View>
       )}
 
+      {!isArchivedView && !isSearching && favoriteChats.length > 0 && (
+        <View style={dynamicStyles.favoritesContainer}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={dynamicStyles.favoritesScroll}>
+            {favoriteChats.map(chat => (
+              <TouchableOpacity
+                key={`fav-${chat.id}`}
+                style={dynamicStyles.favoriteItem}
+                onPress={() => navigation.navigate('Chat', {
+                  chatId: chat.id,
+                  name: chat.name,
+                  avatar: chat.avatar,
+                  peerUserId: chat.otherUserId
+                })}
+              >
+                <View style={dynamicStyles.favAvatarContainer}>
+                  <Image source={{ uri: chat.avatar }} style={dynamicStyles.favAvatar} />
+                  <View style={[dynamicStyles.favOnlineBadge, { backgroundColor: '#4CAF50' }]} />
+                </View>
+                <Text style={dynamicStyles.favName} numberOfLines={1}>{chat.name.split(' ')[0]}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      )}
+
       {!isArchivedView && !isSearching && (
         <View style={dynamicStyles.filterContainer}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={dynamicStyles.filterScroll}>
-            <FilterButton type="all" label="Tous" icon="chatbubbles-outline" />
-            <FilterButton type="unread" label="Non lus" icon="mail-unread-outline" />
-            <FilterButton type="read" label="Lus" icon="mail-open-outline" />
-            <FilterButton type="favorites" label="Favoris" icon="star-outline" />
-            <FilterButton type="priority" label="Priorité" icon="pin-outline" />
+            <FilterButton type="all" label="Tous" icon={<Search size={16} />} />
+            <FilterButton type="unread" label="Non lus" icon={<MoreHorizontal size={16} />} />
+            <FilterButton type="favorites" label="Favoris" icon={<Star size={16} />} />
+            <FilterButton type="priority" label="Priorité" icon={<Pin size={16} />} />
+            <FilterButton type="archived" label="Archives" icon={<Archive size={16} />} />
           </ScrollView>
         </View>
       )}
@@ -371,15 +427,15 @@ export default function ChatListScreen({ navigation, route, onChatSelect, select
         renderItem={renderChatItem}
         keyExtractor={(item) => item.id}
         contentContainerStyle={dynamicStyles.chatList}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchChats(); }} colors={[themeColors.primary]} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchChats(isArchivedView || activeFilter === 'archived'); }} colors={[themeColors.primary]} />}
         ListHeaderComponent={
           <>
             {archivedCount > 0 && !isArchivedView && !isSearching && activeFilter === 'all' && (
               <TouchableOpacity
                 style={dynamicStyles.archivedRow}
-                onPress={() => navigation.navigate('ChatList', { showArchived: true })}
+                onPress={() => setActiveFilter('archived')}
               >
-                <Ionicons name="archive-outline" size={20} color={themeColors.primary} />
+                <Archive size={18} color={themeColors.primary} />
                 <Text style={dynamicStyles.archivedText}>Archivées</Text>
                 <Text style={dynamicStyles.archivedCount}>{archivedCount}</Text>
               </TouchableOpacity>
@@ -399,7 +455,7 @@ export default function ChatListScreen({ navigation, route, onChatSelect, select
         }
         ListEmptyComponent={
           <View style={dynamicStyles.emptyContainer}>
-            <Ionicons name={isArchivedView ? "archive-outline" : "chatbubbles-outline"} size={normalize(80)} color={themeColors.text.disabled} />
+            <MessageSquare size={80} color={themeColors.text.disabled} />
             <Text style={dynamicStyles.emptyText}>
               {isArchivedView ? "Aucune discussion archivée" :
                activeFilter === 'unread' ? "Aucun message non lu" :
@@ -411,7 +467,7 @@ export default function ChatListScreen({ navigation, route, onChatSelect, select
 
       {!isArchivedView && (
         <TouchableOpacity style={dynamicStyles.fab} onPress={() => navigation.navigate('Contacts')}>
-          <Ionicons name="chatbubble-ellipses" size={28} color="#fff" />
+          <Plus size={28} color="#fff" />
         </TouchableOpacity>
       )}
     </View>
@@ -430,10 +486,19 @@ const createStyles = (colors: any, isDark: boolean, normalize: any, factor: numb
   smallAvatar: { width: normalize(32), height: normalize(32), borderRadius: normalize(16), borderWidth: 1.5, borderColor: '#fff' },
   searchHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 15, paddingVertical: 10, backgroundColor: colors.surface, elevation: 3 },
   searchInput: { flex: 1, fontSize: normalize(16, factor), marginLeft: 15, color: colors.text.primary },
-  filterContainer: { backgroundColor: colors.surface, borderBottomWidth: 0.5, borderBottomColor: colors.divider },
-  filterScroll: { paddingHorizontal: 15, paddingVertical: 10 },
-  filterBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 15, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: colors.divider, marginRight: 10 },
-  filterLabel: { marginLeft: 6, fontSize: normalize(13, factor), fontWeight: '600', color: colors.text.secondary },
+  favoritesContainer: { backgroundColor: colors.surface, borderBottomWidth: 0.5, borderBottomColor: colors.divider, paddingVertical: 10 },
+  favoritesScroll: { paddingHorizontal: 15 },
+  favoriteItem: { alignItems: 'center', marginRight: 20, width: normalize(60) },
+  favAvatarContainer: { position: 'relative', marginBottom: 5 },
+  favAvatar: { width: normalize(52), height: normalize(52), borderRadius: normalize(26), borderWidth: 2, borderColor: colors.primary },
+  favOnlineBadge: { position: 'absolute', bottom: 2, right: 2, width: 12, height: 12, borderRadius: 6, borderWidth: 2, borderColor: '#fff' },
+  favName: { fontSize: normalize(10, factor), color: colors.text.primary, fontWeight: '600', textAlign: 'center' },
+  filterContainer: { backgroundColor: colors.surface, borderBottomWidth: 0.5, borderBottomColor: colors.divider, minHeight: normalize(55) },
+  filterScroll: { paddingHorizontal: 15, paddingVertical: 10, alignItems: 'center' },
+  filterBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 25, backgroundColor: isDark ? '#2c2c2e' : '#f2f2f7', marginRight: 8, borderWidth: 1, borderColor: 'transparent' },
+  filterLabel: { marginLeft: 6, fontSize: normalize(12, factor), fontWeight: 'bold', color: colors.text.secondary },
+  filterBadge: { marginLeft: 6, backgroundColor: colors.primary, borderRadius: 10, minWidth: 18, height: 18, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 4 },
+  filterBadgeText: { color: '#fff', fontSize: 10, fontWeight: 'bold' },
   chatList: { flexGrow: 1 },
   chatItem: { flexDirection: 'row', paddingHorizontal: 15, paddingVertical: 12 },
   meChatItem: { flexDirection: 'row', paddingHorizontal: 15, paddingVertical: 15, backgroundColor: isDark ? colors.surface : '#f9f9f9', borderBottomWidth: 1, borderBottomColor: colors.border },

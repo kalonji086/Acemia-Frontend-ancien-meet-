@@ -136,10 +136,12 @@ class ApiService {
   async register(data: any): Promise<ApiResponse> {
     try {
       const res = await this.api.post('/auth/register', data);
-      if (res.data.success) {
-        await this.setAuthToken(res.data.data.token);
-        await this.setRefreshToken(res.data.data.refreshToken);
-        await AsyncStorage.setItem('user', JSON.stringify(res.data.data.user));
+      if (res.data && res.data.success && res.data.data) {
+        if (res.data.data.token) await this.setAuthToken(res.data.data.token);
+        if (res.data.data.refreshToken) await this.setRefreshToken(res.data.data.refreshToken);
+        if (res.data.data.user) {
+          await AsyncStorage.setItem('user', JSON.stringify(res.data.data.user));
+        }
       }
       return res.data;
     } catch (e: any) { return this.handleError(e); }
@@ -148,10 +150,12 @@ class ApiService {
   async login(credentials: any): Promise<ApiResponse> {
     try {
       const res = await this.api.post('/auth/login', credentials);
-      if (res.data.success) {
-        await this.setAuthToken(res.data.data.token);
-        await this.setRefreshToken(res.data.data.refreshToken);
-        await AsyncStorage.setItem('user', JSON.stringify(res.data.data.user));
+      if (res.data && res.data.success && res.data.data) {
+        if (res.data.data.token) await this.setAuthToken(res.data.data.token);
+        if (res.data.data.refreshToken) await this.setRefreshToken(res.data.data.refreshToken);
+        if (res.data.data.user) {
+          await AsyncStorage.setItem('user', JSON.stringify(res.data.data.user));
+        }
       }
       return res.data;
     } catch (e: any) { return this.handleError(e); }
@@ -197,10 +201,11 @@ class ApiService {
   async getMe(): Promise<ApiResponse> {
     try {
       const res = await this.api.get('/me');
-      if (res.data.success) {
+      if (res.data && res.data.success && res.data.data) {
         const userData = res.data.data;
         const localUser = await this.getCurrentUser();
-        await AsyncStorage.setItem('user', JSON.stringify({ ...localUser, ...userData }));
+        const mergedUser = { ...(localUser || {}), ...(userData || {}) };
+        await AsyncStorage.setItem('user', JSON.stringify(mergedUser));
       }
       return res.data;
     } catch (e: any) { return this.handleError(e); }
@@ -216,10 +221,11 @@ class ApiService {
   async updateProfile(userData: any): Promise<ApiResponse> {
     try {
       const res = await this.api.put('/users/profile', userData);
-      if (res.data.success) {
+      if (res.data && res.data.success && res.data.data) {
         const updatedData = res.data.data;
         const localUser = await this.getCurrentUser();
-        await AsyncStorage.setItem('user', JSON.stringify({ ...localUser, ...updatedData }));
+        const mergedUser = { ...(localUser || {}), ...(updatedData || {}) };
+        await AsyncStorage.setItem('user', JSON.stringify(mergedUser));
       }
       return res.data;
     } catch (e: any) { return this.handleError(e); }
@@ -379,6 +385,10 @@ class ApiService {
     } catch (e: any) { return this.handleError(e); }
   }
 
+  async archiveChat(chatId: string): Promise<ApiResponse> {
+    return this.toggleArchiveChat(chatId, true);
+  }
+
   async toggleFavoriteChat(chatId: string, favorite: boolean = true): Promise<ApiResponse> {
     try {
       const res = await this.api.put(`/chats/${chatId}/favorite`, { favorite });
@@ -444,6 +454,13 @@ class ApiService {
   async translateVoiceMessage(messageId: string, targetLanguage: string): Promise<ApiResponse> {
     try {
       const res = await this.api.post(`/messages/${messageId}/translate-voice`, { targetLanguage });
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async reactToMessage(messageId: string): Promise<ApiResponse> {
+    try {
+      const res = await this.api.put(`/messages/${messageId}/react`);
       return res.data;
     } catch (e: any) { return this.handleError(e); }
   }
@@ -559,6 +576,21 @@ class ApiService {
   async submitVerification(documentUrl: string): Promise<ApiResponse> {
     try {
       const res = await this.api.post('/users/verify', { documentUrl });
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  // Calls
+  async generateCallToken(channelName: string, role: string = 'publisher'): Promise<ApiResponse> {
+    try {
+      const res = await this.api.post('/calls/generate-token', { channelName, role });
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async getCallHistory(): Promise<ApiResponse> {
+    try {
+      const res = await this.api.get('/calls/history');
       return res.data;
     } catch (e: any) { return this.handleError(e); }
   }

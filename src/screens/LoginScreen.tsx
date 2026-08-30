@@ -13,10 +13,14 @@ import {
   StatusBar,
   Dimensions,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import {
+  ShieldAlert, X, Mail, Megaphone, MessageSquare,
+  Heart, EyeOff, Eye
+} from 'lucide-react-native';
 import apiService from '../services/api.service';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
+import { useUser } from '../context/UserContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Device from 'expo-device';
 import { APP_VERSION } from '../utils/constants';
@@ -32,7 +36,12 @@ const { width } = Dimensions.get('window');
 
 export default function LoginScreen({ navigation, route }: any) {
   const { colors, normalize, isDark, fontSizeFactor } = useTheme();
-  const [email, setEmail] = useState('');
+  const { setUser } = useUser();
+
+  const mode = route.params?.mode || 'full'; // 'full' or 'password_only'
+  const [email, setEmail] = useState(route.params?.email || '');
+  const [name, setName] = useState(route.params?.name || '');
+
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -57,10 +66,14 @@ export default function LoginScreen({ navigation, route }: any) {
   }, [route.params]);
 
   const checkLastLogin = async () => {
-    const lastUser = await AsyncStorage.getItem('user');
-    if (lastUser) {
-      const user = JSON.parse(lastUser);
-      setEmail(user.email);
+    try {
+      const lastUser = await AsyncStorage.getItem('user');
+      if (lastUser) {
+        const user = JSON.parse(lastUser);
+        if (user && user.email) setEmail(user.email);
+      }
+    } catch (e) {
+      console.warn('Login: Failed to parse last user', e);
     }
   };
 
@@ -94,7 +107,19 @@ export default function LoginScreen({ navigation, route }: any) {
         appVersion: APP_VERSION
       });
       if (response.success) {
-        navigation.navigate('ChatList');
+        // 1. Mettre à jour le contexte utilisateur et attendre la persistance
+        await setUser(response.data.user);
+
+        // 2. Mettre à jour le timestamp d'ouverture
+        await AsyncStorage.setItem('last_app_open', Date.now().toString());
+
+        // 3. Petite pause pour laisser le temps au state de se propager avant le switch
+        setTimeout(() => {
+          navigation.reset({
+            index: 0,
+            routes: [{ name: 'ChatList' }],
+          });
+        }, 300);
       } else {
         triggerShake();
         if (response.isLocked) {
@@ -149,8 +174,8 @@ export default function LoginScreen({ navigation, route }: any) {
         <StatusBar barStyle="light-content" backgroundColor="#7a0000" />
         <View style={styles.bannedHeader}>
           <Animated.View style={[styles.bannedIconCircle, animatedShakeStyle]}>
-            <Ionicons name="shield-outline" size={80} color="#ff3b30" />
-            <Ionicons name="close" size={40} color="#ff3b30" style={styles.bannedX} />
+            <ShieldAlert size={80} color="#ff3b30" />
+            <X size={40} color="#ff3b30" style={styles.bannedX} />
           </Animated.View>
           <Text style={styles.bannedTitle}>COMPTE BANNI</Text>
         </View>
@@ -173,7 +198,7 @@ export default function LoginScreen({ navigation, route }: any) {
             style={styles.emailButton}
             onPress={() => Alert.alert("Assistance", "Email: support@meetme.app")}
           >
-            <Ionicons name="mail" size={20} color="#fff" />
+            <Mail size={20} color="#fff" />
             <Text style={styles.emailButtonText}>support@meetme.app</Text>
           </TouchableOpacity>
 
@@ -181,7 +206,7 @@ export default function LoginScreen({ navigation, route }: any) {
             style={[styles.appealButton, { backgroundColor: '#ff3b30', marginTop: 15, flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 25, borderRadius: 30 }]}
             onPress={() => setShowAppealModal(true)}
           >
-            <Ionicons name="megaphone" size={20} color="#fff" />
+            <Megaphone size={20} color="#fff" />
             <Text style={[styles.emailButtonText, {marginLeft: 10}]}>CONTESTER LE BLOCAGE</Text>
           </TouchableOpacity>
         </View>
@@ -233,26 +258,37 @@ export default function LoginScreen({ navigation, route }: any) {
           <View style={styles.contentWrapper}>
             <View style={styles.logoContainer}>
               <View style={[styles.iconStack, { backgroundColor: colors.primary }]}>
-                <Ionicons name="chatbubble" size={normalize(45)} color="#fff" />
-                <Ionicons name="heart" size={normalize(20)} color={colors.secondary} style={styles.heartIcon} />
+                <MessageSquare size={normalize(45)} color="#fff" />
+                <Heart size={normalize(20)} color={colors.secondary} style={styles.heartIcon} />
               </View>
               <Text style={[styles.appName, { color: colors.primary }]}>Meet Me</Text>
-              <Text style={[styles.tagline, { color: colors.text.secondary }]}>Connexion sécurisée</Text>
+              <Text style={[styles.tagline, { color: colors.text.secondary }]}>
+                {mode === 'password_only' ? `Heureux de vous revoir, ${name.split(' ')[0]} !` : 'Connexion sécurisée'}
+              </Text>
             </View>
 
             <Animated.View style={[styles.formContainer, animatedShakeStyle]}>
-              <Text style={[styles.label, { color: colors.text.primary }]}>Adresse Email</Text>
-              <View style={[styles.inputContainer, { backgroundColor: isDark ? '#333' : '#f9f9f9', borderColor: colors.border }]}>
-                <TextInput
-                  style={[styles.input, { color: colors.text.primary }]}
-                  placeholder="votre@email.com"
-                  placeholderTextColor={colors.text.disabled}
-                  value={email}
-                  onChangeText={setEmail}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                />
-              </View>
+              {mode === 'full' ? (
+                <>
+                  <Text style={[styles.label, { color: colors.text.primary }]}>Adresse Email</Text>
+                  <View style={[styles.inputContainer, { backgroundColor: isDark ? '#333' : '#f9f9f9', borderColor: colors.border }]}>
+                    <TextInput
+                      style={[styles.input, { color: colors.text.primary }]}
+                      placeholder="votre@email.com"
+                      placeholderTextColor={colors.text.disabled}
+                      value={email}
+                      onChangeText={setEmail}
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                    />
+                  </View>
+                </>
+              ) : (
+                <View style={styles.lockedEmailContainer}>
+                   <Mail size={16} color={colors.text.secondary} />
+                   <Text style={[styles.lockedEmailText, { color: colors.text.secondary }]}>{email}</Text>
+                </View>
+              )}
 
               <Text style={[styles.label, { color: colors.text.primary }]}>Mot de passe</Text>
               <View style={[styles.inputContainer, { backgroundColor: isDark ? '#333' : '#f9f9f9', borderColor: colors.border }]}>
@@ -265,7 +301,7 @@ export default function LoginScreen({ navigation, route }: any) {
                   secureTextEntry={!showPassword}
                 />
                 <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.passwordToggle}>
-                  <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={normalize(20)} color={colors.text.secondary} />
+                  {showPassword ? <EyeOff size={normalize(20)} color={colors.text.secondary} /> : <Eye size={normalize(20)} color={colors.text.secondary} />}
                 </TouchableOpacity>
               </View>
 
@@ -274,13 +310,19 @@ export default function LoginScreen({ navigation, route }: any) {
                 onPress={handleLogin}
                 disabled={loading}
               >
-                {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.loginButtonText}>SE CONNECTER</Text>}
+                {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.loginButtonText}>{mode === 'password_only' ? 'DÉVERROUILLER' : 'SE CONNECTER'}</Text>}
               </TouchableOpacity>
 
               <View style={styles.footerLinks}>
-                <TouchableOpacity style={[styles.signupButton, { borderColor: colors.primary }]} onPress={() => navigation.navigate('Signup')}>
-                  <Text style={[styles.signupButtonText, { color: colors.primary }]}>CRÉER UN COMPTE</Text>
-                </TouchableOpacity>
+                {mode === 'full' ? (
+                  <TouchableOpacity style={[styles.signupButton, { borderColor: colors.primary }]} onPress={() => navigation.navigate('Signup')}>
+                    <Text style={[styles.signupButtonText, { color: colors.primary }]}>CRÉER UN COMPTE</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity style={styles.switchAccountBtn} onPress={() => navigation.setParams({ mode: 'full', email: '', name: '' })}>
+                    <Text style={[styles.switchAccountText, { color: colors.primary }]}>Ce n'est pas vous ? Changer de compte</Text>
+                  </TouchableOpacity>
+                )}
 
                 <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')} style={styles.forgotPassword}>
                   <Text style={[styles.forgotPasswordText, { color: colors.primary }]}>Mot de passe oublié ?</Text>
@@ -330,13 +372,17 @@ const createStyles = (colors: any, normalize: any, factor: number, isDark: boole
   label: { fontSize: normalize(13, factor), fontWeight: '700', marginBottom: 8 },
   inputContainer: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 15, borderRadius: 15, marginBottom: 20, height: normalize(55), borderWidth: 1.5 },
   input: { flex: 1, fontSize: normalize(16, factor) },
+  lockedEmailContainer: { flexDirection: 'row', alignItems: 'center', padding: 15, backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)', borderRadius: 12, marginBottom: 20, borderWidth: 1, borderStyle: 'dashed', borderColor: colors.border },
+  lockedEmailText: { fontSize: normalize(14, factor), marginLeft: 10, fontWeight: '600' },
   passwordToggle: { padding: 5 },
   loginButton: { borderRadius: 30, height: normalize(55), justifyContent: 'center', alignItems: 'center', marginTop: 15, elevation: 3 },
   loginButtonDisabled: { opacity: 0.7 },
   loginButtonText: { color: '#fff', fontSize: normalize(16, factor), fontWeight: 'bold' },
-  footerLinks: { alignItems: 'center', marginTop: 10 },
+  footerLinks: { alignItems: 'center', marginTop: 10, width: '100%' },
   signupButton: { backgroundColor: 'transparent', borderRadius: 30, height: normalize(55), justifyContent: 'center', alignItems: 'center', marginTop: 20, borderWidth: 2, width: '100%' },
   signupButtonText: { fontSize: normalize(16, factor), fontWeight: 'bold' },
+  switchAccountBtn: { marginTop: 20, padding: 10 },
+  switchAccountText: { fontSize: normalize(13, factor), fontWeight: 'bold', textDecorationLine: 'underline' },
   forgotPassword: { marginTop: 25 },
   forgotPasswordText: { fontSize: normalize(14, factor), fontWeight: '600' },
   helpdeskLink: { marginTop: 20 },

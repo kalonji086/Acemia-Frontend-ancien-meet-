@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -12,7 +12,7 @@ import {
   ActivityIndicator,
   StatusBar,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Key, Mail, MailWarning, Lock, ShieldCheck, ArrowLeft, Eye, EyeOff } from 'lucide-react-native';
 import apiService from '../services/api.service';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -31,6 +31,9 @@ export default function ForgotPasswordScreen({ navigation }: any) {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [step, setStep] = useState(1); // 1: email, 2: code, 3: new password
   const [loading, setLoading] = useState(false);
+
+  // Refs pour l'OTP automatique
+  const otpRefs = useRef<Array<TextInput | null>>([]);
 
   const handleSendCode = async () => {
     if (!email) {
@@ -91,10 +94,31 @@ export default function ForgotPasswordScreen({ navigation }: any) {
   };
 
   const handleOtpChange = (value: string, index: number) => {
-    if (value.length > 1) return;
+    if (value.length > 1) {
+      // Gérer le copier-coller du code entier
+      if (value.length === 6) {
+        const pasteOtp = value.split('');
+        setOtp(pasteOtp);
+        otpRefs.current[5]?.focus();
+      }
+      return;
+    }
+
     const newOtp = [...otp];
     newOtp[index] = value;
     setOtp(newOtp);
+
+    // Auto focus suivant
+    if (value !== '' && index < 5) {
+      otpRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleKeyPress = (e: any, index: number) => {
+    // Retour arrière automatique
+    if (e.nativeEvent.key === 'Backspace' && otp[index] === '' && index > 0) {
+      otpRefs.current[index - 1]?.focus();
+    }
   };
 
   const dynamicStyles = createStyles(colors);
@@ -109,7 +133,7 @@ export default function ForgotPasswordScreen({ navigation }: any) {
         <ScrollView contentContainerStyle={dynamicStyles.scrollContainer}>
           <View style={dynamicStyles.header}>
             <TouchableOpacity onPress={() => navigation.goBack()} style={dynamicStyles.backButton}>
-              <Ionicons name="arrow-back" size={24} color={colors.primary} />
+              <ArrowLeft size={24} color={colors.primary} />
             </TouchableOpacity>
             <Text style={dynamicStyles.title}>Mot de passe oublié</Text>
           </View>
@@ -118,7 +142,7 @@ export default function ForgotPasswordScreen({ navigation }: any) {
             {step === 1 && (
               <>
                 <View style={dynamicStyles.iconContainer}>
-                  <Ionicons name="key-outline" size={80} color={colors.primary} />
+                  <Key size={80} color={colors.primary} />
                 </View>
 
                 <Text style={dynamicStyles.description}>
@@ -126,7 +150,7 @@ export default function ForgotPasswordScreen({ navigation }: any) {
                 </Text>
 
                 <View style={dynamicStyles.inputWrapper}>
-                  <Ionicons name="mail-outline" size={20} color={colors.text.secondary} />
+                  <Mail size={20} color={colors.text.secondary} />
                   <TextInput
                     style={dynamicStyles.input}
                     placeholder="Email"
@@ -147,7 +171,7 @@ export default function ForgotPasswordScreen({ navigation }: any) {
             {step === 2 && (
               <>
                 <View style={dynamicStyles.iconContainer}>
-                  <Ionicons name="mail-unread-outline" size={80} color={colors.primary} />
+                  <MailWarning size={80} color={colors.primary} />
                 </View>
 
                 <Text style={dynamicStyles.description}>
@@ -158,11 +182,14 @@ export default function ForgotPasswordScreen({ navigation }: any) {
                   {otp.map((digit, index) => (
                     <TextInput
                       key={index}
+                      ref={(ref) => (otpRefs.current[index] = ref)}
                       style={dynamicStyles.codeInput}
                       maxLength={1}
                       keyboardType="number-pad"
                       value={digit}
                       onChangeText={(value) => handleOtpChange(value, index)}
+                      onKeyPress={(e) => handleKeyPress(e, index)}
+                      selectTextOnFocus
                     />
                   ))}
                 </View>
@@ -180,7 +207,7 @@ export default function ForgotPasswordScreen({ navigation }: any) {
             {step === 3 && (
               <>
                 <View style={dynamicStyles.iconContainer}>
-                  <Ionicons name="lock-open-outline" size={80} color={colors.primary} />
+                  <Lock size={80} color={colors.primary} />
                 </View>
 
                 <Text style={dynamicStyles.description}>
@@ -188,7 +215,7 @@ export default function ForgotPasswordScreen({ navigation }: any) {
                 </Text>
 
                 <View style={dynamicStyles.inputWrapper}>
-                  <Ionicons name="lock-closed-outline" size={20} color={colors.text.secondary} />
+                  <Lock size={20} color={colors.text.secondary} />
                   <TextInput
                     style={dynamicStyles.input}
                     placeholder="Nouveau mot de passe"
@@ -198,12 +225,12 @@ export default function ForgotPasswordScreen({ navigation }: any) {
                     onChangeText={setNewPassword}
                   />
                   <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={dynamicStyles.eyeIcon}>
-                    <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={20} color={colors.text.secondary} />
+                    {showPassword ? <EyeOff size={20} color={colors.text.secondary} /> : <Eye size={20} color={colors.text.secondary} />}
                   </TouchableOpacity>
                 </View>
 
                 <View style={dynamicStyles.inputWrapper}>
-                  <Ionicons name="shield-checkmark-outline" size={20} color={colors.text.secondary} />
+                  <ShieldCheck size={20} color={colors.text.secondary} />
                   <TextInput
                     style={dynamicStyles.input}
                     placeholder="Confirmer le nouveau mot de passe"
@@ -213,7 +240,7 @@ export default function ForgotPasswordScreen({ navigation }: any) {
                     onChangeText={setNewConfirmPassword}
                   />
                   <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)} style={dynamicStyles.eyeIcon}>
-                    <Ionicons name={showConfirmPassword ? "eye-off-outline" : "eye-outline"} size={20} color={colors.text.secondary} />
+                    {showConfirmPassword ? <EyeOff size={20} color={colors.text.secondary} /> : <Eye size={20} color={colors.text.secondary} />}
                   </TouchableOpacity>
                 </View>
 

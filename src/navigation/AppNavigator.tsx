@@ -16,6 +16,7 @@ import ViewStatusScreen from '../screens/ViewStatusScreen';
 import AddContactScreen from '../screens/AddContactScreen';
 import EditProfileScreen from '../screens/EditProfileScreen';
 import PrivacyPolicyScreen from '../screens/PrivacyPolicyScreen';
+import TermsOfServiceScreen from '../screens/TermsOfServiceScreen';
 import SecurityPrivacyScreen from '../screens/SecurityPrivacyScreen';
 import CreateGroupScreen from '../screens/CreateGroupScreen';
 import GroupDetailsScreen from '../screens/GroupDetailsScreen';
@@ -28,10 +29,14 @@ import UserProfileScreen from '../screens/UserProfileScreen';
 import BusinessRegistrationScreen from '../screens/BusinessRegistrationScreen';
 import BusinessDashboardScreen from '../screens/BusinessDashboardScreen';
 import BusinessPublicProfileScreen from '../screens/BusinessPublicProfileScreen';
+import IncomingCallScreen from '../screens/IncomingCallScreen';
+import AudioCallScreen from '../screens/AudioCallScreen';
+import VideoCallScreen from '../screens/VideoCallScreen';
 import { useTheme } from '../context/ThemeContext';
 import { DefaultTheme, DarkTheme } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import socketService from '../services/socket.service';
+import callService from '../services/call.service';
 
 const Stack = createStackNavigator();
 
@@ -54,6 +59,21 @@ export default function AppNavigator() {
   };
 
   useEffect(() => {
+    // Initialiser CallService avec la navigation dès que possible
+    const setupCallService = async () => {
+      let attempts = 0;
+      while (!navRef.current && attempts < 20) {
+        await new Promise(resolve => setTimeout(resolve, 200));
+        attempts++;
+      }
+      if (navRef.current) {
+        callService.setNavigation(navRef.current);
+        callService.setupCallListeners();
+        console.log('AppNavigator: CallService initialized with navigation');
+      }
+    };
+    setupCallService();
+
     // S'assurer que le socket est initialisé dès le démarrage si on a un token
     const initSocketEarly = async () => {
       const token = await AsyncStorage.getItem('auth_token');
@@ -228,6 +248,11 @@ export default function AppNavigator() {
           options={{ headerShown: false }}
         />
         <Stack.Screen
+          name="TermsOfService"
+          component={TermsOfServiceScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
           name="SecurityPrivacy"
           component={SecurityPrivacyScreen}
           options={{ headerShown: false }}
@@ -276,6 +301,23 @@ export default function AppNavigator() {
           name="BusinessPublicProfile"
           component={BusinessPublicProfileScreen}
           options={{ headerShown: false }}
+        />
+
+        {/* Call Screens */}
+        <Stack.Screen
+          name="IncomingCall"
+          component={IncomingCallScreen}
+          options={{ headerShown: false, presentation: 'modal' }}
+        />
+        <Stack.Screen
+          name="AudioCall"
+          component={AudioCallScreen}
+          options={{ headerShown: false, gestureEnabled: false }}
+        />
+        <Stack.Screen
+          name="VideoCall"
+          component={VideoCallScreen}
+          options={{ headerShown: false, gestureEnabled: false }}
         />
       </Stack.Navigator>
     </NavigationContainer>

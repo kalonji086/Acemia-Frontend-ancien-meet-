@@ -5,10 +5,13 @@ import AppNavigator from './src/navigation/AppNavigator';
 import * as SplashScreen from 'expo-splash-screen';
 import { ThemeProvider } from './src/context/ThemeContext';
 import { LanguageProvider } from './src/context/LanguageContext';
+import { UserProvider } from './src/context/UserContext';
 import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 import ErrorBoundary from './src/components/ErrorBoundary';
 import ErrorScreen from './src/screens/ErrorScreen';
+
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 export default function App() {
   useEffect(() => {
@@ -38,23 +41,27 @@ export default function App() {
   };
 
   return (
-    <LanguageProvider>
-      <ThemeProvider>
-        <SafeAreaProvider>
-          <ErrorBoundary
-            onError={handleError}
-            fallback={(
-              <ErrorScreen
-                error={new Error('Application error')}
-                showDetails={__DEV__}
-              />
-            )}
-          >
-            <StatusBar style="auto" />
-            <AppNavigator />
-          </ErrorBoundary>
-        </SafeAreaProvider>
-      </ThemeProvider>
-    </LanguageProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <LanguageProvider>
+        <UserProvider>
+          <ThemeProvider>
+            <SafeAreaProvider>
+              <ErrorBoundary
+                onError={handleError}
+                fallback={(
+                  <ErrorScreen
+                    error={new Error('Application error')}
+                    showDetails={__DEV__}
+                  />
+                )}
+              >
+                <StatusBar style="auto" />
+                <AppNavigator />
+              </ErrorBoundary>
+            </SafeAreaProvider>
+          </ThemeProvider>
+        </UserProvider>
+      </LanguageProvider>
+    </GestureHandlerRootView>
   );
 }

@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, Text, Dimensions } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Text, Dimensions, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import {
+  MessageSquare, Aperture, Phone, ShoppingCart, AlertCircle,
+  MessagesSquare
+} from 'lucide-react-native';
 import apiService from '../services/api.service';
 import socketService from '../services/socket.service';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -9,18 +12,55 @@ import ChatListScreen from './ChatListScreen';
 import StatusScreen from './StatusScreen';
 import MarketScreen from './MarketScreen';
 import ChatScreen from './ChatScreen';
+import CallHistoryScreen from './CallHistoryScreen';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
+import { useUser } from '../context/UserContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export default function MainScreen({ navigation, route }: any) {
   const { colors, isDark, normalize } = useTheme();
+  const { user: currentUser, setUser, loading: userLoading } = useUser();
   const { t } = useLanguage();
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState('chats');
   const [selectedChat, setSelectedChat] = useState<any>(null);
   const [screenWidth, setScreenWidth] = useState(SCREEN_WIDTH);
+  const [unreadTotal, setUnreadTotal] = useState(0);
+
+  // Attendre que l'utilisateur soit chargé
+  if (userLoading || !currentUser || !colors) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: isDark ? '#1a1a1a' : '#fff' }}>
+        <ActivityIndicator size="large" color={colors?.primary || '#673AB7'} />
+      </View>
+    );
+  }
+
+  const fetchUnreadCount = async () => {
+    try {
+      const res = await apiService.getChats(1, 100);
+      if (res.success) {
+        const total = res.data.reduce((acc: number, chat: any) => acc + parseInt(chat.unread_count || 0), 0);
+        setUnreadTotal(total);
+      }
+    } catch (e) {}
+  };
+
+  React.useEffect(() => {
+    fetchUnreadCount();
+
+    // Refresh unread count on socket events
+    const handleNewMessage = () => fetchUnreadCount();
+    socketService.on('new_message', handleNewMessage);
+    socketService.on('message_read', handleNewMessage);
+
+    return () => {
+      socketService.off('new_message', handleNewMessage);
+      socketService.off('message_read', handleNewMessage);
+    };
+  }, []);
 
   React.useEffect(() => {
     const subscription = Dimensions.addEventListener('change', ({ window }) => {
@@ -49,27 +89,7 @@ export default function MainScreen({ navigation, route }: any) {
         socketService.on('profile_updated', async () => {
           const res = await apiService.getMe();
           if (res.success) {
-            await AsyncStorage.setItem('user', JSON.stringify(res.data));
-          }
-        });
-
-        // Synchronisation globale du profil (photo, nom, pseudo)
-        socketService.on('admin_user_profile_updated', async (data) => {
-          const currentUserStr = await AsyncStorage.getItem('user');
-          if (currentUserStr) {
-            const userObj = JSON.parse(currentUserStr);
-            if (userObj.id === data.userId) {
-              // Mettre à jour les données locales
-              const updatedUser = {
-                ...userObj,
-                full_name: data.full_name || userObj.full_name,
-                name: data.full_name || userObj.full_name,
-                avatar_url: data.avatar_url || userObj.avatar_url,
-                avatar: data.avatar_url || userObj.avatar_url,
-                username: data.username || userObj.username
-              };
-              await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
-            }
+            setUser(res.data);
           }
         });
 
@@ -197,7 +217,7 @@ export default function MainScreen({ navigation, route }: any) {
                     </View>
                   ) : (
                     <View style={styles.emptyDetail}>
-                      <Ionicons name="chatbubbles-outline" size={80} color={colors.text.disabled} />
+                      <MessagesSquare size={80} color={colors.text.disabled} />
                       <Text style={[styles.emptyDetailText, { color: colors.text.secondary }]}>
                         Sélectionnez une discussion pour commencer à discuter
                       </Text>
@@ -208,6 +228,7 @@ export default function MainScreen({ navigation, route }: any) {
             );
           }
           return <ChatListScreen navigation={navigation} route={route} />;
+        case 'calls': return <CallHistoryScreen navigation={navigation} />;
         case 'status': return <StatusScreen />;
         case 'market': return <MarketScreen />;
         default: return <ChatListScreen navigation={navigation} route={route} />;
@@ -216,7 +237,7 @@ export default function MainScreen({ navigation, route }: any) {
       console.error('MainScreen render content error:', err);
       return (
         <View style={styles.emptyDetail}>
-          <Ionicons name="alert-circle-outline" size={60} color={colors.danger} />
+          <AlertCircle size={60} color={colors.danger} />
           <Text style={{ marginTop: 10, color: colors.text.primary }}>Une erreur d'affichage est survenue.</Text>
           <TouchableOpacity onPress={() => setActiveTab('chats')} style={{ marginTop: 20, padding: 10, backgroundColor: colors.primary, borderRadius: 10 }}>
             <Text style={{ color: '#fff' }}>Retour aux discussions</Text>
@@ -245,19 +266,19 @@ export default function MainScreen({ navigation, route }: any) {
       ]}>
         <TabItem
           active={activeTab === 'chats'}
-          icon="chatbubbles"
+          icon={<MessagesSquare size={22} />}
           label={t('chats')}
           onPress={() => setActiveTab('chats')}
           activeColor={colors.primary}
           inactiveColor={colors.text.secondary}
           activeBg={isDark ? colors.primary + '20' : '#F3E5F5'}
-          badge={0}
+          badge={unreadTotal}
           styles={styles}
           normalize={normalize}
         />
         <TabItem
           active={activeTab === 'status'}
-          icon="aperture"
+          icon={<Aperture size={22} />}
           label={t('status')}
           onPress={() => setActiveTab('status')}
           activeColor={colors.primary}
@@ -268,8 +289,20 @@ export default function MainScreen({ navigation, route }: any) {
           normalize={normalize}
         />
         <TabItem
+          active={activeTab === 'calls'}
+          icon={<Phone size={22} />}
+          label={t('calls') || 'Appels'}
+          onPress={() => setActiveTab('calls')}
+          activeColor={colors.primary}
+          inactiveColor={colors.text.secondary}
+          activeBg={isDark ? colors.primary + '20' : '#F3E5F5'}
+          badge={0}
+          styles={styles}
+          normalize={normalize}
+        />
+        <TabItem
           active={activeTab === 'market'}
-          icon="cart"
+          icon={<ShoppingCart size={22} />}
           label={t('market')}
           onPress={() => setActiveTab('market')}
           activeColor={colors.primary}
@@ -287,7 +320,7 @@ export default function MainScreen({ navigation, route }: any) {
 const TabItem = ({ active, icon, label, onPress, activeColor, inactiveColor, activeBg, badge, styles, normalize }: any) => (
   <TouchableOpacity style={styles.tabItem} onPress={onPress} activeOpacity={0.7}>
     <View style={[styles.iconContainer, active && { backgroundColor: activeBg }]}>
-      <Ionicons name={active ? icon : `${icon}-outline`} size={normalize(20)} color={active ? activeColor : inactiveColor} />
+      {React.cloneElement(icon, { color: active ? activeColor : inactiveColor })}
       {badge > 0 && (
         <View style={styles.badgeContainer}>
           <Text style={styles.badgeText} numberOfLines={1}>{badge > 99 ? '9+' : badge}</Text>
@@ -298,6 +331,8 @@ const TabItem = ({ active, icon, label, onPress, activeColor, inactiveColor, act
       style={[styles.tabLabel, { color: active ? activeColor : inactiveColor }, active && styles.activeLabel]}
       numberOfLines={1}
       ellipsizeMode="tail"
+      adjustsFontSizeToFit
+      minimumFontScale={0.8}
     >
       {label}
     </Text>
@@ -318,8 +353,10 @@ const createStyles = (colors: any, normalize: any, isDark: boolean) => StyleShee
     borderTopWidth: 1,
     paddingTop: 8,
     width: '100%',
+    justifyContent: 'space-between',
+    paddingHorizontal: normalize(10),
   },
-  tabItem: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 2 },
+  tabItem: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   iconContainer: {
     width: normalize(48),
     height: normalize(28),

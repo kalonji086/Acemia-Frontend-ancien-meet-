@@ -13,7 +13,10 @@ import {
   Dimensions,
   ImageBackground,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import {
+  ArrowLeft, BadgeCheck, AtSign, Info, Phone, MapPin,
+  Ban, AlertCircle
+} from 'lucide-react-native';
 import apiService from '../services/api.service';
 import socketService from '../services/socket.service';
 import { SOCKET_URL } from '../utils/constants';
@@ -133,6 +136,13 @@ export default function UserProfileScreen({ navigation, route }: any) {
   const displayPhone = user?.phone_number || '';
   const displayPseudo = user?.username ? `@${user.username}` : '';
 
+  let age = 'N/A';
+  if (user?.birth_date) {
+    const birth = new Date(user.birth_date);
+    const diff = Date.now() - birth.getTime();
+    age = Math.floor(diff / (1000 * 60 * 60 * 24 * 365.25)) + ' ans';
+  }
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
@@ -143,13 +153,16 @@ export default function UserProfileScreen({ navigation, route }: any) {
             <View style={styles.headerOverlay}>
               <View style={[styles.headerTop, { paddingTop: useSafeAreaInsets().top }]}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.iconBtn}>
-                  <Ionicons name="arrow-back" size={24} color="#fff" />
+                  <ArrowLeft size={24} color="#fff" />
                 </TouchableOpacity>
               </View>
               <View style={styles.nameSection}>
-                <Text style={styles.userName}>{displayName}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.userName}>{displayName}</Text>
+                  <Text style={styles.userSubInfo}>{user?.gender === 'M' ? 'Homme' : (user?.gender === 'F' ? 'Femme' : '')}{age !== 'N/A' ? ` • ${age}` : ''}</Text>
+                </View>
                 {user?.is_verified && (
-                  <Ionicons name="checkmark-circle" size={20} color={colors.info} style={{ marginLeft: 8 }} />
+                  <BadgeCheck size={26} color={colors.info} style={{ marginLeft: 8 }} />
                 )}
               </View>
             </View>
@@ -158,6 +171,7 @@ export default function UserProfileScreen({ navigation, route }: any) {
 
         <View style={[styles.section, { backgroundColor: colors.surface }]}>
           <View style={styles.infoRow}>
+            <AtSign size={22} color={colors.primary} style={{ marginRight: 15 }} />
             <View style={styles.infoContent}>
               <Text style={[styles.infoLabel, { color: colors.primary }]}>Identifiant</Text>
               <Text style={[styles.infoText, { color: colors.text.primary }]}>{displayPseudo || 'Non renseigné'}</Text>
@@ -165,6 +179,7 @@ export default function UserProfileScreen({ navigation, route }: any) {
           </View>
 
           <View style={styles.infoRow}>
+            <Info size={22} color={colors.primary} style={{ marginRight: 15 }} />
             <View style={styles.infoContent}>
               <Text style={[styles.infoLabel, { color: colors.primary }]}>Actus</Text>
               <Text style={[styles.infoText, { color: colors.text.primary }]}>{displayStatus}</Text>
@@ -172,19 +187,33 @@ export default function UserProfileScreen({ navigation, route }: any) {
           </View>
 
           <View style={styles.infoRow}>
+            <Phone size={22} color={colors.primary} style={{ marginRight: 15 }} />
             <View style={styles.infoContent}>
               <Text style={[styles.infoLabel, { color: colors.primary }]}>Téléphone</Text>
               <Text style={[styles.infoText, { color: colors.text.primary }]}>{displayPhone || 'Non renseigné'}</Text>
             </View>
             <TouchableOpacity style={styles.actionBtn}>
-              <Ionicons name="call" size={20} color={colors.primary} />
+              <Phone size={20} color={colors.primary} />
             </TouchableOpacity>
+          </View>
+
+          <View style={styles.infoRow}>
+            <MapPin size={22} color={colors.primary} style={{ marginRight: 15 }} />
+            <View style={styles.infoContent}>
+              <Text style={[styles.infoLabel, { color: colors.primary }]}>Localisation</Text>
+              <Text style={[styles.infoText, { color: colors.text.primary }]}>
+                {user?.city || 'Ville'}, {user?.commune || 'Commune'}
+              </Text>
+              <Text style={[styles.infoSubText, { color: colors.text.secondary }]}>
+                {user?.province || 'Province'} • {user?.country || 'Pays'}
+              </Text>
+            </View>
           </View>
         </View>
 
         <View style={[styles.section, { backgroundColor: colors.surface, marginTop: 15 }]}>
           <TouchableOpacity style={styles.menuItem} onPress={handleBlockUser}>
-            <Ionicons name="ban-outline" size={24} color={colors.danger} />
+            <Ban size={24} color={colors.danger} />
             <Text style={[styles.menuText, { color: colors.danger }]}>Bloquer l'utilisateur</Text>
           </TouchableOpacity>
 
@@ -192,7 +221,7 @@ export default function UserProfileScreen({ navigation, route }: any) {
             style={styles.menuItem}
             onPress={handleReportUser}
           >
-            <Ionicons name="alert-circle-outline" size={24} color={colors.danger} />
+            <AlertCircle size={24} color={colors.danger} />
             <Text style={[styles.menuText, { color: colors.danger }]}>Signaler l'utilisateur</Text>
           </TouchableOpacity>
         </View>
@@ -211,11 +240,13 @@ const styles = StyleSheet.create({
   iconBtn: { padding: 10, backgroundColor: 'rgba(0,0,0,0.3)', borderRadius: 25, width: 45, height: 45, justifyContent: 'center', alignItems: 'center' },
   nameSection: { padding: 20, paddingBottom: 30, flexDirection: 'row', alignItems: 'center' },
   userName: { fontSize: 28, fontWeight: 'bold', color: '#fff', textShadowColor: 'rgba(0, 0, 0, 0.5)', textShadowOffset: { width: 1, height: 1 }, textShadowRadius: 10 },
+  userSubInfo: { fontSize: 16, color: 'rgba(255,255,255,0.85)', fontWeight: '600', marginTop: 2 },
   section: { paddingHorizontal: 20, elevation: 1 },
   infoRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 20, borderBottomWidth: 0.5, borderBottomColor: 'rgba(0,0,0,0.05)' },
   infoContent: { flex: 1 },
   infoLabel: { fontSize: 13, fontWeight: 'bold', marginBottom: 5, textTransform: 'uppercase' },
   infoText: { fontSize: 16, fontWeight: '500' },
+  infoSubText: { fontSize: 13, marginTop: 4, fontWeight: '500' },
   actionBtn: { padding: 10 },
   menuItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 18, borderBottomWidth: 0.5, borderBottomColor: 'rgba(0,0,0,0.05)' },
   menuText: { fontSize: 16, fontWeight: '600', marginLeft: 20 },

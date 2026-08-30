@@ -7,16 +7,15 @@ import {
   TouchableOpacity,
   SafeAreaView,
   StatusBar,
+  ActivityIndicator,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { colors, normalize } from '../styles/theme';
+import { ArrowLeft } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import apiService from '../services/api.service';
-import { ActivityIndicator } from 'react-native';
 
 export default function PrivacyPolicyScreen({ navigation, isComponent = false }: any) {
-  const { colors: themeColors, isDark } = useTheme();
+  const { colors: themeColors, isDark, normalize } = useTheme();
   const { t } = useLanguage();
   const [loading, setLoading] = React.useState(true);
   const [privacyDoc, setPrivacyDoc] = React.useState<any>(null);
@@ -54,87 +53,60 @@ export default function PrivacyPolicyScreen({ navigation, isComponent = false }:
           <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={themeColors.surface} />
           <View style={[styles.header, { backgroundColor: themeColors.surface, borderBottomColor: themeColors.border }]}>
             <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-              <Ionicons name="arrow-back" size={24} color={themeColors.primary} />
+              <ArrowLeft size={24} color={themeColors.primary} />
             </TouchableOpacity>
-            <Text style={[styles.headerTitle, { color: themeColors.text.primary }]}>{t('privacyPolicy')}</Text>
+            <Text style={[styles.headerTitle, { color: themeColors.text.primary }]}>Politique de Confidentialité</Text>
           </View>
         </>
       )}
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <Text style={[styles.h1, { color: themeColors.text.primary }]}>Politique de Confidentialité</Text>
+
         {privacyDoc ? (
           <>
-            <Text style={[styles.h1, { color: themeColors.text.primary }]}>Privacy Policy</Text>
             <Text style={[styles.p, { color: themeColors.text.secondary }]}>Version {privacyDoc.version}</Text>
             <Text style={[styles.p, { color: themeColors.text.primary }]}>{privacyDoc.content}</Text>
           </>
         ) : (
           <>
-            <Text style={[styles.h1, { color: themeColors.text.primary }]}>Privacy Policy</Text>
-            <Text style={[styles.p, { color: themeColors.text.secondary }]}>Last updated: August 01, 2026</Text>
+            <Text style={[styles.p, { color: themeColors.text.secondary }]}>Dernière mise à jour : 29 Août 2026</Text>
 
             <Text style={[styles.p, { color: themeColors.text.primary }]}>
-              This Privacy Policy describes Our policies and procedures on the collection, use and disclosure of Your information when You use the Service and tells You about Your privacy rights and how the law protects You.
+              Cette Politique de confidentialité décrit nos règles et procédures sur la collecte, l'utilisation et la divulgation de vos informations lorsque vous utilisez le Service.
             </Text>
-            {/* Fallback content... */}
+
+            <Text style={[styles.h2, { color: themeColors.text.primary }]}>1. Collecte des Données</Text>
+            <Text style={[styles.p, { color: themeColors.text.primary }]}>
+              Nous collectons les informations suivantes pour assurer le bon fonctionnement de Meet Me :
+            </Text>
+            <Text style={[styles.bullet, { color: themeColors.text.primary }]}>• Adresse Email et Identifiants</Text>
+            <Text style={[styles.bullet, { color: themeColors.text.primary }]}>• Numéro de téléphone</Text>
+            <Text style={[styles.bullet, { color: themeColors.text.primary }]}>• Informations de profil (Nom, Sexe, Age, Localisation)</Text>
+            <Text style={[styles.bullet, { color: themeColors.text.primary }]}>• Données de l'appareil (Marque, Modèle, OS)</Text>
+
+            <Text style={[styles.h2, { color: themeColors.text.primary }]}>2. Utilisation de vos Données</Text>
+            <Text style={[styles.p, { color: themeColors.text.primary }]}>
+              Vos données sont utilisées uniquement pour fournir, maintenir et améliorer le Service Meet Me, ainsi que pour assurer la sécurité de votre compte et prévenir la fraude.
+            </Text>
+
+            <Text style={[styles.h2, { color: themeColors.text.primary }]}>3. Protection de la Vie Privée</Text>
+            <Text style={[styles.p, { color: themeColors.text.primary }]}>
+              Meet Me utilise le chiffrement pour protéger vos communications privées. Nous ne vendons jamais vos données personnelles à des tiers.
+            </Text>
+
+            <Text style={[styles.h2, { color: themeColors.text.primary }]}>4. Contact</Text>
+            <Text style={[styles.p, { color: themeColors.text.primary }]}>
+              Pour toute question, contactez-nous : wecanconcept@gmail.com
+            </Text>
           </>
         )}
-
-        <Text style={[styles.p, { color: themeColors.text.primary }]}>
-          We use Your Personal Data to provide and improve the Service. We collect, use, and disclose Your information as described in this Privacy Policy and, where required by applicable law, only where We have a valid legal basis to do so, including Your consent (where consent is required).
-        </Text>
-
-        <Text style={[styles.h2, { color: themeColors.text.primary }]}>Interpretation and Definitions</Text>
-        <Text style={[styles.h3, { color: themeColors.text.primary }]}>Interpretation</Text>
-        <Text style={[styles.p, { color: themeColors.text.primary }]}>
-          The words whose initial letters are capitalized have meanings defined under the following conditions. The following definitions shall have the same meaning regardless of whether they appear in singular or in plural.
-        </Text>
-
-        <Text style={[styles.h3, { color: themeColors.text.primary }]}>Definitions</Text>
-        <Text style={[styles.p, { color: themeColors.text.primary }]}>For the purposes of this Privacy Policy:</Text>
-
-        <BulletItem label="Account" text="means a unique account created for You to access Our Service or parts of Our Service." colors={themeColors} />
-        <BulletItem label="Affiliate" text="means an entity that controls, is controlled by, or is under common control with a party, where 'control' means ownership of 50% or more of the shares, equity interest or other securities entitled to vote for election of directors or other managing authority." colors={themeColors} />
-        <BulletItem label="Application" text="refers to Meet me, the software program provided by the Company." colors={themeColors} />
-        <BulletItem label="Company" text="(referred to as either 'the Company', 'We', 'Us' or 'Our' in this Privacy Policy) refers to Meet me." colors={themeColors} />
-        <BulletItem label="Country/State" text="refers to: Congo - Kinshasa." colors={themeColors} />
-        <BulletItem label="Device" text="means any device that can access the Service, such as a computer, a cell phone or a digital tablet." colors={themeColors} />
-        <BulletItem label="Personal Data" text="(or 'Personal Information') is any information that relates to an identified or identifiable individual." colors={themeColors} />
-        <BulletItem label="Service" text="refers to the Application." colors={themeColors} />
-        <BulletItem label="Usage Data" text="refers to data collected automatically, either generated by the use of the Service or from the Service infrastructure itself." colors={themeColors} />
-
-        <Text style={[styles.h2, { color: themeColors.text.primary }]}>Collecting and Using Your Personal Information</Text>
-        <Text style={[styles.h3, { color: themeColors.text.primary }]}>Types of Data Collected</Text>
-
-        <Text style={[styles.h4, { color: themeColors.text.primary }]}>Personal Data</Text>
-        <Text style={[styles.p, { color: themeColors.text.primary }]}>
-          While using Our Service, We may ask You to provide Us with certain personally identifiable information that can be used to contact or identify You. Personally identifiable information may include, but is not limited to:
-        </Text>
-        <Text style={[styles.bullet, { color: themeColors.text.primary }]}>• Email address</Text>
-        <Text style={[styles.bullet, { color: themeColors.text.primary }]}>• First name and last name</Text>
-        <Text style={[styles.bullet, { color: themeColors.text.primary }]}>• Phone number</Text>
-
-        <Text style={[styles.h4, { color: themeColors.text.primary }]}>Usage Data</Text>
-        <Text style={[styles.p, { color: themeColors.text.primary }]}>Usage Data is collected automatically when using the Service.</Text>
-
-        <Text style={[styles.h2, { color: themeColors.text.primary }]}>Contact Us</Text>
-        <Text style={[styles.p, { color: themeColors.text.primary }]}>If You have any questions about this Privacy Policy, You can contact Us:</Text>
-        <Text style={[styles.bullet, { color: themeColors.text.primary }]}>• By wecanconcept@gmail.com</Text>
 
         <View style={{ height: 40 }} />
       </ScrollView>
     </View>
   );
 }
-
-const BulletItem = ({ label, text, colors }: any) => (
-  <View style={styles.bulletContainer}>
-    <Text style={[styles.bulletPoint, { color: colors.primary }]}>• </Text>
-    <Text style={[styles.p, { color: colors.text.primary, flex: 1 }]}>
-      <Text style={styles.bold}>{label}</Text> {text}
-    </Text>
-  </View>
-);
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
@@ -145,16 +117,14 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   backButton: { marginRight: 20 },
-  headerTitle: { fontSize: normalize(18), fontWeight: 'bold' },
+  headerTitle: { fontSize: 18, fontWeight: 'bold' },
   scrollContent: { padding: 20 },
-  h1: { fontSize: normalize(24), fontWeight: 'bold', marginBottom: 10 },
-  h2: { fontSize: normalize(20), fontWeight: 'bold', marginTop: 25, marginBottom: 10 },
-  h3: { fontSize: normalize(18), fontWeight: 'bold', marginTop: 15, marginBottom: 8 },
-  h4: { fontSize: normalize(16), fontWeight: 'bold', marginTop: 10, marginBottom: 5 },
-  p: { fontSize: normalize(14), lineHeight: 22, marginBottom: 10 },
+  h1: { fontSize: 24, fontWeight: 'bold', marginBottom: 10 },
+  h2: { fontSize: 20, fontWeight: 'bold', marginTop: 25, marginBottom: 10 },
+  p: { fontSize: 14, lineHeight: 22, marginBottom: 10 },
+  bullet: { fontSize: 14, marginLeft: 15, marginBottom: 5 },
+  centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   bold: { fontWeight: 'bold' },
   bulletContainer: { flexDirection: 'row', marginBottom: 8 },
   bulletPoint: { fontSize: 18, marginRight: 5 },
-  bullet: { fontSize: normalize(14), marginLeft: 15, marginBottom: 5 },
-  centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 });

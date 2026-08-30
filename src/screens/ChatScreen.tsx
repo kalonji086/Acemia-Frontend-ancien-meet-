@@ -17,7 +17,11 @@ import {
   Alert,
   Share,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import {
+  Send, Mic, Camera, Paperclip, Download, Share as ShareIcon,
+  Trash2, Undo, Heart, Languages, Sparkles, MessageSquare,
+  Video, Phone, MoreVertical, ArrowLeft
+} from 'lucide-react-native';
 import { Audio } from 'expo-av';
 import { colors as baseColors } from '../styles/theme';
 import { supabase } from '../services/supabase.service';
@@ -32,6 +36,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
+import callService from '../services/call.service';
+import { PRESET_WALLPAPERS } from '../utils/wallpapers';
 
 const { width, height } = Dimensions.get('window');
 
@@ -77,7 +83,7 @@ const MessageItem = React.memo(({
           resizeMode="cover"
         />
       )}
-      <View style={{ maxWidth: '80%' }}>
+      <View style={{ maxWidth: '85%' }}>
         {!isMe && isGroup && sender && (
           <Text style={[styles.senderName, { color: themeColors.primary }]}>{sender.full_name}</Text>
         )}
@@ -90,7 +96,7 @@ const MessageItem = React.memo(({
         >
           {item.isForwarded && (
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 5 }}>
-              <Ionicons name="arrow-redo" size={12} color={isMe ? 'rgba(255,255,255,0.7)' : '#999'} />
+              <Undo size={10} color={isMe ? 'rgba(255,255,255,0.7)' : '#999'} style={{ transform: [{ rotate: '180deg' }] }} />
               <Text style={{ fontSize: 10, fontStyle: 'italic', marginLeft: 4, color: isMe ? 'rgba(255,255,255,0.7)' : '#999' }}>Transféré</Text>
             </View>
           )}
@@ -98,11 +104,10 @@ const MessageItem = React.memo(({
           {item.type === 'audio' ? (
             <View style={styles.audioContainer}>
               <TouchableOpacity style={styles.audioMsg} onPress={() => playAudio(item)}>
-                <Ionicons
-                  name={playingId === item.id && playbackStatus[item.id]?.isPlaying ? "pause" : "play"}
-                  size={normalize(26)}
-                  color={isMe ? '#fff' : themeColors.primary}
-                />
+                {playingId === item.id && playbackStatus[item.id]?.isPlaying
+                  ? <Undo size={22} color={isMe ? '#fff' : themeColors.primary} /> // Simulation pause
+                  : <Mic size={22} color={isMe ? '#fff' : themeColors.primary} />
+                }
                 <View style={styles.audioMainContent}>
                   <View style={[
                     styles.audioBar,
@@ -122,57 +127,23 @@ const MessageItem = React.memo(({
                       )
                     ) : null}
                   </View>
-                  <View style={styles.audioDetails}>
-                    <Text style={[styles.audioDuration, { color: isMe ? 'rgba(255,255,255,0.7)' : '#666' }]}>
-                      {playingId === item.id && playbackStatus[item.id]?.isLoaded
-                        ? `${Math.floor(playbackStatus[item.id].positionMillis / 60000)}:${(Math.floor(playbackStatus[item.id].positionMillis / 1000) % 60).toString().padStart(2, '0')}`
-                        : item.metadata?.duration
-                          ? `${Math.floor(item.metadata.duration / 60)}:${(item.metadata.duration % 60).toString().padStart(2, '0')}`
-                          : '0:00'
-                      }
-                    </Text>
-                  </View>
-                </View>
-                <View style={styles.audioIconWrapper}>
-                  <Ionicons
-                    name="mic"
-                    size={normalize(18)}
-                    color={item.status === 'read' ? '#34B7F1' : (isMe ? '#fff' : '#999')}
-                  />
                 </View>
               </TouchableOpacity>
-
-              <View style={[styles.translationContainer, { borderTopColor: isMe ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.05)', marginTop: 8 }]}>
-                {isTranslatingLocal ? (
-                  <ActivityIndicator size="small" color={isMe ? "#fff" : themeColors.primary} style={{ alignSelf: 'flex-start' }} />
-                ) : item.translatedText ? (
-                  <Text style={[styles.translatedText, { color: isMe ? '#fff' : themeColors.primary, fontWeight: 'bold' }]}>
-                    {item.translatedText}
-                  </Text>
-                ) : item.transcription ? (
-                  <Text style={[styles.translatedText, { color: isMe ? 'rgba(255,255,255,0.9)' : isDark ? '#aaa' : '#555', fontStyle: 'italic' }]}>
-                    "{item.transcription}"
-                  </Text>
-                ) : (
-                  <TouchableOpacity onPress={onTranslatePress} style={styles.inlineTranslateBtn}>
-                    <Ionicons name="language-outline" size={12} color={isMe ? '#fff' : themeColors.primary} />
-                    <Text style={[styles.inlineTranslateText, { color: isMe ? '#fff' : themeColors.primary }]}>Traduire l'audio</Text>
-                  </TouchableOpacity>
-                )}
-                {(item.transcription || item.translatedText) && (
-                  <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
-                    <Ionicons name="sparkles" size={10} color={isMe ? 'rgba(255,255,255,0.6)' : themeColors.primary} />
-                    <Text style={[styles.translationLabel, { marginLeft: 4 }]}>IA Meet Me</Text>
-                  </View>
-                )}
-              </View>
             </View>
           ) : item.type === 'image' ? (
-            <Image
-              source={{ uri: (item.localUri || getFullUrl(item.file_url || item.fileUrl)) || undefined }}
-              style={styles.imageMsg}
-              resizeMode="cover"
-            />
+            <View style={styles.imageContainer}>
+              <Image
+                source={{ uri: (item.localUri || getFullUrl(item.file_url || item.fileUrl)) || undefined }}
+                style={styles.imageMsg}
+                resizeMode="cover"
+              />
+              <TouchableOpacity
+                style={styles.downloadOverlay}
+                onPress={() => downloadFile(item)}
+              >
+                <Download size={20} color="#fff" />
+              </TouchableOpacity>
+            </View>
           ) : item.type === 'file' ? (
             <TouchableOpacity
               style={styles.fileMsg}
@@ -183,43 +154,33 @@ const MessageItem = React.memo(({
                 styles.fileIcon,
                 { backgroundColor: isMe ? 'rgba(255,255,255,0.2)' : themeColors.primary + '20' }
               ]}>
-                {downloadProgress[item.id] !== undefined || uploadProgress[item.tempId || item.id] !== undefined ? (
+                {downloadProgress[item.id] !== undefined ? (
                   <ActivityIndicator size="small" color={isMe ? '#fff' : themeColors.primary} />
                 ) : (
-                  <Ionicons
-                    name="document-attach"
-                    size={24}
-                    color={isMe ? '#fff' : themeColors.primary}
-                  />
+                  <Paperclip size={20} color={isMe ? '#fff' : themeColors.primary} />
                 )}
               </View>
               <View style={styles.fileInfo}>
                 <Text style={[styles.fileName, { color: isMe ? '#fff' : themeColors.text.primary }]} numberOfLines={1}>
                   {item.content}
                 </Text>
-                {(uploadProgress[item.tempId || item.id] !== undefined || downloadProgress[item.id] !== undefined) ? (
-                  <View style={styles.downloadProgressContainer}>
-                    <View style={[
-                      styles.audioBar,
-                      { marginHorizontal: 0, marginTop: 5, backgroundColor: isMe ? 'rgba(255,255,255,0.2)' : themeColors.primary + '20' }
-                    ]}>
-                      <View style={[
-                        styles.audioProgress,
-                        {
-                          width: `${(uploadProgress[item.tempId || item.id] || downloadProgress[item.id]) * 100}%`,
-                          backgroundColor: isMe ? '#fff' : themeColors.primary
-                        }
-                      ]} />
-                    </View>
-                  </View>
-                ) : (
-                  <Text style={[styles.fileSize, { color: isMe ? 'rgba(255,255,255,0.7)' : '#999' }]}>
-                    {item.file_size ? `${(item.file_size / 1024).toFixed(1)} KB • ` : ''}
-                    {item.status === 'sending' ? 'Envoi...' : 'Appuyer pour télécharger'}
-                  </Text>
-                )}
+                <Text style={[styles.fileSize, { color: isMe ? 'rgba(255,255,255,0.7)' : '#999' }]}>
+                   Appuyer pour télécharger
+                </Text>
               </View>
+              <Download size={16} color={isMe ? 'rgba(255,255,255,0.7)' : '#999'} style={{ marginLeft: 5 }} />
             </TouchableOpacity>
+          ) : item.type === 'call' ? (
+            <View style={styles.callLogContainer}>
+               <View style={[styles.callLogIcon, { backgroundColor: isMe ? 'rgba(255,255,255,0.2)' : themeColors.primary + '15' }]}>
+                  {item.metadata?.callType === 'video' ? <Video size={16} color={isMe ? '#fff' : themeColors.primary} /> : <Phone size={16} color={isMe ? '#fff' : themeColors.primary} />}
+               </View>
+               <View style={styles.callLogInfo}>
+                  <Text style={[styles.callLogText, { color: isMe ? '#fff' : themeColors.text.primary }]}>
+                    {item.content}
+                  </Text>
+               </View>
+            </View>
           ) : (
             <View>
               <Text style={[
@@ -229,20 +190,6 @@ const MessageItem = React.memo(({
               ]}>
                 {isDeleted ? `🚫 ${t?.('messageRemoved') || 'Ce message a été supprimé'}` : (item.translatedText || item.content)}
               </Text>
-
-              {!isDeleted && !item.translatedText && item.sender_id !== currentUser?.id && (
-                <TouchableOpacity onPress={onTranslatePress} style={[styles.inlineTranslateBtn, { marginTop: 5 }]}>
-                  <Ionicons name="language-outline" size={12} color={isMe ? '#fff' : themeColors.primary} />
-                  <Text style={[styles.inlineTranslateText, { color: isMe ? '#fff' : themeColors.primary }]}>Traduire ce message</Text>
-                </TouchableOpacity>
-              )}
-
-              {item.translatedText && (
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
-                  <Ionicons name="sparkles" size={10} color={isMe ? 'rgba(255,255,255,0.6)' : themeColors.primary} />
-                  <Text style={[styles.translationLabel, { marginLeft: 4 }]}>IA Meet Me • {t?.('translatedFrom') || 'Traduit'}</Text>
-                </View>
-              )}
             </View>
           )}
 
@@ -251,20 +198,23 @@ const MessageItem = React.memo(({
               {new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </Text>
             {isMe && (
-              <Ionicons
-                name={item.status === 'read' ? "checkmark-done" : "checkmark"}
-                size={14}
-                color={item.status === 'read' ? '#34B7F1' : 'rgba(255,255,255,0.5)'}
-                style={{marginLeft: 5}}
-              />
+               <Text style={{ fontSize: 10, color: item.status === 'read' ? '#34B7F1' : 'rgba(255,255,255,0.5)', marginLeft: 4 }}>
+                 {item.status === 'read' ? '✓✓' : '✓'}
+               </Text>
             )}
           </View>
 
           {item.likes && item.likes.length > 0 && (
-            <View style={[styles.likeContainer, { backgroundColor: isMe ? 'rgba(255,255,255,0.9)' : themeColors.surface }]}>
-              <Ionicons name="heart" size={10} color="#e91e63" />
+            <TouchableOpacity
+              onPress={() => {
+                const count = item.likes.length;
+                Alert.alert('Likes', `${count} personne${count > 1 ? 's ont' : ' a'} liké ce message.`);
+              }}
+              style={[styles.likeContainer, { backgroundColor: isMe ? 'rgba(255,255,255,0.9)' : themeColors.surface }]}
+            >
+              <Heart size={10} fill="#e91e63" color="#e91e63" />
               {item.likes.length > 1 && <Text style={styles.likeCount}>{item.likes.length}</Text>}
-            </View>
+            </TouchableOpacity>
           )}
         </TouchableOpacity>
       </View>
@@ -284,8 +234,9 @@ export default function ChatScreen({ navigation, route }: any) {
   const [peerLastSeen, setPeerLastSeen] = useState<string | null>(null);
   const [peerName, setPeerName] = useState<string>(name);
   const [peerAvatar, setPeerAvatar] = useState<string | null>(avatar);
-  const [chatBg, setChatBg] = useState<string | null>(null);
+  const [chatBg, setChatBg] = useState<any>(null);
   const [chatColor, setChatColor] = useState<string | null>(null);
+  const [showWallpaperModal, setShowWallpaperModal] = useState(false);
   const [isForwarding, setIsForwarding] = useState(false);
   const [messageToForward, setMessageToForward] = useState<any>(null);
   const [contacts, setContacts] = useState<any[]>([]);
@@ -345,7 +296,14 @@ export default function ChatScreen({ navigation, route }: any) {
 
         const bg = await AsyncStorage.getItem(`chat_bg_${chatId}`);
         const color = await AsyncStorage.getItem(`chat_color_${chatId}`);
-        if (bg) setChatBg(bg);
+        if (bg) {
+          // Vérifier si c'est un preset ou une URI d'image
+          const preset = PRESET_WALLPAPERS.find(p => p.id === bg);
+          if (preset) setChatBg(preset.image);
+          else setChatBg({ uri: bg });
+        } else {
+          setChatBg(PRESET_WALLPAPERS[0].image); // Défaut
+        }
         if (color) setChatColor(color);
 
         await apiService.markMessagesAsRead(chatId);
@@ -505,15 +463,28 @@ export default function ChatScreen({ navigation, route }: any) {
   const startRecording = async () => {
     try {
       const { status } = await Audio.requestPermissionsAsync();
-      if (status !== 'granted') return;
-      const newRecording = new Audio.Recording();
-      await newRecording.prepareToRecordAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
-      await newRecording.startAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission refusée', 'Vous devez autoriser l\'accès au micro pour envoyer des messages vocaux.');
+        return;
+      }
+
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      });
+
+      const { recording: newRecording } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY
+      );
+
       setRecording(newRecording);
       setIsRecording(true);
       setRecordingDuration(0);
       timerRef.current = setInterval(() => setRecordingDuration(p => p + 1), 1000);
-    } catch (err) { console.error(err); }
+    } catch (err) {
+      console.error('Failed to start recording', err);
+      Alert.alert('Erreur', 'Impossible de démarrer l\'enregistrement vocal. Vérifiez vos paramètres.');
+    }
   };
 
   const stopRecording = async () => {
@@ -523,6 +494,11 @@ export default function ChatScreen({ navigation, route }: any) {
     const duration = recordingDuration;
     try {
       await recording.stopAndUnloadAsync();
+
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+      });
+
       const uri = recording.getURI();
       setRecording(null);
       if (uri && currentUser) {
@@ -531,7 +507,10 @@ export default function ChatScreen({ navigation, route }: any) {
           await apiService.sendMessage(chatId, t?.('audio') || 'Message vocal', 'audio', uploadRes.data.fileUrl, { duration });
         }
       }
-    } catch (err) { console.error(err); }
+    } catch (err) {
+      console.error('Failed to stop recording', err);
+      setRecording(null);
+    }
   };
 
   const handlePickDocument = async () => {
@@ -663,8 +642,13 @@ export default function ChatScreen({ navigation, route }: any) {
     }
   }, [messages.length, getFullUrl]);
 
-  const handleLikeMessage = useCallback((messageId: string) => {
-    socketService.emit('react_to_message', { messageId, emoji: '❤️' });
+  const handleLikeMessage = useCallback(async (messageId: string) => {
+    try {
+      const res = await apiService.reactToMessage(messageId);
+      if (res.success) {
+        setMessages(prev => prev.map(m => m.id === messageId ? { ...m, likes: res.data.likes } : m));
+      }
+    } catch (e) { console.error(e); }
   }, []);
 
   const handleMessageLongPress = useCallback((item: any) => {
@@ -672,13 +656,41 @@ export default function ChatScreen({ navigation, route }: any) {
     if (item.content?.includes('Ce message a été supprimé')) return;
     const options = [
       { text: t?.('cancel') || 'Annuler', style: 'cancel' },
-      { text: (item.likes && item.likes.includes(currentUser?.id)) ? 'Retirer Like' : 'Liker ❤️', onPress: () => handleLikeMessage(item.id) },
+      { text: (item.likes && item.likes.includes(currentUser?.id)) ? 'Retirer Like' : 'Liker', onPress: () => handleLikeMessage(item.id) },
       { text: 'Transférer', onPress: () => { setMessageToForward(item); setIsForwarding(true); apiService.searchUsers('').then(res => res.success && setContacts(res.data)); } },
       { text: 'Partager', onPress: () => Share.share({ message: item.content }) }
     ];
-    if (isMe) options.push({ text: t?.('delete') || 'Supprimer', style: 'destructive', onPress: () => apiService.deleteMessage(item.id, 'everyone') });
+    if (isMe) options.push({ text: t?.('delete') || 'Supprimer', style: 'destructive', onPress: () => handleDeleteMessage(item.id) });
     Alert.alert('Options', null, options as any);
   }, [currentUser?.id, t, handleLikeMessage]);
+
+  const handleDeleteMessage = async (messageId: string) => {
+    Alert.alert(
+      "Supprimer le message",
+      "Voulez-vous supprimer ce message pour tout le monde ?",
+      [
+        { text: "Annuler", style: "cancel" },
+        {
+          text: "Supprimer pour moi",
+          onPress: async () => {
+            const res = await apiService.deleteMessage(messageId, 'me');
+            if (res.success) setMessages(prev => prev.filter(m => m.id !== messageId));
+          }
+        },
+        {
+          text: "Supprimer pour tous",
+          style: "destructive",
+          onPress: async () => {
+            const res = await apiService.deleteMessage(messageId, 'everyone');
+            if (res.success) {
+               // Le message sera mis à jour via Socket/Supabase, mais on peut forcer localement
+               setMessages(prev => prev.map(m => m.id === messageId ? { ...m, content: '🚫 Ce message a été supprimé', type: 'text', file_url: null } : m));
+            }
+          }
+        }
+      ]
+    );
+  };
 
   const styles = useMemo(() => createStyles(themeColors, normalize, fontSizeFactor, isDark), [themeColors, normalize, fontSizeFactor, isDark]);
 
@@ -718,12 +730,35 @@ export default function ChatScreen({ navigation, route }: any) {
   };
 
   const handlePickChatBg = async () => {
+    Alert.alert(
+      "Fond d'écran",
+      "Choisissez une option",
+      [
+        { text: "Galerie", onPress: () => handlePickFromGallery() },
+        { text: "Fonds prédéfinis", onPress: () => setShowWallpaperModal(true) },
+        { text: "Défaut", onPress: () => handleSelectPreset('default') },
+        { text: "Annuler", style: "cancel" }
+      ]
+    );
+  };
+
+  const handlePickFromGallery = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') return;
     const result = await ImagePicker.launchImageLibraryAsync({ quality: 0.8 });
     if (!result.canceled) {
-      setChatBg(result.assets[0].uri);
-      await AsyncStorage.setItem(`chat_bg_${chatId}`, result.assets[0].uri);
+      const uri = result.assets[0].uri;
+      setChatBg({ uri });
+      await AsyncStorage.setItem(`chat_bg_${chatId}`, uri);
+    }
+  };
+
+  const handleSelectPreset = async (id: string) => {
+    const preset = PRESET_WALLPAPERS.find(p => p.id === id);
+    if (preset) {
+      setChatBg(preset.image);
+      await AsyncStorage.setItem(`chat_bg_${chatId}`, id);
+      setShowWallpaperModal(false);
     }
   };
 
@@ -753,11 +788,32 @@ export default function ChatScreen({ navigation, route }: any) {
     );
   };
 
+  const handleArchiveChat = async () => {
+    try {
+      const res = await apiService.archiveChat(chatId);
+      if (res.success) {
+        Alert.alert('Succès', 'Discussion archivée');
+        navigation.goBack();
+      }
+    } catch (e) { console.error(e); }
+  };
+
+  const initiateAudioCall = () => {
+    if (!peerUserId || !currentUser) return;
+    callService.startCall(peerUserId, peerName, peerAvatar || '', 'audio');
+  };
+
+  const initiateVideoCall = () => {
+    if (!peerUserId || !currentUser) return;
+    callService.startCall(peerUserId, peerName, peerAvatar || '', 'video');
+  };
+
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]}>
-      <StatusBar barStyle="light-content" backgroundColor={themeColors.primary} />
+    <View style={[styles.container, { backgroundColor: themeColors.background }]}>
+      <View style={{ height: insets.top, backgroundColor: themeColors.primary }} />
+      <StatusBar barStyle="light-content" backgroundColor={themeColors.primary} translucent />
       <View style={[styles.header, { backgroundColor: themeColors.primary }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}><Ionicons name="arrow-back" size={24} color="#fff" /></TouchableOpacity>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}><ArrowLeft size={24} color="#fff" /></TouchableOpacity>
         <TouchableOpacity style={styles.headerUserInfo} onPress={() => isGroup ? navigation.navigate('GroupInfo', { chatId }) : navigation.navigate('UserProfile', { userId: peerUserId, name: peerName, avatar: peerAvatar })}>
           <Image
             source={{ uri: onProfileRetouch((getFullUrl(peerAvatar || '') || `https://ui-avatars.com/api/?name=${peerName}`)) || undefined }}
@@ -769,7 +825,16 @@ export default function ChatScreen({ navigation, route }: any) {
             <Text style={styles.headerStatus} numberOfLines={1}>{peerStatus === 'online' ? 'En ligne' : (peerStatus || 'Hors ligne')}</Text>
           </View>
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => Alert.alert('Options', null, [{ text: 'Fond d\'écran', onPress: handlePickChatBg }, { text: 'Couleur', onPress: handleChangeChatColor }, { text: 'Annuler', style: 'cancel' }])} style={styles.headerIcon}><Ionicons name="ellipsis-vertical" size={22} color="#fff" /></TouchableOpacity>
+
+        {/* Call Buttons */}
+        {!isGroup && (
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <TouchableOpacity onPress={initiateVideoCall} style={styles.headerIcon}><Video size={22} color="#fff" /></TouchableOpacity>
+            <TouchableOpacity onPress={initiateAudioCall} style={styles.headerIcon}><Phone size={20} color="#fff" /></TouchableOpacity>
+          </View>
+        )}
+
+        <TouchableOpacity onPress={() => Alert.alert('Options', null, [{ text: 'Fond d\'écran', onPress: handlePickChatBg }, { text: 'Couleur', onPress: handleChangeChatColor }, { text: 'Archiver', onPress: () => handleArchiveChat() }, { text: 'Annuler', style: 'cancel' }])} style={styles.headerIcon}><MoreVertical size={22} color="#fff" /></TouchableOpacity>
       </View>
 
       {/* Indicateur de frappe */}
@@ -782,7 +847,7 @@ export default function ChatScreen({ navigation, route }: any) {
       )}
 
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-        <ImageBackground source={chatBg ? { uri: chatBg } : { uri: 'https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png' }} style={styles.chatBg}>
+        <ImageBackground source={chatBg} style={[styles.chatBg, { backgroundColor: themeColors.background }]}>
           {loading ? <ActivityIndicator size="large" color={themeColors.primary} style={{marginTop: 20}} /> : (
             <FlatList
               ref={flatListRef} data={messages} renderItem={renderMessage}
@@ -796,7 +861,7 @@ export default function ChatScreen({ navigation, route }: any) {
           <View style={[styles.inputBox, { backgroundColor: isDark ? '#333' : '#f0f0f0' }]}>
             {isRecording ? (
               <View style={styles.recordingIndicator}>
-                <Ionicons name="mic" size={20} color={baseColors.danger} />
+                <Mic size={20} color={baseColors.danger} />
                 <Text style={styles.recordingText}>{Math.floor(recordingDuration/60)}:{(recordingDuration%60).toString().padStart(2,'0')}</Text>
               </View>
             ) : (
@@ -810,21 +875,22 @@ export default function ChatScreen({ navigation, route }: any) {
               />
             )}
             <TouchableOpacity style={styles.iconButton} onPress={handlePickDocument}>
-              <Ionicons name="attach" size={24} color={isDark ? '#999' : '#666'} />
+              <Paperclip size={24} color={isDark ? '#999' : '#666'} />
             </TouchableOpacity>
             {!inputText.trim() && !isRecording && (
               <TouchableOpacity style={styles.iconButton} onPress={handlePickImage}>
-                <Ionicons name="camera" size={24} color={isDark ? '#999' : '#666'} />
+                <Camera size={24} color={isDark ? '#999' : '#666'} />
               </TouchableOpacity>
             )}
           </View>
           <TouchableOpacity
             style={[styles.sendBtn, { backgroundColor: themeColors.primary }, isRecording && { backgroundColor: themeColors.danger }]}
-            onPress={inputText.trim() ? handleSendMessage : undefined}
+            onPress={inputText.trim() ? handleSendMessage : () => !isRecording && Alert.alert('Aide', 'Maintenez le bouton micro enfoncé pour enregistrer un message vocal.')}
             onLongPress={!inputText.trim() ? startRecording : undefined}
+            delayLongPress={150}
             onPressOut={() => isRecording && stopRecording()}
           >
-            <Ionicons name={inputText.trim() ? "send" : (isRecording ? "stop" : "mic")} size={normalize(22)} color="#fff" />
+            {inputText.trim() ? <Send size={22} color="#fff" /> : (isRecording ? <Undo size={22} color="#fff" /> : <Mic size={22} color="#fff" />)}
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -842,7 +908,29 @@ export default function ChatScreen({ navigation, route }: any) {
           </View>
         </View>
       )}
-    </SafeAreaView>
+
+      {/* Modal de sélection de fond d'écran */}
+      <Modal visible={showWallpaperModal} transparent animationType="slide" onRequestClose={() => setShowWallpaperModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Fonds d'écran</Text>
+            <FlatList
+              data={PRESET_WALLPAPERS}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => (
+                <TouchableOpacity onPress={() => handleSelectPreset(item.id)} style={styles.wallpaperOption}>
+                  <Image source={item.image} style={styles.wallpaperThumb} />
+                  <Text style={styles.wallpaperName}>{item.name}</Text>
+                </TouchableOpacity>
+              )}
+            />
+            <TouchableOpacity onPress={() => setShowWallpaperModal(false)} style={styles.closeBtn}><Text style={{ color: themeColors.primary, fontWeight: 'bold' }}>Fermer</Text></TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    </View>
   );
 }
 
@@ -875,7 +963,9 @@ const createStyles = (colors: any, normalize: any, factor: number, isDark: boole
   messageRow: { flexDirection: 'row', marginVertical: 2 },
   bubble: { maxWidth: '85%', padding: 10, borderRadius: 15 },
   msgText: { fontSize: normalize(15, factor) },
-  imageMsg: { width: width * 0.7, height: width * 0.7, borderRadius: 10 },
+  imageContainer: { width: width * 0.7, height: width * 0.7, borderRadius: 10, overflow: 'hidden', position: 'relative' },
+  imageMsg: { width: '100%', height: '100%' },
+  downloadOverlay: { position: 'absolute', bottom: 10, right: 10, backgroundColor: 'rgba(0,0,0,0.5)', width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center' },
   msgFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', marginTop: 2 },
   timeText: { fontSize: normalize(8, factor) },
   audioMsg: { flexDirection: 'row', alignItems: 'center', minWidth: 200, paddingVertical: 5 },
@@ -917,5 +1007,16 @@ const createStyles = (colors: any, normalize: any, factor: number, isDark: boole
   forwardUserItem: { paddingVertical: 15, borderBottomWidth: 0.5, borderBottomColor: '#eee' },
   closeBtn: { marginTop: 15, alignItems: 'center' },
   likeContainer: { position: 'absolute', bottom: -10, right: 10, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10, elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.2, shadowRadius: 1 },
-  likeCount: { fontSize: 9, fontWeight: 'bold', marginLeft: 3, color: '#e91e63' }
+  likeCount: { fontSize: 9, fontWeight: 'bold', marginLeft: 3, color: '#e91e63' },
+  callLogContainer: { flexDirection: 'row', alignItems: 'center', paddingVertical: 5, paddingHorizontal: 2 },
+  callLogIcon: { width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center', marginRight: 10 },
+  callLogInfo: { flex: 1 },
+  callLogText: { fontSize: normalize(13, factor), fontWeight: '600' },
+  callLogTime: { fontSize: normalize(9, factor), marginTop: 2 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  modalContent: { backgroundColor: colors.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 40 },
+  modalTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 20, textAlign: 'center' },
+  wallpaperOption: { marginRight: 15, alignItems: 'center' },
+  wallpaperThumb: { width: 100, height: 180, borderRadius: 10, borderWidth: 1, borderColor: '#eee' },
+  wallpaperName: { marginTop: 8, fontSize: 12, fontWeight: '500' }
 });

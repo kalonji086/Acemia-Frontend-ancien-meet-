@@ -2,7 +2,7 @@
   "expo": {
     "name": "Meet",
     "slug": "meet-app",
-    "version": "50.0.0",
+    "version": "75.0.0",
     "orientation": "portrait",
     "icon": "./assets/Logo.png",
     "userInterfaceStyle": "light",
@@ -30,7 +30,7 @@
     },
     "android": {
       "package": "com.deve",
-      "versionCode": 50,
+      "versionCode": 75,
       "adaptiveIcon": {
         "foregroundImage": "./assets/Logo.png",
         "backgroundColor": "#ffffff"
@@ -48,8 +48,8 @@
         "VIBRATE"
       ],
       "softwareKeyboardLayoutMode": "resize",
-      "enableProguardInReleaseBuilds": false,
-      "enableShrinkResourcesInReleaseBuilds": false,
+      "enableProguardInReleaseBuilds": true,
+      "enableShrinkResourcesInReleaseBuilds": true,
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
     },
@@ -79,9 +79,9 @@
       "apiUrl": "https://meet-me-backend-sg5c.onrender.com/api",
       "socketUrl": "https://meet-me-backend-sg5c.onrender.com",
       "eas": {
-        "projectId": "fee87e24-eba3-4ba8-8c85-828055fa7d38"
+        "projectId": "b0ab9e74-0ca6-49fa-b8c6-8489f9a9efab"
       }
     },
-    "owner": "bussinessess-team"
+    "owner": "guellord"
   }
 }

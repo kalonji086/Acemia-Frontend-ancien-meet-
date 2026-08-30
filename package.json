@@ -1,6 +1,6 @@
 {
   "name": "meeetme",
-  "version": "50.0.0",
+  "version": "75.0.0",
   "main": "index.ts",
   "scripts": {
     "start": "node scripts/start.js",
@@ -43,15 +43,18 @@
     "expo-splash-screen": "~0.29.20",
     "expo-status-bar": "~2.0.1",
     "expo-system-ui": "~4.0.7",
+    "lucide-react-native": "^1.35.0",
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "react-native": "0.76.9",
+    "react-native-agora": "^4.3.0",
     "react-native-country-codes-picker": "^2.3.5",
     "react-native-gesture-handler": "~2.20.2",
     "react-native-paper": "^5.12.1",
     "react-native-reanimated": "~3.16.1",
     "react-native-safe-area-context": "4.12.0",
     "react-native-screens": "~4.4.0",
+    "react-native-svg": "15.8.0",
     "react-native-url-polyfill": "^2.0.0",
     "react-native-web": "~0.19.13",
     "socket.io-client": "^4.8.1"

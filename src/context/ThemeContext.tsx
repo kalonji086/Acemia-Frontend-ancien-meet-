@@ -3,8 +3,15 @@ import { useColorScheme, Dimensions, PixelRatio } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors as defaultColors, darkColors as defaultDarkColors } from '../styles/theme';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const scale = SCREEN_WIDTH / 375;
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+
+// Guideline sizes are based on standard ~5" screen mobile device
+const guidelineBaseWidth = 375;
+const guidelineBaseHeight = 812;
+
+const scale = (size: number) => (SCREEN_WIDTH / guidelineBaseWidth) * size;
+const verticalScale = (size: number) => (SCREEN_HEIGHT / guidelineBaseHeight) * size;
+const moderateScale = (size: number, factor = 0.5) => size + (scale(size) - size) * factor;
 
 type ThemeType = 'light' | 'dark';
 
@@ -93,7 +100,13 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const normalize = useCallback((size: number, factor: number = 1) => {
-    const newSize = size * scale * fontSizeFactor * factor;
+    // Amélioration de la responsivité pour Samsung et autres appareils
+    // On utilise un ratio qui combine largeur et hauteur pour une meilleure adaptation
+    const widthRatio = SCREEN_WIDTH / guidelineBaseWidth;
+    const heightRatio = SCREEN_HEIGHT / guidelineBaseHeight;
+    const avgRatio = (widthRatio + heightRatio) / 2;
+
+    const newSize = size * avgRatio * fontSizeFactor * factor;
     return Math.round(PixelRatio.roundToNearestPixel(newSize));
   }, [fontSizeFactor]);
 

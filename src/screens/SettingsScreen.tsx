@@ -14,11 +14,16 @@ import {
   Modal,
   FlatList,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import {
+  Moon, Sun, Palette, Type, Languages, ArrowRightLeft,
+  ArrowLeft, ChevronRight, ShieldCheck, FileText, HelpCircle,
+  LogOut, CheckCircle, Check, X, ChevronDown
+} from 'lucide-react-native';
 import apiService from '../services/api.service';
 import { SOCKET_URL } from '../utils/constants';
 import { useTheme, APP_COLORS } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
+import { useUser } from '../context/UserContext';
 import { LanguageCode } from '../i18n/translations';
 import { useFeedback } from '../components/FeedbackSystem';
 import Constants from 'expo-constants';
@@ -34,10 +39,9 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 export default function SettingsScreen({ navigation }: any) {
   const { isDark, colors, toggleTheme, setTheme, primaryColor, setPrimaryColor, fontSizeFactor, setFontSizeFactor, normalize } = useTheme();
   const { language, setLanguage, t, autoTranslate, setAutoTranslate } = useLanguage();
+  const { user, loading: userLoading } = useUser();
   const { showFeedbackModal, FeedbackModal } = useFeedback();
 
-  const [user, setUser] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
   const [langModalVisible, setLangModalVisible] = useState(false);
   const [colorModalVisible, setColorModalVisible] = useState(false);
   const [appearanceModalVisible, setAppearanceModalVisible] = useState(false);
@@ -53,32 +57,8 @@ export default function SettingsScreen({ navigation }: any) {
 
   const isTablet = screenWidth > 768;
 
-  useEffect(() => {
-    fetchUserProfile();
-  }, []);
-
   const notifyChange = async (message: string) => {
     console.log('Setting changed:', message);
-  };
-
-  const handleNotificationToggle = async (value: boolean) => {
-    /*
-    Désactivé car Firebase n'est pas utilisé
-    */
-  };
-
-  const fetchUserProfile = async () => {
-    try {
-      const res = await apiService.getMe();
-      if (res.success) {
-        const userData = res.data;
-        setUser(userData);
-      }
-    } catch (error) {
-      console.error('Error fetching profile:', error);
-    } finally {
-      setLoading(false);
-    }
   };
 
   const getFullUrl = (url: string) => {
@@ -132,7 +112,7 @@ export default function SettingsScreen({ navigation }: any) {
 
   const dynamicStyles = createStyles(colors, normalize, fontSizeFactor);
 
-  if (loading) {
+  if (userLoading) {
     return (
       <View style={dynamicStyles.centered}>
         <ActivityIndicator size="large" color={colors.primary} />
@@ -162,7 +142,7 @@ export default function SettingsScreen({ navigation }: any) {
       <View style={dynamicStyles.section}>
         <Text style={dynamicStyles.sectionTitle}>{t('appearance')}</Text>
         <View style={dynamicStyles.menuItem}>
-          <Ionicons name={isDark ? "moon" : "sunny-outline"} size={22} color={colors.primary} />
+          {isDark ? <Moon size={22} color={colors.primary} /> : <Sun size={22} color={colors.primary} />}
           <Text style={dynamicStyles.menuText}>{t('darkMode')}</Text>
           <Switch
             value={isDark}
@@ -176,14 +156,14 @@ export default function SettingsScreen({ navigation }: any) {
           style={dynamicStyles.menuItem}
           onPress={() => setColorModalVisible(true)}
         >
-          <Ionicons name="color-palette-outline" size={22} color={colors.primary} />
+          <Palette size={22} color={colors.primary} />
           <Text style={dynamicStyles.menuText}>Couleur de l'application</Text>
           <View style={[dynamicStyles.colorPreview, { backgroundColor: colors.primary }]} />
         </TouchableOpacity>
 
         <View style={[dynamicStyles.menuItem, { flexDirection: 'column', alignItems: 'flex-start' }]}>
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
-            <Ionicons name="text-outline" size={22} color={colors.primary} />
+            <Type size={22} color={colors.primary} />
             <Text style={dynamicStyles.menuText}>Taille du texte</Text>
           </View>
           <View style={dynamicStyles.fontSizeContainer}>
@@ -192,7 +172,7 @@ export default function SettingsScreen({ navigation }: any) {
               onPress={() => adjustFontSize(false)}
               disabled={fontSizeFactor <= 0.8}
             >
-              <Ionicons name="remove" size={24} color={colors.primary} />
+              <Text style={{ fontSize: 24, color: colors.primary }}>-</Text>
             </TouchableOpacity>
 
             <View style={dynamicStyles.fontSizePreview}>
@@ -206,7 +186,7 @@ export default function SettingsScreen({ navigation }: any) {
               onPress={() => adjustFontSize(true)}
               disabled={fontSizeFactor >= 1.5}
             >
-              <Ionicons name="add" size={24} color={colors.primary} />
+              <Text style={{ fontSize: 24, color: colors.primary }}>+</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -218,16 +198,16 @@ export default function SettingsScreen({ navigation }: any) {
           style={dynamicStyles.menuItem}
           onPress={() => setLangModalVisible(true)}
         >
-          <Ionicons name="language-outline" size={22} color={colors.primary} />
+          <Languages size={22} color={colors.primary} />
           <Text style={dynamicStyles.menuText}>{t('preferredLanguage')}</Text>
           <Text style={dynamicStyles.valueText}>
             {languages.find(l => l.code === language)?.name}
           </Text>
-          <Ionicons name="chevron-down" size={20} color={colors.text.disabled} />
+          <ChevronDown size={20} color={colors.text.disabled} />
         </TouchableOpacity>
 
         <View style={dynamicStyles.menuItem}>
-          <Ionicons name="swap-horizontal-outline" size={22} color={colors.primary} />
+          <ArrowRightLeft size={22} color={colors.primary} />
           <Text style={dynamicStyles.menuText}>{t('autoTranslate')}</Text>
           <Switch
             value={autoTranslate}
@@ -245,7 +225,7 @@ export default function SettingsScreen({ navigation }: any) {
       <View style={dynamicStyles.header}>
         {!isTablet && (
           <TouchableOpacity onPress={() => navigation.goBack()} style={dynamicStyles.backButton}>
-            <Ionicons name="arrow-back" size={24} color={colors.primary} />
+            <ArrowLeft size={24} color={colors.primary} />
           </TouchableOpacity>
         )}
         <Text style={dynamicStyles.headerTitle}>{t('settings')}</Text>
@@ -266,7 +246,7 @@ export default function SettingsScreen({ navigation }: any) {
           <Text style={dynamicStyles.profileName}>{user?.name || 'Utilisateur'}</Text>
           <Text style={dynamicStyles.profileEmail}>{user?.email || 'N/A'}</Text>
         </View>
-        {!isTablet && <Ionicons name="chevron-forward" size={24} color={colors.text.disabled} />}
+        {!isTablet && <ChevronRight size={24} color={colors.text.disabled} />}
       </TouchableOpacity>
 
       <View style={dynamicStyles.section}>
@@ -278,9 +258,9 @@ export default function SettingsScreen({ navigation }: any) {
           ]}
           onPress={() => isTablet ? setSelectedCategory('security') : navigation.navigate('SecurityPrivacy')}
         >
-          <Ionicons name="shield-checkmark-outline" size={22} color={colors.primary} />
+          <ShieldCheck size={22} color={colors.primary} />
           <Text style={dynamicStyles.menuText}>{t('security')}</Text>
-          <Ionicons name="chevron-forward" size={20} color={colors.text.disabled} />
+          <ChevronRight size={20} color={colors.text.disabled} />
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -290,9 +270,18 @@ export default function SettingsScreen({ navigation }: any) {
           ]}
           onPress={() => isTablet ? setSelectedCategory('privacy') : navigation.navigate('PrivacyPolicy')}
         >
-          <Ionicons name="document-text-outline" size={22} color={colors.primary} />
+          <FileText size={22} color={colors.primary} />
           <Text style={dynamicStyles.menuText}>{t('privacyPolicy')}</Text>
-          <Ionicons name="chevron-forward" size={20} color={colors.text.disabled} />
+          <ChevronRight size={20} color={colors.text.disabled} />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={dynamicStyles.menuItem}
+          onPress={() => navigation.navigate('TermsOfService')}
+        >
+          <FileText size={22} color={colors.primary} />
+          <Text style={dynamicStyles.menuText}>Conditions d'Utilisation</Text>
+          <ChevronRight size={20} color={colors.text.disabled} />
         </TouchableOpacity>
       </View>
 
@@ -305,9 +294,9 @@ export default function SettingsScreen({ navigation }: any) {
           ]}
           onPress={() => isTablet ? setSelectedCategory('appearance') : setAppearanceModalVisible(true)}
         >
-          <Ionicons name="color-palette-outline" size={22} color={colors.primary} />
+          <Palette size={22} color={colors.primary} />
           <Text style={dynamicStyles.menuText}>Thème et Apparence</Text>
-          <Ionicons name="chevron-forward" size={20} color={colors.text.disabled} />
+          <ChevronRight size={20} color={colors.text.disabled} />
         </TouchableOpacity>
       </View>
 
@@ -320,14 +309,14 @@ export default function SettingsScreen({ navigation }: any) {
           ]}
           onPress={() => isTablet ? setSelectedCategory('helpdesk') : navigation.navigate('Helpdesk')}
         >
-          <Ionicons name="help-buoy-outline" size={22} color={colors.primary} />
+          <HelpCircle size={22} color={colors.primary} />
           <Text style={dynamicStyles.menuText}>Centre d'aide</Text>
-          <Ionicons name="chevron-forward" size={20} color={colors.text.disabled} />
+          <ChevronRight size={20} color={colors.text.disabled} />
         </TouchableOpacity>
       </View>
 
       <TouchableOpacity style={dynamicStyles.logoutButton} onPress={handleLogout}>
-        <Ionicons name="log-out-outline" size={22} color={colors.danger} />
+        <LogOut size={22} color={colors.danger} />
         <Text style={dynamicStyles.logoutText}>{t('logout')}</Text>
       </TouchableOpacity>
     </ScrollView>
@@ -359,7 +348,7 @@ export default function SettingsScreen({ navigation }: any) {
                   >
                     <Text style={dynamicStyles.langFlag}>{item.flag}</Text>
                     <Text style={[dynamicStyles.langName, language === item.code && dynamicStyles.selectedLangText]}>{item.name}</Text>
-                    {language === item.code && <Ionicons name="checkmark-circle" size={24} color={colors.primary} />}
+                    {language === item.code && <CheckCircle size={24} color={colors.primary} />}
                   </TouchableOpacity>
                 )}
               />
@@ -379,7 +368,7 @@ export default function SettingsScreen({ navigation }: any) {
                     style={[dynamicStyles.colorItem, { backgroundColor: color.main }, primaryColor === color.id && dynamicStyles.selectedColorItem]}
                     onPress={() => handleColorChange(color.id)}
                   >
-                    {primaryColor === color.id && <Ionicons name="checkmark" size={24} color="#fff" />}
+                    {primaryColor === color.id && <Check size={24} color="#fff" />}
                   </TouchableOpacity>
                 ))}
               </View>
@@ -414,7 +403,7 @@ export default function SettingsScreen({ navigation }: any) {
                 >
                   <Text style={dynamicStyles.langFlag}>{item.flag}</Text>
                   <Text style={[dynamicStyles.langName, language === item.code && dynamicStyles.selectedLangText]}>{item.name}</Text>
-                  {language === item.code && <Ionicons name="checkmark-circle" size={24} color={colors.primary} />}
+                  {language === item.code && <CheckCircle size={24} color={colors.primary} />}
                 </TouchableOpacity>
               )}
             />
@@ -434,7 +423,7 @@ export default function SettingsScreen({ navigation }: any) {
                   style={[dynamicStyles.colorItem, { backgroundColor: color.main }, primaryColor === color.id && dynamicStyles.selectedColorItem]}
                   onPress={() => handleColorChange(color.id)}
                 >
-                  {primaryColor === color.id && <Ionicons name="checkmark" size={24} color="#fff" />}
+                  {primaryColor === color.id && <Check size={24} color="#fff" />}
                 </TouchableOpacity>
               ))}
             </View>
@@ -450,7 +439,7 @@ export default function SettingsScreen({ navigation }: any) {
             <View style={dynamicStyles.modalHeader}>
               <Text style={dynamicStyles.modalTitle}>{t('appearance')}</Text>
               <TouchableOpacity onPress={() => setAppearanceModalVisible(false)}>
-                <Ionicons name="close" size={24} color={colors.text.primary} />
+                <X size={24} color={colors.text.primary} />
               </TouchableOpacity>
             </View>
             <ScrollView showsVerticalScrollIndicator={false}>

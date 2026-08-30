@@ -13,7 +13,9 @@ import {
   Alert,
   Share,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import {
+  ArrowLeft, Search, Users, UserPlus
+} from 'lucide-react-native';
 import apiService from '../services/api.service';
 import { SOCKET_URL } from '../utils/constants';
 import * as Contacts from 'expo-contacts';
@@ -169,7 +171,7 @@ export default function ContactsScreen({ navigation }: any) {
 
       <View style={[styles.header, { backgroundColor: themeColors.primary }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#fff" />
+          <ArrowLeft size={24} color="#fff" />
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
           <Text style={styles.headerTitle}>Nouvelle discussion</Text>
@@ -178,7 +180,7 @@ export default function ContactsScreen({ navigation }: any) {
       </View>
 
       <View style={[styles.searchContainer, { backgroundColor: isDark ? '#333' : '#F0F2F5' }]}>
-        <Ionicons name="search" size={20} color={themeColors.text.secondary} style={styles.searchIcon} />
+        <Search size={20} color={themeColors.text.secondary} style={styles.searchIcon} />
         <TextInput
           style={[styles.searchInput, { color: themeColors.text.primary }]}
           placeholder="Pseudo, nom, tel, email..."
@@ -221,14 +223,14 @@ export default function ContactsScreen({ navigation }: any) {
           <>
             <TouchableOpacity style={styles.actionItem} onPress={() => navigation.navigate('CreateGroup')}>
               <View style={[styles.actionIcon, { backgroundColor: themeColors.primary }]}>
-                <Ionicons name="people" size={24} color="#fff" />
+                <Users size={24} color="#fff" />
               </View>
               <Text style={[styles.actionText, { color: themeColors.text.primary }]}>Nouveau groupe</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.actionItem} onPress={() => navigation.navigate('AddContact')}>
               <View style={[styles.actionIcon, { backgroundColor: themeColors.secondary }]}>
-                <Ionicons name="person-add" size={24} color="#fff" />
+                <UserPlus size={24} color="#fff" />
               </View>
               <Text style={[styles.actionText, { color: themeColors.text.primary }]}>Ajouter aux contacts téléphone</Text>
             </TouchableOpacity>

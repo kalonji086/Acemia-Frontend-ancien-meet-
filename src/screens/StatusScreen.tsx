@@ -15,12 +15,12 @@ import {
   ScrollView,
   Dimensions,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Plus, Pencil, Camera as CameraIcon } from 'lucide-react-native';
 import apiService from '../services/api.service';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
-import * as Camera from 'expo-camera';
+import * as ExpoCamera from 'expo-camera';
 import { SOCKET_URL } from '../utils/constants';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -55,7 +55,7 @@ export default function StatusScreen() {
         {
           text: 'Prendre une photo',
           onPress: async () => {
-            const { status } = await Camera.requestCameraPermissionsAsync();
+            const { status } = await ExpoCamera.requestCameraPermissionsAsync();
             if (status !== 'granted') return Alert.alert('Permission requise', 'Accès caméra refusé.');
             const result = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], allowsEditing: true, aspect: [9, 16], quality: 0.8 });
             if (!result.canceled) navigation.navigate('CreateStatus', { imageUri: result.assets[0].uri });
@@ -155,7 +155,7 @@ export default function StatusScreen() {
             />
           </View>
           {isMine && statuses.length === 0 && (
-            <View style={[styles.addIcon, { backgroundColor: '#25D366' }]}><Ionicons name="add" size={14} color="#fff" /></View>
+            <View style={[styles.addIcon, { backgroundColor: '#25D366' }]}><Plus size={14} color="#fff" /></View>
           )}
         </View>
         <View style={styles.statusInfo}>
@@ -238,9 +238,9 @@ export default function StatusScreen() {
         </View>
       </ScrollView>
 
-      <TouchableOpacity style={styles.fabEdit} onPress={() => navigation.navigate('CreateStatus')}><Ionicons name="pencil" size={normalize(20)} color="#455A64" /></TouchableOpacity>
+      <TouchableOpacity style={styles.fabEdit} onPress={() => navigation.navigate('CreateStatus')}><Pencil size={20} color="#455A64" /></TouchableOpacity>
       <TouchableOpacity style={[styles.fabCamera, { backgroundColor: themeColors.primary }]} onPress={handlePickStatusImage}>
-        <Ionicons name="camera" size={normalize(24)} color="#fff" />
+        <CameraIcon size={24} color="#fff" />
       </TouchableOpacity>
     </SafeAreaView>
   );
