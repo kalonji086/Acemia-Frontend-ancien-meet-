@@ -44,7 +44,7 @@ export default function CreateGroupScreen({ navigation }: any) {
 
   const fetchContacts = async (query = '') => {
     try {
-      const response = await apiService.searchUsers(query);
+      const response = await apiService.searchUsers(query, 50, true); // true = onlyContacts
       if (response.success) {
         setContacts(response.data);
       }

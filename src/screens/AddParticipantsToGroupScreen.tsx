@@ -44,9 +44,9 @@ export default function AddParticipantsToGroupScreen({ navigation, route }: any)
     fetchContacts();
   }, []);
 
-  const fetchContacts = async () => {
+  const fetchContacts = async (query = '') => {
     try {
-      const response = await apiService.searchUsers('');
+      const response = await apiService.searchUsers(query, 50, true); // true = onlyContacts
       if (response.success) {
         // Filtrer les contacts déjà présents dans le groupe
         const filtered = response.data.filter((c: any) => !existingParticipants.includes(c.id));
@@ -55,6 +55,13 @@ export default function AddParticipantsToGroupScreen({ navigation, route }: any)
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   };
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchContacts(searchQuery);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   const toggleParticipant = (user: any) => {
     const isSelected = selectedParticipants.some(p => p.id === user.id);

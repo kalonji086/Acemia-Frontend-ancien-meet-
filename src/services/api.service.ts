@@ -252,9 +252,9 @@ class ApiService {
     } catch (e: any) { return this.handleError(e); }
   }
 
-  async searchUsers(query: string, limit: number = 20): Promise<ApiResponse> {
+  async searchUsers(query: string, limit: number = 20, onlyContacts: boolean = false): Promise<ApiResponse> {
     try {
-      const res = await this.api.get('/users/search', { params: { query, limit } });
+      const res = await this.api.get('/users/search', { params: { query, limit, onlyContacts: onlyContacts.toString() } });
       return res.data;
     } catch (e: any) { return this.handleError(e); }
   }
@@ -276,6 +276,13 @@ class ApiService {
   async getUserById(userId: string): Promise<ApiResponse> {
     try {
       const res = await this.api.get(`/users/${userId}`);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async checkUserByPhone(phone: string): Promise<ApiResponse<{ found: boolean, user?: any, isSelf?: boolean }>> {
+    try {
+      const res = await this.api.get(`/users/check-phone/${encodeURIComponent(phone)}`);
       return res.data;
     } catch (e: any) { return this.handleError(e); }
   }
