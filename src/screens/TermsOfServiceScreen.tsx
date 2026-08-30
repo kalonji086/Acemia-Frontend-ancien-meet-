@@ -70,32 +70,103 @@ export default function TermsOfServiceScreen({ navigation, isComponent = false }
           </>
         ) : (
           <>
-            <Text style={[styles.p, { color: themeColors.text.secondary }]}>Dernière mise à jour : 29 Août 2026</Text>
+            <Text style={[styles.p, { color: themeColors.text.secondary }]}>Dernière mise à jour : 30 Août 2026</Text>
 
-            <Text style={[styles.h2, { color: themeColors.text.primary }]}>1. Acceptation des Conditions</Text>
+            <Text style={[styles.h2, { color: themeColors.text.primary }]}>1. Objet</Text>
             <Text style={[styles.p, { color: themeColors.text.primary }]}>
-              En créant un compte sur Meet Me, vous acceptez d'être lié par les présentes conditions. Si vous n'acceptez pas ces conditions, vous ne devez pas utiliser nos services.
+              Les présentes Conditions Générales d’Utilisation (ci-après « CGU ») régissent l’accès et l’utilisation de l’application de messagerie (ci-après « l’Application ») par tout utilisateur, quel que soit son pays de résidence.
             </Text>
 
-            <Text style={[styles.h2, { color: themeColors.text.primary }]}>2. Admissibilité</Text>
+            <Text style={[styles.h2, { color: themeColors.text.primary }]}>2. Acceptation des CGU</Text>
             <Text style={[styles.p, { color: themeColors.text.primary }]}>
-              Vous devez avoir au moins 13 ans pour créer un compte. En utilisant Meet Me, vous garantissez que vous avez la pleine capacité juridique de conclure ce contrat.
+              En téléchargeant, installant ou utilisant l’Application, l’utilisateur accepte sans réserve les présentes CGU. Si l’utilisateur refuse, il doit cesser immédiatement d’utiliser l’Application.
             </Text>
 
-            <Text style={[styles.h2, { color: themeColors.text.primary }]}>3. Utilisation du Service</Text>
-            <Text style={[styles.bullet, { color: themeColors.text.primary }]}>• Contenu : Vous êtes seul responsable du contenu que vous partagez.</Text>
-            <Text style={[styles.bullet, { color: themeColors.text.primary }]}>• Conduite : Le harcèlement et les contenus illégaux sont strictement interdits.</Text>
-            <Text style={[styles.bullet, { color: themeColors.text.primary }]}>• Sécurité : Vous devez protéger votre mot de passe.</Text>
-
-            <Text style={[styles.h2, { color: themeColors.text.primary }]}>4. Limitation de Responsabilité</Text>
+            <Text style={[styles.h2, { color: themeColors.text.primary }]}>3. Accès et inscription</Text>
             <Text style={[styles.p, { color: themeColors.text.primary }]}>
-              Meet Me est fourni "en l'état". Nous ne serons pas responsables des dommages indirects découlant de votre utilisation du service.
+              L’accès à l’Application nécessite la création d’un compte utilisateur.
+            </Text>
+            <Text style={[styles.p, { color: themeColors.text.primary }]}>
+              L’utilisateur s’engage à fournir des informations exactes et à les maintenir à jour.
+            </Text>
+            <Text style={[styles.p, { color: themeColors.text.primary }]}>
+              L’accès peut être restreint ou suspendu en cas de non-respect des CGU.
             </Text>
 
-            <Text style={[styles.h2, { color: themeColors.text.primary }]}>5. Résiliation</Text>
+            <Text style={[styles.h2, { color: themeColors.text.primary }]}>4. Utilisation de l’Application</Text>
             <Text style={[styles.p, { color: themeColors.text.primary }]}>
-              Nous nous réservons le droit de suspendre votre compte à tout moment en cas de violation de ces conditions.
+              L’utilisateur s’engage à :
             </Text>
+            <Text style={[styles.bullet, { color: themeColors.text.primary }]}>• Ne pas utiliser l’Application à des fins illégales, frauduleuses ou nuisibles.</Text>
+            <Text style={[styles.bullet, { color: themeColors.text.primary }]}>• Respecter les lois locales et internationales en vigueur.</Text>
+            <Text style={[styles.bullet, { color: themeColors.text.primary }]}>• Ne pas diffuser de contenus violents, discriminatoires, haineux ou portant atteinte aux droits d’autrui.</Text>
+            <Text style={[styles.bullet, { color: themeColors.text.primary }]}>• Ne pas perturber le bon fonctionnement de l’Application (spam, virus, piratage, etc.).</Text>
+
+            <Text style={[styles.h3, { color: themeColors.text.primary, marginTop: 15 }]}>Conditions spécifiques de sécurité et de respect</Text>
+            <Text style={[styles.p, { color: themeColors.text.primary }]}>
+              <Text style={{ fontWeight: 'bold' }}>Tentative de piratage :</Text> tout utilisateur qui tente de hacker l’Application ou envoie des informations volontairement fausses verra son compte automatiquement banni et ne pourra plus utiliser la plateforme.
+            </Text>
+            <Text style={[styles.p, { color: themeColors.text.primary }]}>
+              <Text style={{ fontWeight: 'bold' }}>Contenus interdits :</Text> le partage d’images obscènes, de vidéos à caractère pornographique ou de tout contenu inapproprié est strictement interdit.
+            </Text>
+
+            <Text style={[styles.h2, { color: themeColors.text.primary }]}>5. Données personnelles et confidentialité</Text>
+            <Text style={[styles.p, { color: themeColors.text.primary }]}>
+              L’Application collecte et traite certaines données personnelles conformément à la Politique de Confidentialité.
+            </Text>
+            <Text style={[styles.p, { color: themeColors.text.primary }]}>
+              L’utilisateur dispose de droits d’accès, de rectification et de suppression de ses données, conformément aux législations applicables (RGPD, CCPA, etc.).
+            </Text>
+            <Text style={[styles.p, { color: themeColors.text.primary }]}>
+              Les communications sont protégées par des protocoles de sécurité, mais l’utilisateur reconnaît que la transmission de données sur Internet comporte des risques.
+            </Text>
+
+            <Text style={[styles.h2, { color: themeColors.text.primary }]}>6. Propriété intellectuelle</Text>
+            <Text style={[styles.p, { color: themeColors.text.primary }]}>
+              L’Application, son contenu et ses fonctionnalités sont protégés par des droits de propriété intellectuelle.
+            </Text>
+            <Text style={[styles.p, { color: themeColors.text.primary }]}>
+              L’utilisateur ne peut reproduire, modifier ou distribuer ces éléments sans autorisation préalable.
+            </Text>
+
+            <Text style={[styles.h2, { color: themeColors.text.primary }]}>7. Responsabilités</Text>
+            <Text style={[styles.p, { color: themeColors.text.primary }]}>
+              L’éditeur de l’Application ne saurait être tenu responsable des dommages directs ou indirects liés à l’utilisation de l’Application.
+            </Text>
+            <Text style={[styles.p, { color: themeColors.text.primary }]}>
+              L’utilisateur est seul responsable des contenus qu’il partage via l’Application.
+            </Text>
+
+            <Text style={[styles.h2, { color: themeColors.text.primary }]}>8. Suspension et résiliation</Text>
+            <Text style={[styles.p, { color: themeColors.text.primary }]}>
+              L’éditeur se réserve le droit de suspendre ou de supprimer le compte d’un utilisateur en cas de violation des CGU.
+            </Text>
+            <Text style={[styles.p, { color: themeColors.text.primary }]}>
+              L’utilisateur peut résilier son compte à tout moment.
+            </Text>
+
+            <Text style={[styles.h2, { color: themeColors.text.primary }]}>9. Droit applicable et juridiction</Text>
+            <Text style={[styles.p, { color: themeColors.text.primary }]}>
+              Les présentes CGU sont régies par le droit international et, le cas échéant, par les lois locales applicables.
+            </Text>
+            <Text style={[styles.p, { color: themeColors.text.primary }]}>
+              Tout litige sera soumis aux juridictions compétentes du pays de résidence de l’éditeur, sauf dispositions impératives contraires.
+            </Text>
+
+            <Text style={[styles.h2, { color: themeColors.text.primary }]}>10. Modifications des CGU</Text>
+            <Text style={[styles.p, { color: themeColors.text.primary }]}>
+              L’éditeur peut modifier les présentes CGU à tout moment.
+            </Text>
+            <Text style={[styles.p, { color: themeColors.text.primary }]}>
+              Les utilisateurs seront informés des changements et devront accepter les nouvelles conditions pour continuer à utiliser l’Application.
+            </Text>
+
+            <View style={[styles.contactBox, { backgroundColor: isDark ? '#333' : '#f0f0f0', borderColor: themeColors.border }]}>
+              <Text style={[styles.p, { color: themeColors.text.primary, marginBottom: 0 }]}>
+                Pour d'autres questions, veuillez contacter notre équipe :
+              </Text>
+              <Text style={{ color: themeColors.primary, fontWeight: 'bold', marginTop: 5 }}>Wecanconcept@gmail.com</Text>
+            </View>
           </>
         )}
 
@@ -118,7 +189,9 @@ const styles = StyleSheet.create({
   scrollContent: { padding: 20 },
   h1: { fontSize: 24, fontWeight: 'bold', marginBottom: 10 },
   h2: { fontSize: 20, fontWeight: 'bold', marginTop: 25, marginBottom: 10 },
+  h3: { fontSize: 18, fontWeight: 'bold', marginBottom: 10 },
   p: { fontSize: 14, lineHeight: 22, marginBottom: 10 },
   bullet: { fontSize: 14, marginLeft: 15, marginBottom: 5 },
+  contactBox: { marginTop: 30, padding: 15, borderRadius: 12, borderWidth: 1, alignItems: 'center' },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 });
