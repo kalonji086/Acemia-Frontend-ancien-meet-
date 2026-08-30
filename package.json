@@ -1,6 +1,6 @@
 {
   "name": "meeetme",
-  "version": "76.0.0",
+  "version": "77.0.0",
   "main": "index.ts",
   "scripts": {
     "start": "node scripts/start.js",
