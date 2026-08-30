@@ -827,13 +827,14 @@ export default function ChatScreen({ navigation, route }: any) {
           </View>
         </TouchableOpacity>
 
-        {/* Call Buttons */}
+        {/* Call Buttons - MASQUÉS TEMPORAIREMENT
         {!isGroup && (
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <TouchableOpacity onPress={initiateVideoCall} style={styles.headerIcon}><Video size={22} color="#fff" /></TouchableOpacity>
             <TouchableOpacity onPress={initiateAudioCall} style={styles.headerIcon}><Phone size={20} color="#fff" /></TouchableOpacity>
           </View>
         )}
+        */}
 
         <TouchableOpacity onPress={() => Alert.alert('Options', null, [{ text: 'Fond d\'écran', onPress: handlePickChatBg }, { text: 'Couleur', onPress: handleChangeChatColor }, { text: 'Archiver', onPress: () => handleArchiveChat() }, { text: 'Annuler', style: 'cancel' }])} style={styles.headerIcon}><MoreVertical size={22} color="#fff" /></TouchableOpacity>
       </View>

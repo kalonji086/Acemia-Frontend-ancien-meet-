@@ -173,9 +173,28 @@ export default function SignupScreen({ navigation }: any) {
   useEffect(() => {
     const timer = setTimeout(async () => {
       if (phone.length > 5) {
+        const cleanPhone = phone.replace(/[^0-9]/g, '');
+        if (cleanPhone !== phone) {
+            setPhone(cleanPhone);
+            return;
+        }
+
+        if (phone.length > 10) {
+            setPhoneError('Maximum 10 chiffres autorisés');
+            return;
+        }
+
         const fullPhone = `${callingCode}${phone}`.startsWith('+') ? `${callingCode}${phone}` : `+${callingCode}${phone}`;
         const res = await apiService.checkAvailability({ phone_number: fullPhone });
-        setPhoneError(res.available ? '' : 'Ce numéro est déjà utilisé');
+
+        // Vérifier si le numéro semble valide pour l'indicatif (logique simple)
+        if (callingCode === '243' && phone.length > 0 && !phone.startsWith('8') && !phone.startsWith('9')) {
+            setPhoneError('Numéro RDC invalide (doit commencer par 8 ou 9)');
+        } else {
+            setPhoneError(res.available ? '' : 'Ce numéro est déjà utilisé');
+        }
+      } else {
+        setPhoneError('');
       }
     }, 800);
     return () => clearTimeout(timer);

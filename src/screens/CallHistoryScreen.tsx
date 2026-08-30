@@ -111,6 +111,7 @@ export default function CallHistoryScreen({ navigation }: any) {
             {dayName} {dateStr} à {timeStr}
           </Text>
         </View>
+        {/* Bouton de rappel désactivé temporairement
         <TouchableOpacity
           onPress={() => navigation.navigate('Chat', {
             chatId: null, // Sera trouvé par le PeerUserId
@@ -121,6 +122,7 @@ export default function CallHistoryScreen({ navigation }: any) {
         >
           {item.call_type === 'video' ? <Video size={22} color={colors.primary} /> : <Phone size={22} color={colors.primary} />}
         </TouchableOpacity>
+        */}
       </View>
     );
   };
