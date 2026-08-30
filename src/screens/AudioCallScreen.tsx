@@ -4,6 +4,7 @@ import { MicOff, Mic, Volume2, Volume1, Phone } from 'lucide-react-native';
 import { Audio } from 'expo-av';
 import { useTheme } from '../context/ThemeContext';
 import callService from '../services/call.service';
+import socketService from '../services/socket.service';
 import { SOCKET_URL } from '../utils/constants';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -62,16 +63,26 @@ export default function AudioCallScreen({ route, navigation }: any) {
       playWaitingSound();
     }
 
+    const onRinging = (data: any) => {
+      if (data.callId === callId && isMounted.current) {
+        setCallStatus('Sonne...');
+      }
+    };
+
     // 2. Initialiser Agora avec sécurité
     const init = async () => {
       try {
         console.log('AudioCall: Initializing Agora engine...');
 
         if (typeof createAgoraRtcEngine !== 'function') {
-           throw new Error('SDK Agora non chargé (createAgoraRtcEngine undefined)');
+           console.error('AudioCall: createAgoraRtcEngine is not a function');
+           throw new Error('SDK Agora non chargé');
         }
 
         engine.current = createAgoraRtcEngine();
+        if (!engine.current) {
+           throw new Error('Impossible de créer le moteur Agora');
+        }
 
         const initRes = engine.current.initialize({ appId });
         if (initRes < 0) {
@@ -97,8 +108,10 @@ export default function AudioCallScreen({ route, navigation }: any) {
             onError: (err: number, msg: string) => {
                 console.error('AudioCall: Agora Error:', err, msg);
                 if (err === 110) { // Token expired
-                   Alert.alert('Erreur', 'Session d\'appel expirée');
-                   handleHangup();
+                   if (isMounted.current) {
+                     Alert.alert('Erreur', 'Session d\'appel expirée');
+                     handleHangup();
+                   }
                 }
             }
         });
@@ -115,16 +128,14 @@ export default function AudioCallScreen({ route, navigation }: any) {
         }
 
         // Écouter le signal que le téléphone distant sonne
-        socketService.on('call:ringing', (data) => {
-          if (data.callId === callId && isMounted.current) {
-            setCallStatus('Sonne...');
-          }
-        });
+        socketService.on('call:ringing', onRinging);
 
       } catch (e: any) {
         console.error('AudioCall: Critical Init Error', e);
-        Alert.alert('Erreur d\'appel', 'Impossible de démarrer le moteur d\'appel.');
-        navigation.goBack();
+        if (isMounted.current) {
+          Alert.alert('Erreur d\'appel', 'Impossible de démarrer le moteur d\'appel. Vérifiez votre connexion.');
+          navigation.goBack();
+        }
       }
     };
 
@@ -134,15 +145,20 @@ export default function AudioCallScreen({ route, navigation }: any) {
       isMounted.current = false;
       stopTimer();
       stopWaitingSound();
+      socketService.off('call:ringing', onRinging);
 
       if (engine.current) {
         try {
-          engine.current.leaveChannel();
-          // Un petit délai avant release pour éviter crash natif
+          const currentEngine = engine.current;
+          engine.current = null;
+          currentEngine.leaveChannel();
+          // Un délai sécurisé avant release
           setTimeout(() => {
-            try { engine.current?.release(); } catch(e) {}
-          }, 500);
-        } catch (e) {}
+            try { currentEngine.release(); } catch(e) { console.log('Agora release error ignored'); }
+          }, 1000);
+        } catch (e) {
+          console.log('Agora cleanup error ignored');
+        }
       }
     };
   }, []);

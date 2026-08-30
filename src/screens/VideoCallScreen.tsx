@@ -6,6 +6,7 @@ import {
 import { Audio } from 'expo-av';
 import { useTheme } from '../context/ThemeContext';
 import callService from '../services/call.service';
+import socketService from '../services/socket.service';
 import { SOCKET_URL } from '../utils/constants';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -64,15 +65,26 @@ export default function VideoCallScreen({ route, navigation }: any) {
       playWaitingSound();
     }
 
+    const onRinging = (data: any) => {
+      if (data.callId === callId && isMounted.current) {
+        // Optionnel : on peut mettre à jour un état de texte si on en ajoute un
+        console.log('VideoCall: Remote phone is ringing');
+      }
+    };
+
     const init = async () => {
       try {
         console.log('VideoCall: Initializing Agora engine...');
 
         if (typeof createAgoraRtcEngine !== 'function') {
-           throw new Error('SDK Agora non chargé (createAgoraRtcEngine undefined)');
+           console.error('VideoCall: createAgoraRtcEngine is not a function');
+           throw new Error('SDK Agora non chargé');
         }
 
         engine.current = createAgoraRtcEngine();
+        if (!engine.current) {
+           throw new Error('Impossible de créer le moteur Agora');
+        }
 
         const initRes = engine.current.initialize({ appId });
         if (initRes < 0) {
@@ -112,17 +124,14 @@ export default function VideoCallScreen({ route, navigation }: any) {
         }
 
         // Écouter le signal que le téléphone distant sonne
-        socketService.on('call:ringing', (data) => {
-          if (data.callId === callId && isMounted.current) {
-            // Optionnel : on peut mettre à jour un état de texte si on en ajoute un
-            console.log('VideoCall: Remote phone is ringing');
-          }
-        });
+        socketService.on('call:ringing', onRinging);
 
       } catch (e: any) {
         console.error('VideoCall: Critical Init Error', e);
-        Alert.alert('Erreur vidéo', 'Impossible de démarrer la caméra.');
-        navigation.goBack();
+        if (isMounted.current) {
+          Alert.alert('Erreur vidéo', 'Impossible de démarrer la caméra.');
+          navigation.goBack();
+        }
       }
     };
     init();
@@ -130,14 +139,19 @@ export default function VideoCallScreen({ route, navigation }: any) {
     return () => {
       isMounted.current = false;
       stopWaitingSound();
+      socketService.off('call:ringing', onRinging);
 
       if (engine.current) {
         try {
-          engine.current.leaveChannel();
+          const currentEngine = engine.current;
+          engine.current = null;
+          currentEngine.leaveChannel();
           setTimeout(() => {
-            try { engine.current?.release(); } catch(e) {}
-          }, 500);
-        } catch (e) {}
+            try { currentEngine.release(); } catch(e) { console.log('Agora release error ignored'); }
+          }, 1000);
+        } catch (e) {
+          console.log('Agora cleanup error ignored');
+        }
       }
     };
   }, []);
