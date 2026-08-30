@@ -586,40 +586,78 @@ export default function SignupScreen({ navigation }: any) {
                   <ChevronDown size={20} color={colors.text.secondary} />
                 </TouchableOpacity>
 
-                <TouchableOpacity
-                  style={[styles.inputWrapper, { backgroundColor: isDark ? '#333' : '#f9f9f9', borderColor: colors.border }, !country && { opacity: 0.5 }]}
-                  onPress={() => country && setProvinceModalVisible(true)}
-                  disabled={!country}
-                >
+                <View style={[styles.inputWrapper, { backgroundColor: isDark ? '#333' : '#f9f9f9', borderColor: colors.border }, !country && { opacity: 0.5 }]}>
                   <MapPin size={20} color={colors.text.secondary} />
-                  <Text style={[styles.inputText, { color: colors.text.primary }]}>
-                    {province || 'Sélectionner la Province'}
-                  </Text>
-                  <ChevronDown size={20} color={colors.text.secondary} />
-                </TouchableOpacity>
+                  {country === 'République Démocratique du Congo' ? (
+                    <TouchableOpacity
+                      style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}
+                      onPress={() => setProvinceModalVisible(true)}
+                    >
+                      <Text style={[styles.inputText, { color: colors.text.primary }]}>
+                        {province || 'Sélectionner la Province'}
+                      </Text>
+                      <ChevronDown size={20} color={colors.text.secondary} />
+                    </TouchableOpacity>
+                  ) : (
+                    <TextInput
+                      style={[styles.input, { color: colors.text.primary }]}
+                      placeholder="Province"
+                      placeholderTextColor={colors.text.disabled}
+                      value={province}
+                      onChangeText={setProvince}
+                      editable={!!country}
+                    />
+                  )}
+                </View>
 
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                  <TouchableOpacity
-                    style={[styles.inputWrapper, { flex: 1, backgroundColor: isDark ? '#333' : '#f9f9f9', borderColor: colors.border, marginRight: 5 }, !province && { opacity: 0.5 }]}
-                    onPress={() => province && setCityModalVisible(true)}
-                    disabled={!province}
-                  >
+                  <View style={[styles.inputWrapper, { flex: 1, backgroundColor: isDark ? '#333' : '#f9f9f9', borderColor: colors.border, marginRight: 5 }, !province && { opacity: 0.5 }]}>
                     <Landmark size={20} color={colors.text.secondary} />
-                    <Text style={[styles.inputText, { color: colors.text.primary, marginLeft: 5 }]} numberOfLines={1}>
-                      {city || 'Ville'}
-                    </Text>
-                  </TouchableOpacity>
+                    {country === 'République Démocratique du Congo' ? (
+                      <TouchableOpacity
+                        style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}
+                        onPress={() => province && setCityModalVisible(true)}
+                        disabled={!province}
+                      >
+                        <Text style={[styles.inputText, { color: colors.text.primary, marginLeft: 5 }]} numberOfLines={1}>
+                          {city || 'Ville'}
+                        </Text>
+                      </TouchableOpacity>
+                    ) : (
+                      <TextInput
+                        style={[styles.input, { color: colors.text.primary, marginLeft: 5 }]}
+                        placeholder="Ville"
+                        placeholderTextColor={colors.text.disabled}
+                        value={city}
+                        onChangeText={setCity}
+                        editable={!!province}
+                      />
+                    )}
+                  </View>
 
-                  <TouchableOpacity
-                    style={[styles.inputWrapper, { flex: 1, backgroundColor: isDark ? '#333' : '#f9f9f9', borderColor: colors.border, marginLeft: 5 }, !city && { opacity: 0.5 }]}
-                    onPress={() => city && setCommuneModalVisible(true)}
-                    disabled={!city}
-                  >
+                  <View style={[styles.inputWrapper, { flex: 1, backgroundColor: isDark ? '#333' : '#f9f9f9', borderColor: colors.border, marginLeft: 5 }, !city && { opacity: 0.5 }]}>
                     <MapIcon size={20} color={colors.text.secondary} />
-                    <Text style={[styles.inputText, { color: colors.text.primary, marginLeft: 5 }]} numberOfLines={1}>
-                      {commune || 'Commune'}
-                    </Text>
-                  </TouchableOpacity>
+                    {country === 'République Démocratique du Congo' ? (
+                      <TouchableOpacity
+                        style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}
+                        onPress={() => city && setCommuneModalVisible(true)}
+                        disabled={!city}
+                      >
+                        <Text style={[styles.inputText, { color: colors.text.primary, marginLeft: 5 }]} numberOfLines={1}>
+                          {commune || 'Commune'}
+                        </Text>
+                      </TouchableOpacity>
+                    ) : (
+                      <TextInput
+                        style={[styles.input, { color: colors.text.primary, marginLeft: 5 }]}
+                        placeholder="Commune"
+                        placeholderTextColor={colors.text.disabled}
+                        value={commune}
+                        onChangeText={setCommune}
+                        editable={!!city}
+                      />
+                    )}
+                  </View>
                 </View>
 
                 <Text style={[styles.labelSmall, { color: colors.text.secondary, marginTop: 10 }]}>Date de naissance / Âge</Text>

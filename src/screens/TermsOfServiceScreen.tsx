@@ -16,6 +16,7 @@ import apiService from '../services/api.service';
 
 export default function TermsOfServiceScreen({ navigation, isComponent = false }: any) {
   const { colors: themeColors, isDark, normalize } = useTheme();
+  const styles = createStyles(themeColors, normalize, isDark);
   const { t } = useLanguage();
   const [loading, setLoading] = React.useState(true);
   const [tosDoc, setTosDoc] = React.useState<any>(null);
@@ -176,7 +177,7 @@ export default function TermsOfServiceScreen({ navigation, isComponent = false }
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any, normalize: any, isDark: boolean) => StyleSheet.create({
   container: { flex: 1 },
   header: {
     flexDirection: 'row',

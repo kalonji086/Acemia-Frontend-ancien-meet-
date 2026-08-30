@@ -17,7 +17,7 @@ import {
 } from 'react-native';
 import {
   ArrowLeft, Camera, User, Info, Phone,
-  Calendar, Globe, MapPin, Landmark, Map, Languages,
+  Calendar as CalendarIcon, Globe, MapPin, Landmark, Map as MapIcon, Languages,
   ChevronDown, CheckCircle, Check, X, Search
 } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
@@ -393,7 +393,7 @@ export default function EditProfileScreen({ navigation, isComponent = false }: a
           </TouchableOpacity>
 
           <TouchableOpacity style={dynamicStyles.inputGroup} onPress={() => setBirthDateModalVisible(true)}>
-            <Calendar size={22} color={colors.primary} />
+            <CalendarIcon size={22} color={colors.primary} />
             <View style={dynamicStyles.inputWrapper}>
               <Text style={dynamicStyles.label}>Date de naissance / Âge</Text>
               <View style={dynamicStyles.statusSelect}>
@@ -419,50 +419,71 @@ export default function EditProfileScreen({ navigation, isComponent = false }: a
               </View>
             </TouchableOpacity>
 
-            <TouchableOpacity
-              style={[dynamicStyles.inputGroup, !country && { opacity: 0.5 }]}
-              onPress={() => country && setProvinceModalVisible(true)}
-              disabled={!country}
-            >
+            <View style={[dynamicStyles.inputGroup, !country && { opacity: 0.5 }]}>
               <MapPin size={22} color={colors.primary} />
               <View style={dynamicStyles.inputWrapper}>
                 <Text style={dynamicStyles.label}>Province</Text>
-                <View style={dynamicStyles.statusSelect}>
-                  <Text style={dynamicStyles.input}>{province || 'Sélectionner'}</Text>
-                  <ChevronDown size={18} color={colors.text.disabled} />
-                </View>
+                {country === 'République Démocratique du Congo' ? (
+                  <TouchableOpacity style={dynamicStyles.statusSelect} onPress={() => setProvinceModalVisible(true)}>
+                    <Text style={dynamicStyles.input}>{province || 'Sélectionner'}</Text>
+                    <ChevronDown size={18} color={colors.text.disabled} />
+                  </TouchableOpacity>
+                ) : (
+                  <TextInput
+                    style={dynamicStyles.input}
+                    value={province}
+                    onChangeText={setProvince}
+                    placeholder="Province"
+                    placeholderTextColor={colors.text.disabled}
+                    editable={!!country}
+                  />
+                )}
               </View>
-            </TouchableOpacity>
+            </View>
 
-            <TouchableOpacity
-              style={[dynamicStyles.inputGroup, !province && { opacity: 0.5 }]}
-              onPress={() => province && setCityModalVisible(true)}
-              disabled={!province}
-            >
+            <View style={[dynamicStyles.inputGroup, !province && { opacity: 0.5 }]}>
               <Landmark size={22} color={colors.primary} />
               <View style={dynamicStyles.inputWrapper}>
                 <Text style={dynamicStyles.label}>Ville</Text>
-                <View style={dynamicStyles.statusSelect}>
-                  <Text style={dynamicStyles.input}>{city || 'Sélectionner'}</Text>
-                  <ChevronDown size={18} color={colors.text.disabled} />
-                </View>
+                {country === 'République Démocratique du Congo' ? (
+                  <TouchableOpacity style={dynamicStyles.statusSelect} onPress={() => setCityModalVisible(true)}>
+                    <Text style={dynamicStyles.input}>{city || 'Sélectionner'}</Text>
+                    <ChevronDown size={18} color={colors.text.disabled} />
+                  </TouchableOpacity>
+                ) : (
+                  <TextInput
+                    style={dynamicStyles.input}
+                    value={city}
+                    onChangeText={setCity}
+                    placeholder="Ville"
+                    placeholderTextColor={colors.text.disabled}
+                    editable={!!province}
+                  />
+                )}
               </View>
-            </TouchableOpacity>
+            </View>
 
-            <TouchableOpacity
-              style={[dynamicStyles.inputGroup, !city && { opacity: 0.5 }]}
-              onPress={() => city && setCommuneModalVisible(true)}
-              disabled={!city}
-            >
-              <Map size={22} color={colors.primary} />
+            <View style={[dynamicStyles.inputGroup, !city && { opacity: 0.5 }]}>
+              <MapIcon size={22} color={colors.primary} />
               <View style={dynamicStyles.inputWrapper}>
                 <Text style={dynamicStyles.label}>Commune</Text>
-                <View style={dynamicStyles.statusSelect}>
-                  <Text style={dynamicStyles.input}>{commune || 'Sélectionner'}</Text>
-                  <ChevronDown size={18} color={colors.text.disabled} />
-                </View>
+                {country === 'République Démocratique du Congo' ? (
+                  <TouchableOpacity style={dynamicStyles.statusSelect} onPress={() => setCommuneModalVisible(true)}>
+                    <Text style={dynamicStyles.input}>{commune || 'Sélectionner'}</Text>
+                    <ChevronDown size={18} color={colors.text.disabled} />
+                  </TouchableOpacity>
+                ) : (
+                  <TextInput
+                    style={dynamicStyles.input}
+                    value={commune}
+                    onChangeText={setCommune}
+                    placeholder="Commune"
+                    placeholderTextColor={colors.text.disabled}
+                    editable={!!city}
+                  />
+                )}
               </View>
-            </TouchableOpacity>
+            </View>
           </View>
 
           {/* AI TRANSLATION SETTINGS */}
