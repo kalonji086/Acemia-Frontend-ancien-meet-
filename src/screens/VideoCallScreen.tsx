@@ -9,7 +9,8 @@ import callService from '../services/call.service';
 import { SOCKET_URL } from '../utils/constants';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import createAgoraRtcEngine, {
+import {
+  createAgoraRtcEngine,
   ChannelProfileType, ClientRoleType, RtcConnection, IRtcEngineEventHandler,
   RtcSurfaceView, RenderModeType
 } from 'react-native-agora';
@@ -79,8 +80,8 @@ export default function VideoCallScreen({ route, navigation }: any) {
         }
 
         engine.current.registerEventHandler({
-            onJoinChannelSuccess: () => {
-                console.log('VideoCall: Local user joined');
+            onJoinChannelSuccess: (connection: RtcConnection, elapsed: number) => {
+                console.log('VideoCall: Local user joined successfully');
             },
             onUserJoined: (connection: RtcConnection, uid: number) => {
                 console.log('VideoCall: Remote user joined:', uid);
@@ -89,8 +90,8 @@ export default function VideoCallScreen({ route, navigation }: any) {
                   stopWaitingSound();
                 }
             },
-            onUserOffline: () => {
-                console.log('VideoCall: Remote user offline');
+            onUserOffline: (connection: RtcConnection, uid: number, reason: number) => {
+                console.log('VideoCall: Remote user offline, reason:', reason);
                 handleHangup();
             },
             onError: (err: number, msg: string) => {

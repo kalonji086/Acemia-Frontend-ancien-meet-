@@ -8,7 +8,7 @@ import { SOCKET_URL } from '../utils/constants';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Note: Importer le SDK Agora après installation
-import createAgoraRtcEngine, { ChannelProfileType, ClientRoleType, RtcConnection, IRtcEngineEventHandler } from 'react-native-agora';
+import { createAgoraRtcEngine, ChannelProfileType, ClientRoleType, RtcConnection, IRtcEngineEventHandler } from 'react-native-agora';
 
 export default function AudioCallScreen({ route, navigation }: any) {
   const { colors, normalize } = useTheme();

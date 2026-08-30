@@ -77,20 +77,40 @@ class CallService {
     try {
       console.log(`CallService: Starting ${type} call to ${toUserName} (${toUserId})`);
 
-      // 1. Vérifier les permissions
-      const audioPerm = await Audio.requestPermissionsAsync().catch(() => ({ status: 'denied' }));
+      // 1. Vérifier les permissions Micro
+      console.log('CallService: Requesting audio permissions...');
+      let audioPerm;
+      if (Audio && typeof Audio.requestPermissionsAsync === 'function') {
+        audioPerm = await Audio.requestPermissionsAsync().catch(() => ({ status: 'denied' }));
+      } else {
+        console.warn('CallService: Audio.requestPermissionsAsync is not available');
+        audioPerm = { status: 'granted' }; // Fallback ou gestion alternative
+      }
+
       if (audioPerm.status !== 'granted') {
         Alert.alert('Permission requise', 'L\'accès au micro est nécessaire pour passer des appels.');
         return;
       }
 
       if (type === 'video') {
-        const { status: videoStatus } = await ExpoCamera.Camera.requestCameraPermissionsAsync().catch((err) => {
-          console.error('CallService: Camera permission error', err);
-          return { status: 'denied' };
-        });
+        console.log('CallService: Requesting camera permissions...');
+        let videoStatus = 'denied';
+
+        // Tester plusieurs chemins d'accès car les versions d'Expo Camera varient
+        try {
+          if (typeof ExpoCamera.requestCameraPermissionsAsync === 'function') {
+            const res = await ExpoCamera.requestCameraPermissionsAsync();
+            videoStatus = res.status;
+          } else if (ExpoCamera.Camera && typeof ExpoCamera.Camera.requestCameraPermissionsAsync === 'function') {
+            const res = await ExpoCamera.Camera.requestCameraPermissionsAsync();
+            videoStatus = res.status;
+          }
+        } catch (err) {
+          console.error('CallService: Camera permission critical error', err);
+        }
+
         if (videoStatus !== 'granted') {
-          Alert.alert('Permission requise', 'L\'accès à la caméra est nécessaire pour les appels vidéo. Veuillez l\'autoriser dans les paramètres de votre téléphone.');
+          Alert.alert('Permission requise', 'L\'accès à la caméra est nécessaire pour les appels vidéo.');
           return;
         }
       }
