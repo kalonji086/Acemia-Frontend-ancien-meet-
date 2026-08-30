@@ -16,6 +16,7 @@ import {
   Dimensions,
   Alert,
   Share,
+  Modal,
 } from 'react-native';
 import {
   Send, Mic, Camera, Paperclip, Download, Share as ShareIcon,
