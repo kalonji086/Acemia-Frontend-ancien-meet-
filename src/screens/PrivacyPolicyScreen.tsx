@@ -1,35 +1,37 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   ScrollView,
   StyleSheet,
   TouchableOpacity,
-  SafeAreaView,
   StatusBar,
   ActivityIndicator,
+  Dimensions,
 } from 'react-native';
 import { ArrowLeft } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import apiService from '../services/api.service';
 
-export default function PrivacyPolicyScreen({ navigation, isComponent = false }: any) {
-  const { colors: themeColors, isDark, normalize } = useTheme();
-  const { t } = useLanguage();
-  const [loading, setLoading] = React.useState(true);
-  const [privacyDoc, setPrivacyDoc] = React.useState<any>(null);
+const { width } = Dimensions.get('window');
 
-  React.useEffect(() => {
+export default function PrivacyPolicyScreen({ navigation, isComponent = false }: any) {
+  const { colors, isDark, normalize } = useTheme();
+  const { t } = useLanguage();
+  const [loading, setLoading] = useState(true);
+  const [privacyDoc, setPrivacyDoc] = useState<any>(null);
+
+  useEffect(() => {
     fetchPrivacyPolicy();
   }, []);
 
   const fetchPrivacyPolicy = async () => {
     try {
       const res = await apiService.getLegalDocs();
-      if (res.success) {
+      if (res.success && Array.isArray(res.data)) {
         const doc = res.data.find((d: any) => d.type === 'privacy');
-        setPrivacyDoc(doc);
+        if (doc) setPrivacyDoc(doc);
       }
     } catch (e) {
       console.error('Error fetching privacy policy:', e);
@@ -40,91 +42,80 @@ export default function PrivacyPolicyScreen({ navigation, isComponent = false }:
 
   if (loading) {
     return (
-      <View style={[styles.centered, { backgroundColor: themeColors.background }]}>
-        <ActivityIndicator size="large" color={themeColors.primary} />
+      <View style={[styles.centered, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: themeColors.background }]}>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
       {!isComponent && (
-        <>
-          <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={themeColors.surface} />
-          <View style={[styles.header, { backgroundColor: themeColors.surface, borderBottomColor: themeColors.border }]}>
-            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-              <ArrowLeft size={24} color={themeColors.primary} />
-            </TouchableOpacity>
-            <Text style={[styles.headerTitle, { color: themeColors.text.primary }]}>Politique de Confidentialité</Text>
-          </View>
-        </>
+        <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+            <ArrowLeft size={24} color={colors.primary} />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: colors.text.primary }]}>Politique de Confidentialité</Text>
+        </View>
       )}
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <Text style={[styles.h1, { color: themeColors.text.primary }]}>Politique de Confidentialité</Text>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        style={{ flex: 1 }}
+      >
+        <Text style={[styles.h1, { color: colors.text.primary }]}>Politique de Confidentialité</Text>
 
         {privacyDoc ? (
-          <>
-            <Text style={[styles.p, { color: themeColors.text.secondary }]}>Version {privacyDoc.version}</Text>
-            <Text style={[styles.p, { color: themeColors.text.primary }]}>{privacyDoc.content}</Text>
-          </>
+          <View>
+            <Text style={[styles.version, { color: colors.text.secondary }]}>Version {privacyDoc.version}</Text>
+            <Text style={[styles.p, { color: colors.text.primary }]}>{privacyDoc.content}</Text>
+          </View>
         ) : (
-          <>
-            <Text style={[styles.p, { color: themeColors.text.secondary }]}>Dernière mise à jour : 29 Août 2026</Text>
+          <View>
+            <Text style={[styles.version, { color: colors.text.secondary }]}>Dernière mise à jour : 30 Août 2026</Text>
 
-            <Text style={[styles.p, { color: themeColors.text.primary }]}>
-              Cette Politique de confidentialité décrit nos règles et procédures sur la collecte, l'utilisation et la divulgation de vos informations lorsque vous utilisez le Service.
+            <Text style={[styles.p, { color: colors.text.primary }]}>
+              Cette Politique de confidentialité décrit nos règles sur la collecte et l'utilisation de vos informations.
             </Text>
 
-            <Text style={[styles.h2, { color: themeColors.text.primary }]}>1. Collecte des Données</Text>
-            <Text style={[styles.p, { color: themeColors.text.primary }]}>
-              Nous collectons les informations suivantes pour assurer le bon fonctionnement de Meet Me :
-            </Text>
-            <Text style={[styles.bullet, { color: themeColors.text.primary }]}>• Adresse Email et Identifiants</Text>
-            <Text style={[styles.bullet, { color: themeColors.text.primary }]}>• Numéro de téléphone</Text>
-            <Text style={[styles.bullet, { color: themeColors.text.primary }]}>• Informations de profil (Nom, Sexe, Age, Localisation)</Text>
-            <Text style={[styles.bullet, { color: themeColors.text.primary }]}>• Données de l'appareil (Marque, Modèle, OS)</Text>
+            <Text style={[styles.h2, { color: colors.text.primary }]}>1. Collecte des Données</Text>
+            <Text style={[styles.bullet, { color: colors.text.primary }]}>• Adresse Email et Identifiants</Text>
+            <Text style={[styles.bullet, { color: colors.text.primary }]}>• Numéro de téléphone</Text>
+            <Text style={[styles.bullet, { color: colors.text.primary }]}>• Données de profil</Text>
 
-            <Text style={[styles.h2, { color: themeColors.text.primary }]}>2. Utilisation de vos Données</Text>
-            <Text style={[styles.p, { color: themeColors.text.primary }]}>
-              Vos données sont utilisées uniquement pour fournir, maintenir et améliorer le Service Meet Me, ainsi que pour assurer la sécurité de votre compte et prévenir la fraude.
+            <Text style={[styles.h2, { color: colors.text.primary }]}>2. Sécurité</Text>
+            <Text style={[styles.p, { color: colors.text.primary }]}>
+              Vos communications sont protégées par chiffrement. Nous ne partageons pas vos données privées.
             </Text>
 
-            <Text style={[styles.h2, { color: themeColors.text.primary }]}>3. Protection de la Vie Privée</Text>
-            <Text style={[styles.p, { color: themeColors.text.primary }]}>
-              Meet Me utilise le chiffrement pour protéger vos communications privées. Nous ne vendons jamais vos données personnelles à des tiers.
+            <Text style={[styles.h2, { color: colors.text.primary }]}>3. Contact</Text>
+            <Text style={[styles.p, { color: colors.text.primary }]}>
+              Email : <Text style={{ fontWeight: 'bold', color: colors.primary }}>wecanconcept@gmail.com</Text>
             </Text>
-
-            <Text style={[styles.h2, { color: themeColors.text.primary }]}>4. Contact</Text>
-            <Text style={[styles.p, { color: themeColors.text.primary }]}>
-              Pour toute question, contactez-nous : wecanconcept@gmail.com
-            </Text>
-          </>
+          </View>
         )}
-
-        <View style={{ height: 40 }} />
+        <View style={{ height: 100 }} />
       </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 20,
     borderBottomWidth: 1,
+    paddingTop: 40
   },
   backButton: { marginRight: 20 },
   headerTitle: { fontSize: 18, fontWeight: 'bold' },
-  scrollContent: { padding: 20 },
-  h1: { fontSize: 24, fontWeight: 'bold', marginBottom: 10 },
-  h2: { fontSize: 20, fontWeight: 'bold', marginTop: 25, marginBottom: 10 },
-  p: { fontSize: 14, lineHeight: 22, marginBottom: 10 },
-  bullet: { fontSize: 14, marginLeft: 15, marginBottom: 5 },
-  centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  bold: { fontWeight: 'bold' },
-  bulletContainer: { flexDirection: 'row', marginBottom: 8 },
-  bulletPoint: { fontSize: 18, marginRight: 5 },
+  scrollContent: { padding: 25 },
+  h1: { fontSize: 24, fontWeight: 'black', marginBottom: 20 },
+  h2: { fontSize: 20, fontWeight: 'bold', marginTop: 30, marginBottom: 10 },
+  version: { fontSize: 12, marginBottom: 20, fontStyle: 'italic' },
+  p: { fontSize: 15, lineHeight: 24, marginBottom: 15 },
+  bullet: { fontSize: 15, marginLeft: 15, marginBottom: 10 },
 });
