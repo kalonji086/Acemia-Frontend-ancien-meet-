@@ -232,7 +232,7 @@ export default function ViewStatusScreen({ navigation, route }: any) {
           setComment('');
         }
       }
-    } catch (e) {
+    } catch (error) {
       console.error('Send reaction error:', error);
     } finally {
       setSending(false);

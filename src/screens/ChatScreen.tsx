@@ -21,10 +21,25 @@ import {
 import {
   Send, Mic, Camera, Paperclip, Download, Share as ShareIcon,
   Trash2, Undo, Heart, Languages, Sparkles, MessageSquare,
-  Video, Phone, MoreVertical, ArrowLeft, Play, Pause, Clock
+  MoreVertical, ArrowLeft, Play, Pause, Clock
 } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Audio } from 'expo-av';
+import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
+import apiService from '../services/api.service';
+import socketService from '../services/socket.service';
+import { supabase } from '../services/supabase.service';
+import { useTheme } from '../context/ThemeContext';
+import { useLanguage } from '../context/LanguageContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { SOCKET_URL } from '../utils/constants';
+import { PRESET_WALLPAPERS } from '../utils/wallpapers';
+import { colors as baseColors } from '../styles/theme';
 
-// ... imports remain same ...
+const { width, height } = Dimensions.get('window');
 
 // Composant interne optimisé pour chaque message
 const MessageItem = React.memo(({
@@ -185,17 +200,6 @@ const MessageItem = React.memo(({
               </View>
               {!isSending && <Download size={16} color={isMe ? 'rgba(255,255,255,0.7)' : '#999'} style={{ marginLeft: 5 }} />}
             </TouchableOpacity>
-          ) : item.type === 'call' ? (
-            <View style={styles.callLogContainer}>
-               <View style={[styles.callLogIcon, { backgroundColor: isMe ? 'rgba(255,255,255,0.2)' : themeColors.primary + '15' }]}>
-                  {item.metadata?.callType === 'video' ? <Video size={16} color={isMe ? '#fff' : themeColors.primary} /> : <Phone size={16} color={isMe ? '#fff' : themeColors.primary} />}
-               </View>
-               <View style={styles.callLogInfo}>
-                  <Text style={[styles.callLogText, { color: isMe ? '#fff' : themeColors.text.primary }]}>
-                    {item.content}
-                  </Text>
-               </View>
-            </View>
           ) : (
             <View>
               <Text style={[
@@ -421,7 +425,7 @@ export default function ChatScreen({ navigation, route }: any) {
   const handleTranslateMessageIA = useCallback(async (message: any) => {
     const targetLang = currentUser?.preferred_language || 'fr';
     try {
-      let res;
+      let res: any;
       if (message.type === 'audio') res = await apiService.translateVoiceMessage(message.id, targetLang);
       else res = await apiService.translateMessage(message.id, targetLang);
 
@@ -670,8 +674,8 @@ export default function ChatScreen({ navigation, route }: any) {
       { text: 'Transférer', onPress: () => { setMessageToForward(item); setIsForwarding(true); apiService.searchUsers('').then(res => res.success && setContacts(res.data)); } },
       { text: 'Partager', onPress: () => Share.share({ message: item.content }) }
     ];
-    if (isMe) options.push({ text: t?.('delete') || 'Supprimer', style: 'destructive', onPress: () => handleDeleteMessage(item.id) });
-    Alert.alert('Options', null, options as any);
+    if (isMe) options.push({ text: t?.('delete') || 'Supprimer', style: 'destructive', onPress: () => { handleDeleteMessage(item.id); } });
+    Alert.alert('Options', undefined, options as any);
   }, [currentUser?.id, t, handleLikeMessage]);
 
   const handleDeleteMessage = async (messageId: string) => {
@@ -790,9 +794,9 @@ export default function ChatScreen({ navigation, route }: any) {
       "Choisissez une couleur",
       colorChoices.map(c => ({
         text: c.name,
-        onPress: async () => {
+        onPress: () => {
           setChatColor(c.value);
-          await AsyncStorage.setItem(`chat_color_${chatId}`, c.value);
+          AsyncStorage.setItem(`chat_color_${chatId}`, c.value);
         }
       })).concat([{ text: "Annuler", style: "cancel" }]) as any
     );
@@ -806,16 +810,6 @@ export default function ChatScreen({ navigation, route }: any) {
         navigation.goBack();
       }
     } catch (e) { console.error(e); }
-  };
-
-  const initiateAudioCall = () => {
-    if (!peerUserId || !currentUser) return;
-    callService.startCall(peerUserId, peerName, peerAvatar || '', 'audio');
-  };
-
-  const initiateVideoCall = () => {
-    if (!peerUserId || !currentUser) return;
-    callService.startCall(peerUserId, peerName, peerAvatar || '', 'video');
   };
 
   return (
@@ -836,16 +830,7 @@ export default function ChatScreen({ navigation, route }: any) {
           </View>
         </TouchableOpacity>
 
-        {/* Call Buttons - MASQUÉS TEMPORAIREMENT
-        {!isGroup && (
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <TouchableOpacity onPress={initiateVideoCall} style={styles.headerIcon}><Video size={22} color="#fff" /></TouchableOpacity>
-            <TouchableOpacity onPress={initiateAudioCall} style={styles.headerIcon}><Phone size={20} color="#fff" /></TouchableOpacity>
-          </View>
-        )}
-        */}
-
-        <TouchableOpacity onPress={() => Alert.alert('Options', null, [{ text: 'Fond d\'écran', onPress: handlePickChatBg }, { text: 'Couleur', onPress: handleChangeChatColor }, { text: 'Archiver', onPress: () => handleArchiveChat() }, { text: 'Annuler', style: 'cancel' }])} style={styles.headerIcon}><MoreVertical size={22} color="#fff" /></TouchableOpacity>
+        <TouchableOpacity onPress={() => Alert.alert('Options', undefined, [{ text: 'Fond d\'écran', onPress: handlePickChatBg }, { text: 'Couleur', onPress: handleChangeChatColor }, { text: 'Archiver', onPress: () => { handleArchiveChat(); } }, { text: 'Annuler', style: 'cancel' }])} style={styles.headerIcon}><MoreVertical size={22} color="#fff" /></TouchableOpacity>
       </View>
 
       {/* Indicateur de frappe */}
@@ -1004,29 +989,6 @@ const createStyles = (colors: any, normalize: any, factor: number, isDark: boole
   recordingText: { marginLeft: 10, color: baseColors.danger, fontWeight: 'bold' },
   iconButton: { padding: 5 },
   sendBtn: { width: normalize(48, factor), height: normalize(48, factor), borderRadius: normalize(24, factor), justifyContent: 'center', alignItems: 'center' },
-  msgText: { fontSize: normalize(15, factor), lineHeight: 22 },
-  msgFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', marginTop: 4 },
-  timeText: { fontSize: 9 },
-  whatsappAudioContainer: { flexDirection: 'row', alignItems: 'center', paddingVertical: 5, minWidth: width * 0.5 },
-  audioAvatar: { width: 34, height: 34, borderRadius: 17, marginRight: 10 },
-  playButtonCircle: { width: 38, height: 38, borderRadius: 19, justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.2, shadowRadius: 1, elevation: 2 },
-  audioWaveformContainer: { flex: 1, marginLeft: 12, justifyContent: 'center' },
-  waveformTrack: { height: 3, backgroundColor: 'rgba(0,0,0,0.1)', borderRadius: 1.5, width: '100%' },
-  waveformProgress: { height: 3, borderRadius: 1.5 },
-  audioInfoRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 },
-  audioTime: { fontSize: 10, fontWeight: '600' },
-  uploadOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'center', alignItems: 'center' },
-  msgFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', marginTop: 4 },
-  timeText: { fontSize: 9 },
-  whatsappAudioContainer: { flexDirection: 'row', alignItems: 'center', paddingVertical: 5, minWidth: width * 0.5 },
-  audioAvatar: { width: 34, height: 34, borderRadius: 17, marginRight: 10 },
-  playButtonCircle: { width: 38, height: 38, borderRadius: 19, justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.2, shadowRadius: 1, elevation: 2 },
-  audioWaveformContainer: { flex: 1, marginLeft: 12, justifyContent: 'center' },
-  waveformTrack: { height: 3, backgroundColor: 'rgba(0,0,0,0.1)', borderRadius: 1.5, width: '100%' },
-  waveformProgress: { height: 3, borderRadius: 1.5 },
-  audioInfoRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 },
-  audioTime: { fontSize: 10, fontWeight: '600' },
-  uploadOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'center', alignItems: 'center' },
 
   // Nouveau Menu Message
   menuOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.1)', justifyContent: 'center', alignItems: 'center' },

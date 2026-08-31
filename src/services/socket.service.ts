@@ -263,42 +263,6 @@ class SocketService {
       this.emitEvent('app_config_update', data);
     });
 
-    // Call signaling & history
-    this.socket.on('call:history_update', (data) => {
-      console.log('Call history update received:', data);
-      this.emitEvent('call:history_update', data);
-    });
-
-    this.socket.on('call:ring', (data) => {
-      console.log('Call ring received:', data);
-      this.emitEvent('call:ring', data);
-    });
-
-    this.socket.on('call:accepted', (data) => {
-      console.log('Call accepted received:', data);
-      this.emitEvent('call:accepted', data);
-    });
-
-    this.socket.on('call:rejected', (data) => {
-      console.log('Call rejected received:', data);
-      this.emitEvent('call:rejected', data);
-    });
-
-    this.socket.on('call:hangup', (data) => {
-      console.log('Call hangup received:', data);
-      this.emitEvent('call:hangup', data);
-    });
-
-    this.socket.on('call:timeout', (data) => {
-      console.log('Call timeout received:', data);
-      this.emitEvent('call:timeout', data);
-    });
-
-    this.socket.on('call:busy', (data) => {
-      console.log('Call busy received:', data);
-      this.emitEvent('call:busy', data);
-    });
-
     // Error events
     this.socket.on('error', (error) => {
       console.error('Socket error:', error);
@@ -518,12 +482,16 @@ class SocketService {
     this.eventListeners.get(event)?.push(callback);
   }
 
-  off(event: string, callback: (data: any) => void): void {
+  off(event: string, callback?: (data: any) => void): void {
     const listeners = this.eventListeners.get(event);
     if (listeners) {
-      const index = listeners.indexOf(callback);
-      if (index > -1) {
-        listeners.splice(index, 1);
+      if (callback) {
+        const index = listeners.indexOf(callback);
+        if (index > -1) {
+          listeners.splice(index, 1);
+        }
+      } else {
+        this.eventListeners.delete(event);
       }
     }
   }

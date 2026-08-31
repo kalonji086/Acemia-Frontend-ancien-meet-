@@ -93,7 +93,7 @@ export default function MarketScreen() {
     return (
       <View style={[styles.centered, { backgroundColor: colors.background, padding: 40 }]}>
         <Ionicons name="lock-closed" size={80} color={colors.danger} />
-        <Text style={[styles.pendingTitle, { color: colors.text.primary, color: colors.danger }]}>Compte Suspendu</Text>
+        <Text style={[styles.pendingTitle, { color: colors.danger }]}>Compte Suspendu</Text>
         <Text style={[styles.pendingDesc, { color: colors.text.secondary }]}>
           L'accès au Market pour "{business.business_name}" a été suspendu par l'administration pour non-respect des conditions d'utilisation.
           Veuillez contacter le support pour plus d'informations.

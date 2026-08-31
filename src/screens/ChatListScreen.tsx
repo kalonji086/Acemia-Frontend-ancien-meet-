@@ -27,7 +27,7 @@ import { SOCKET_URL } from '../utils/constants';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
 
-type ChatFilter = 'all' | 'unread' | 'read' | 'favorites' | 'priority';
+type ChatFilter = 'all' | 'unread' | 'read' | 'favorites' | 'priority' | 'archived';
 
 export default function ChatListScreen({ navigation, route, onChatSelect, selectedChatId }: any) {
   const { colors: themeColors, isDark, normalize, fontSizeFactor } = useTheme();

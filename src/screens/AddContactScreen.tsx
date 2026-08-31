@@ -53,7 +53,7 @@ export default function AddContactScreen({ navigation }: any) {
       const fullPhone = `+${callingCode.replace('+', '')}${phone.replace(/^0+/, '')}`;
       const res = await apiService.checkUserByPhone(fullPhone);
 
-      if (res.success && res.data.found) {
+      if (res.success && res.data?.found) {
         setFoundUser(res.data.user);
         setShowInvite(false);
       } else {

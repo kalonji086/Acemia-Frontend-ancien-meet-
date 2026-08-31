@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "Meet",
-    "slug": "meet-app",
+    "name": "Docteur Parle-moi",
+    "slug": "docteurparlemoi",
     "version": "80.0.0",
     "orientation": "portrait",
     "icon": "./assets/Logo.png",
@@ -15,8 +15,8 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.deve",
       "infoPlist": {
-        "NSCameraUsageDescription": "Meet a besoin d'accéder à votre caméra pour les appels vidéo.",
-        "NSMicrophoneUsageDescription": "Meet a besoin d'accéder à votre micro pour les appels audio et vidéo.",
+        "NSCameraUsageDescription": "Meet a besoin d'accéder à votre caméra pour prendre des photos.",
+        "NSMicrophoneUsageDescription": "Meet a besoin d'accéder à votre micro pour envoyer des messages vocaux.",
         "NSContactsUsageDescription": "Meet a besoin d'accéder à vos contacts pour synchroniser vos amis.",
         "NSPhotoLibraryUsageDescription": "Meet a besoin d'accéder à votre bibliothèque photo pour partager des images.",
         "UIBackgroundModes": [
@@ -38,12 +38,10 @@
       "permissions": [
         "CAMERA",
         "RECORD_AUDIO",
-        "MODIFY_AUDIO_SETTINGS",
         "INTERNET",
         "ACCESS_NETWORK_STATE",
         "ACCESS_WIFI_STATE",
         "READ_CONTACTS",
-        "BLUETOOTH_CONNECT",
         "WAKE_LOCK",
         "VIBRATE"
       ],
@@ -79,9 +77,9 @@
       "apiUrl": "https://meet-me-backend-sg5c.onrender.com/api",
       "socketUrl": "https://meet-me-backend-sg5c.onrender.com",
       "eas": {
-        "projectId": "b0ab9e74-0ca6-49fa-b8c6-8489f9a9efab"
+        "projectId": "7f2b4be4-1043-4d94-b8fc-9507f0609cf5"
       }
     },
-    "owner": "guellord"
+    "owner": "zuwandakus-team"
   }
 }
