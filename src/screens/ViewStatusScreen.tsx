@@ -205,7 +205,7 @@ export default function ViewStatusScreen({ navigation, route }: any) {
       try {
         const chatRes = await apiService.createChat([userStatus.user_id]);
         if (chatRes.success) {
-          const msgPrefix = type === 'like' ? "A aimé votre statut" : "A réagi à votre statut : ";
+          const msgPrefix = (type as string) === 'like' ? "A aimé votre statut" : "A réagi à votre statut : ";
           await apiService.sendMessage(chatRes.data.id, `${msgPrefix}${content}`);
         }
       } catch (e) { console.error('Error sending emoji message:', e); }
@@ -245,7 +245,7 @@ export default function ViewStatusScreen({ navigation, route }: any) {
       <StatusBar hidden />
       <View style={styles.mainContainer}>
         <TouchableOpacity activeOpacity={1} onPress={handlePress} onLongPress={() => setIsPaused(true)} onPressOut={() => setIsPaused(false)} style={styles.touchArea}>
-          {currentStatus.type === 'image' && <Image source={{ uri: getFullUrl(currentStatus.media_url) }} style={styles.image} resizeMode="contain" />}
+          {currentStatus.type === 'image' && currentStatus.media_url && <Image source={{ uri: getFullUrl(currentStatus.media_url) || undefined }} style={styles.image} resizeMode="contain" />}
 
           {/* Floating Emojis Animation Area */}
           {floatingEmojis.map(e => (

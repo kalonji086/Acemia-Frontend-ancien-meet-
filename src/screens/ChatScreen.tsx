@@ -674,11 +674,11 @@ export default function ChatScreen({ navigation, route }: any) {
       { text: 'Transférer', onPress: () => { setMessageToForward(item); setIsForwarding(true); apiService.searchUsers('').then(res => res.success && setContacts(res.data)); } },
       { text: 'Partager', onPress: () => Share.share({ message: item.content }) }
     ];
-    if (isMe) options.push({ text: t?.('delete') || 'Supprimer', style: 'destructive', onPress: () => { handleDeleteMessage(item.id); } });
+    if (isMe) options.push({ text: t?.('delete') || 'Supprimer', onPress: () => { handleDeleteMessage(item.id); } });
     Alert.alert('Options', undefined, options as any);
   }, [currentUser?.id, t, handleLikeMessage]);
 
-  const handleDeleteMessage = async (messageId: string) => {
+  const handleDeleteMessage = useCallback(async (messageId: string) => {
     Alert.alert(
       "Supprimer le message",
       "Voulez-vous supprimer ce message pour tout le monde ?",
@@ -704,7 +704,7 @@ export default function ChatScreen({ navigation, route }: any) {
         }
       ]
     );
-  };
+  }, [chatId]);
 
   const styles = useMemo(() => createStyles(themeColors, normalize, fontSizeFactor, isDark), [themeColors, normalize, fontSizeFactor, isDark]);
 
@@ -798,7 +798,7 @@ export default function ChatScreen({ navigation, route }: any) {
           setChatColor(c.value);
           AsyncStorage.setItem(`chat_color_${chatId}`, c.value);
         }
-      })).concat([{ text: "Annuler", style: "cancel" }]) as any
+      })).concat([{ text: "Annuler", onPress: () => {} }]) as any
     );
   };
 
@@ -830,7 +830,7 @@ export default function ChatScreen({ navigation, route }: any) {
           </View>
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => Alert.alert('Options', undefined, [{ text: 'Fond d\'écran', onPress: handlePickChatBg }, { text: 'Couleur', onPress: handleChangeChatColor }, { text: 'Archiver', onPress: () => { handleArchiveChat(); } }, { text: 'Annuler', style: 'cancel' }])} style={styles.headerIcon}><MoreVertical size={22} color="#fff" /></TouchableOpacity>
+        <TouchableOpacity onPress={() => Alert.alert('Options', undefined, [{ text: 'Fond d\'écran', onPress: handlePickChatBg }, { text: 'Couleur', onPress: handleChangeChatColor }, { text: 'Archiver', onPress: () => { handleArchiveChat(); } }, { text: 'Annuler', onPress: () => {} }])} style={styles.headerIcon}><MoreVertical size={22} color="#fff" /></TouchableOpacity>
       </View>
 
       {/* Indicateur de frappe */}

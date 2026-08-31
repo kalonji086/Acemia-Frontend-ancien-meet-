@@ -81,17 +81,17 @@ export default function BusinessPublicProfileScreen({ navigation, route }: any) 
 
   const handleToggleSubscription = async () => {
     try {
-      const res = await apiService.toggleMarketSubscription(businessId);
+      const res: any = await apiService.toggleMarketSubscription(businessId);
       if (res.success) {
         setIsSubscribed(res.subscribed);
-        setFollowersCount(prev => res.subscribed ? prev + 1 : prev - 1);
+        setFollowersCount((prev: number) => res.subscribed ? prev + 1 : prev - 1);
       }
     } catch (e) { Alert.alert('Erreur', 'Impossible de s\'abonner'); }
   };
 
   const handleLikePost = async (postId: string) => {
     try {
-      const res = await apiService.toggleMarketLike(postId);
+      const res: any = await apiService.toggleMarketLike(postId);
       if (res.success) {
         setPosts(current => current.map(p => {
           if (p.id === postId) {

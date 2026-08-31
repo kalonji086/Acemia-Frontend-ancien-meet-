@@ -436,7 +436,7 @@ export default function SettingsScreen({ navigation }: any) {
       <Modal visible={appearanceModalVisible} transparent animationType="slide" onRequestClose={() => setAppearanceModalVisible(false)}>
         <View style={dynamicStyles.modalOverlay}>
           <View style={[dynamicStyles.modalContent, { maxHeight: '90%' }]}>
-            <View style={dynamicStyles.modalHeader}>
+            <View style={{ padding: 20 }}>
               <Text style={dynamicStyles.modalTitle}>{t('appearance')}</Text>
               <TouchableOpacity onPress={() => setAppearanceModalVisible(false)}>
                 <X size={24} color={colors.text.primary} />

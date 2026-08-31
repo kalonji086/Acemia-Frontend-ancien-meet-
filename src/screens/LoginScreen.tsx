@@ -124,11 +124,11 @@ export default function LoginScreen({ navigation, route }: any) {
         triggerShake();
         if (response.isLocked) {
           setIsLocked(true);
-          setLockMessage(response.message);
-        } else if (response.attemptsLeft !== undefined) {
+          setLockMessage(response.message || 'Compte bloqué');
+        } else if ((response as any).attemptsLeft !== undefined) {
           Alert.alert(
             '⚠️ Sécurité',
-            `Mot de passe incorrect. Attention, après 3 tentatives infructueuses, votre accès sera définitivement bloqué.\n\nTentatives restantes : ${response.attemptsLeft}`,
+            `Mot de passe incorrect. Attention, après 3 tentatives infructueuses, votre accès sera définitivement bloqué.\n\nTentatives restantes : ${(response as any).attemptsLeft}`,
             [{ text: "J'ai compris", style: 'destructive' }]
           );
         } else {
@@ -203,7 +203,7 @@ export default function LoginScreen({ navigation, route }: any) {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.appealButton, { backgroundColor: '#ff3b30', marginTop: 15, flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 25, borderRadius: 30 }]}
+            style={[ { backgroundColor: '#ff3b30', marginTop: 15, flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 25, borderRadius: 30 }]}
             onPress={() => setShowAppealModal(true)}
           >
             <Megaphone size={20} color="#fff" />

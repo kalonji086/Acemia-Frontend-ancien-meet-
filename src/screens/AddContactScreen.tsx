@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
+import { useLanguage } from '../context/LanguageContext';
 import apiService from '../services/api.service';
 import * as Contacts from 'expo-contacts';
 import { CountryPicker } from 'react-native-country-codes-picker';
@@ -21,6 +22,7 @@ import { CheckCircle, Share2 } from 'lucide-react-native';
 
 export default function AddContactScreen({ navigation }: any) {
   const { colors, normalize, isDark } = useTheme();
+  const { language } = useLanguage();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [phone, setPhone] = useState('');
@@ -234,6 +236,7 @@ export default function AddContactScreen({ navigation }: any) {
 
       <CountryPicker
         show={showCountryPicker}
+        lang={language}
         pickerButtonOnPress={(item) => {
           setCountryFlag(item.flag);
           setCallingCode(item.dial_code.replace('+', ''));
@@ -244,7 +247,6 @@ export default function AddContactScreen({ navigation }: any) {
           modal: { height: 500, backgroundColor: isDark ? '#1E1E1E' : '#FFFFFF' },
           countryName: { color: colors.text.primary },
           dialCode: { color: colors.text.secondary },
-          searchInput: { backgroundColor: isDark ? '#333' : '#F0F2F5', color: colors.text.primary }
         }}
       />
     </View>

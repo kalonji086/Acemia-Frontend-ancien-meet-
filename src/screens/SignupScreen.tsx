@@ -163,7 +163,7 @@ export default function SignupScreen({ navigation }: any) {
   useEffect(() => {
     const timer = setTimeout(async () => {
       if (email.includes('@')) {
-        const res = await apiService.checkAvailability({ email });
+        const res: any = await apiService.checkAvailability({ email });
         setEmailError(res.available ? '' : 'Cette adresse email est déjà utilisée');
       }
     }, 800);
@@ -185,7 +185,7 @@ export default function SignupScreen({ navigation }: any) {
         }
 
         const fullPhone = `${callingCode}${phone}`.startsWith('+') ? `${callingCode}${phone}` : `+${callingCode}${phone}`;
-        const res = await apiService.checkAvailability({ phone_number: fullPhone });
+        const res: any = await apiService.checkAvailability({ phone_number: fullPhone });
 
         // Vérifier si le numéro semble valide pour l'indicatif (logique simple)
         if (callingCode === '243' && phone.length > 0 && !phone.startsWith('8') && !phone.startsWith('9')) {
@@ -208,7 +208,7 @@ export default function SignupScreen({ navigation }: any) {
           setPseudoError('Pseudo invalide (lettres, chiffres, . _ uniquement)');
           return;
         }
-        const res = await apiService.checkAvailability({ username: pseudo });
+        const res: any = await apiService.checkAvailability({ username: pseudo });
         setPseudoError(res.available ? '' : 'Identifiant non disponible. Veuillez en choisir un autre.');
       } else {
         setPseudoError('');
@@ -750,6 +750,7 @@ export default function SignupScreen({ navigation }: any) {
 
       <CountryPicker
         show={showCountryPicker}
+        lang={language}
         pickerButtonOnPress={(item) => {
           setCountry(item.name[language as keyof typeof item.name] || item.name.en);
           setCountryFlag(item.flag);
@@ -762,7 +763,6 @@ export default function SignupScreen({ navigation }: any) {
           modal: { height: 500, backgroundColor: isDark ? '#1E1E1E' : '#FFFFFF' },
           countryName: { color: colors.text.primary },
           dialCode: { color: colors.text.secondary },
-          searchInput: { backgroundColor: isDark ? '#333' : '#F0F2F5', color: colors.text.primary }
         }}
       />
 

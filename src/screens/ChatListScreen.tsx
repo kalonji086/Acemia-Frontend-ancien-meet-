@@ -54,7 +54,7 @@ export default function ChatListScreen({ navigation, route, onChatSelect, select
   useFocusEffect(
     useCallback(() => {
       // Déterminer si on doit charger les archives
-      const isViewingArchived = isArchivedView || activeFilter === 'archived';
+      const isViewingArchived = isArchivedView || (activeFilter as string) === 'archived';
       fetchChats(isViewingArchived);
       loadCurrentUser();
 
@@ -95,7 +95,7 @@ export default function ChatListScreen({ navigation, route, onChatSelect, select
         if (user) setCurrentUser(user);
       }
 
-      const viewingArchived = forceArchived !== undefined ? forceArchived : (isArchivedView || activeFilter === 'archived');
+      const viewingArchived = forceArchived !== undefined ? forceArchived : (isArchivedView || (activeFilter as string) === 'archived');
       const response = await apiService.getChats(1, 100, viewingArchived);
       if (response.success) {
         const formatted = response.data.map((chat: any) => {
@@ -169,7 +169,7 @@ export default function ChatListScreen({ navigation, route, onChatSelect, select
 
   const handleLongPress = (chat: any) => {
     // Si on est dans le filtre "archived", on considère qu'on est en vue archives
-    const effectiveArchivedView = isArchivedView || activeFilter === 'archived';
+    const effectiveArchivedView = isArchivedView || (activeFilter as string) === 'archived';
 
     Alert.alert(
       chat.name,
@@ -305,10 +305,10 @@ export default function ChatListScreen({ navigation, route, onChatSelect, select
     // Calculer le nombre réel pour chaque filtre en temps réel
     const count = useMemo(() => {
       switch (type) {
-        case 'unread': return chats.filter(c => c.unreadCount > 0).length;
-        case 'favorites': return chats.filter(c => c.isFavorite).length;
-        case 'priority': return chats.filter(c => c.isPriority).length;
-        case 'archived': return archivedCount;
+        case 'unread': return chats.filter(c => (c.unreadCount || c.unread_count) > 0).length;
+        case 'favorites': return chats.filter(c => c.isFavorite || c.is_favorite).length;
+        case 'priority': return chats.filter(c => c.isPriority || c.is_priority).length;
+        case 'archived' as any: return archivedCount;
         default: return 0;
       }
     }, [chats, type, archivedCount]);
@@ -319,7 +319,7 @@ export default function ChatListScreen({ navigation, route, onChatSelect, select
           dynamicStyles.filterBtn,
           activeFilter === type && { backgroundColor: themeColors.primary, borderColor: themeColors.primary }
         ]}
-        onPress={() => setActiveFilter(type)}
+        onPress={() => setActiveFilter(type as ChatFilter)}
       >
         {React.cloneElement(icon, { color: activeFilter === type ? '#fff' : themeColors.text.secondary })}
         <Text style={[dynamicStyles.filterLabel, activeFilter === type && { color: '#fff' }]}>{label}</Text>
@@ -427,7 +427,7 @@ export default function ChatListScreen({ navigation, route, onChatSelect, select
         renderItem={renderChatItem}
         keyExtractor={(item) => item.id}
         contentContainerStyle={dynamicStyles.chatList}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchChats(isArchivedView || activeFilter === 'archived'); }} colors={[themeColors.primary]} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchChats(isArchivedView || (activeFilter as string) === 'archived'); }} colors={[themeColors.primary]} />}
         ListHeaderComponent={
           <>
             {archivedCount > 0 && !isArchivedView && !isSearching && activeFilter === 'all' && (

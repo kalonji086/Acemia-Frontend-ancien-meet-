@@ -55,7 +55,7 @@ export default function StatusScreen() {
         {
           text: 'Prendre une photo',
           onPress: async () => {
-            const { status } = await ExpoCamera.requestCameraPermissionsAsync();
+            const { status } = await ImagePicker.requestCameraPermissionsAsync();
             if (status !== 'granted') return Alert.alert('Permission requise', 'Accès caméra refusé.');
             const result = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], allowsEditing: true, aspect: [9, 16], quality: 0.8 });
             if (!result.canceled) navigation.navigate('CreateStatus', { imageUri: result.assets[0].uri });

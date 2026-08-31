@@ -616,7 +616,7 @@ export default function EditProfileScreen({ navigation, isComponent = false }: a
                 {gender === g.value && <Check size={20} color={colors.primary} />}
               </TouchableOpacity>
             ))}
-            <TouchableOpacity style={dynamicStyles.closeBtn} onPress={() => setGenderModalVisible(false)}><Text style={dynamicStyles.closeBtnText}>Annuler</Text></TouchableOpacity>
+            <TouchableOpacity style={dynamicStyles.closeBtn} onPress={() => setGenderModalVisible(false)}><Text style={{ fontSize: 16, color: colors.primary, fontWeight: 'bold' }}>Annuler</Text></TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -624,6 +624,7 @@ export default function EditProfileScreen({ navigation, isComponent = false }: a
       {/* Country Picker */}
       <CountryPicker
         show={countryPickerVisible}
+        lang={language}
         pickerButtonOnPress={(item) => {
           setCountry(item.name[language as keyof typeof item.name] || item.name.en);
           setCountryPickerVisible(false);
@@ -635,7 +636,6 @@ export default function EditProfileScreen({ navigation, isComponent = false }: a
           modal: { height: 500, backgroundColor: isDark ? '#1E1E1E' : '#FFFFFF' },
           countryName: { color: colors.text.primary },
           dialCode: { color: colors.text.secondary },
-          searchInput: { backgroundColor: isDark ? '#333' : '#F0F2F5', color: colors.text.primary }
         }}
       />
 
@@ -655,7 +655,7 @@ export default function EditProfileScreen({ navigation, isComponent = false }: a
               )}
               ListEmptyComponent={<Text style={{ textAlign: 'center', padding: 20, color: colors.text.disabled }}>Aucune province répertoriée pour ce pays.</Text>}
             />
-            <TouchableOpacity style={dynamicStyles.closeBtn} onPress={() => setProvinceModalVisible(false)}><Text style={dynamicStyles.closeBtnText}>Fermer</Text></TouchableOpacity>
+            <TouchableOpacity style={dynamicStyles.closeBtn} onPress={() => setProvinceModalVisible(false)}><Text style={{ fontSize: 16, color: colors.primary, fontWeight: 'bold' }}>Fermer</Text></TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -675,7 +675,7 @@ export default function EditProfileScreen({ navigation, isComponent = false }: a
                 </TouchableOpacity>
               )}
             />
-            <TouchableOpacity style={dynamicStyles.closeBtn} onPress={() => setCityModalVisible(false)}><Text style={dynamicStyles.closeBtnText}>Fermer</Text></TouchableOpacity>
+            <TouchableOpacity style={dynamicStyles.closeBtn} onPress={() => setCityModalVisible(false)}><Text style={{ fontSize: 16, color: colors.primary, fontWeight: 'bold' }}>Fermer</Text></TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -695,7 +695,7 @@ export default function EditProfileScreen({ navigation, isComponent = false }: a
                 </TouchableOpacity>
               )}
             />
-            <TouchableOpacity style={dynamicStyles.closeBtn} onPress={() => setCommuneModalVisible(false)}><Text style={dynamicStyles.closeBtnText}>Fermer</Text></TouchableOpacity>
+            <TouchableOpacity style={dynamicStyles.closeBtn} onPress={() => setCommuneModalVisible(false)}><Text style={{ fontSize: 16, color: colors.primary, fontWeight: 'bold' }}>Fermer</Text></TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -714,7 +714,7 @@ export default function EditProfileScreen({ navigation, isComponent = false }: a
                  </TouchableOpacity>
                )}
              />
-             <TouchableOpacity style={dynamicStyles.closeBtn} onPress={() => setBirthDateModalVisible(false)}><Text style={dynamicStyles.closeBtnText}>Fermer</Text></TouchableOpacity>
+             <TouchableOpacity style={dynamicStyles.closeBtn} onPress={() => setBirthDateModalVisible(false)}><Text style={{ fontSize: 16, color: colors.primary, fontWeight: 'bold' }}>Fermer</Text></TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -722,6 +722,7 @@ export default function EditProfileScreen({ navigation, isComponent = false }: a
       {/* Phone Country Picker */}
       <CountryPicker
         show={showPhoneCountryPicker}
+        lang={language}
         pickerButtonOnPress={(item) => {
           setCountryFlag(item.flag);
           setCallingCode(item.dial_code);
@@ -732,7 +733,6 @@ export default function EditProfileScreen({ navigation, isComponent = false }: a
           modal: { height: 500, backgroundColor: isDark ? '#1E1E1E' : '#FFFFFF' },
           countryName: { color: colors.text.primary },
           dialCode: { color: colors.text.secondary },
-          searchInput: { backgroundColor: isDark ? '#333' : '#F0F2F5', color: colors.text.primary }
         }}
       />
     </View>
