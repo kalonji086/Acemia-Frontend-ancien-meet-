@@ -793,9 +793,30 @@ class ApiService {
     } catch (e: any) { return this.handleError(e); }
   }
 
-  async getAllJobs(): Promise<ApiResponse> {
+  async getAllJobs(category?: string, search?: string): Promise<ApiResponse> {
     try {
-      const res = await this.api.get('/employer/jobs');
+      const res = await this.api.get('/employer/jobs', { params: { category, search } });
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async getJobById(id: string): Promise<ApiResponse> {
+    try {
+      const res = await this.api.get(`/employer/jobs/${id}`);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async addJobComment(jobId: string, content: string): Promise<ApiResponse> {
+    try {
+      const res = await this.api.post(`/employer/jobs/${jobId}/comments`, { content });
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async getJobComments(jobId: string): Promise<ApiResponse> {
+    try {
+      const res = await this.api.get(`/employer/jobs/${jobId}/comments`);
       return res.data;
     } catch (e: any) { return this.handleError(e); }
   }

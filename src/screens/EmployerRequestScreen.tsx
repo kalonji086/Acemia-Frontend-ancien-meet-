@@ -10,7 +10,8 @@ import {
   Alert,
   ActivityIndicator,
   KeyboardAvoidingView,
-  Platform
+  Platform,
+  useWindowDimensions
 } from 'react-native';
 import {
   ArrowLeft, Building2, Globe, Mail, Phone, MapPin,
@@ -21,6 +22,8 @@ import apiService from '../services/api.service';
 
 export default function EmployerRequestScreen({ navigation }: any) {
   const { colors, normalize, isDark } = useTheme();
+  const { width: windowWidth } = useWindowDimensions();
+  const isTablet = windowWidth > 768;
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
 
@@ -80,13 +83,13 @@ export default function EmployerRequestScreen({ navigation }: any) {
       case 1:
         return (
           <View style={styles.stepContainer}>
-            <Text style={[styles.stepTitle, { color: colors.text.primary }]}>Identité de l'entreprise</Text>
+            <Text style={[styles.stepTitle, { color: colors.text.primary, fontSize: normalize(22) }]}>Identité de l'entreprise</Text>
             <View style={styles.inputGroup}>
-              <Text style={[styles.label, { color: colors.text.secondary }]}>Nom de l'entreprise *</Text>
+              <Text style={[styles.label, { color: colors.text.secondary, fontSize: normalize(14) }]}>Nom de l'entreprise *</Text>
               <View style={[styles.inputWrapper, { borderColor: colors.border }]}>
                 <Building2 size={20} color={colors.text.disabled} />
                 <TextInput
-                  style={[styles.input, { color: colors.text.primary }]}
+                  style={[styles.input, { color: colors.text.primary, fontSize: normalize(16) }]}
                   value={formData.companyName}
                   onChangeText={(v) => updateForm('companyName', v)}
                   placeholder="Ex: Together Tech Solutions"
@@ -95,11 +98,11 @@ export default function EmployerRequestScreen({ navigation }: any) {
               </View>
             </View>
             <View style={styles.inputGroup}>
-              <Text style={[styles.label, { color: colors.text.secondary }]}>Secteur d'activité *</Text>
+              <Text style={[styles.label, { color: colors.text.secondary, fontSize: normalize(14) }]}>Secteur d'activité *</Text>
               <View style={[styles.inputWrapper, { borderColor: colors.border }]}>
                 <ClipboardCheck size={20} color={colors.text.disabled} />
                 <TextInput
-                  style={[styles.input, { color: colors.text.primary }]}
+                  style={[styles.input, { color: colors.text.primary, fontSize: normalize(16) }]}
                   value={formData.industry}
                   onChangeText={(v) => updateForm('industry', v)}
                   placeholder="Ex: Informatique, Santé, etc."
@@ -108,11 +111,11 @@ export default function EmployerRequestScreen({ navigation }: any) {
               </View>
             </View>
             <View style={styles.inputGroup}>
-              <Text style={[styles.label, { color: colors.text.secondary }]}>Site Web (Optionnel)</Text>
+              <Text style={[styles.label, { color: colors.text.secondary, fontSize: normalize(14) }]}>Site Web (Optionnel)</Text>
               <View style={[styles.inputWrapper, { borderColor: colors.border }]}>
                 <Globe size={20} color={colors.text.disabled} />
                 <TextInput
-                  style={[styles.input, { color: colors.text.primary }]}
+                  style={[styles.input, { color: colors.text.primary, fontSize: normalize(16) }]}
                   value={formData.companyWebsite}
                   onChangeText={(v) => updateForm('companyWebsite', v)}
                   placeholder="https://..."
@@ -126,13 +129,13 @@ export default function EmployerRequestScreen({ navigation }: any) {
       case 2:
         return (
           <View style={styles.stepContainer}>
-            <Text style={[styles.stepTitle, { color: colors.text.primary }]}>Contact professionnel</Text>
+            <Text style={[styles.stepTitle, { color: colors.text.primary, fontSize: normalize(22) }]}>Contact professionnel</Text>
             <View style={styles.inputGroup}>
-              <Text style={[styles.label, { color: colors.text.secondary }]}>Email de contact *</Text>
+              <Text style={[styles.label, { color: colors.text.secondary, fontSize: normalize(14) }]}>Email de contact *</Text>
               <View style={[styles.inputWrapper, { borderColor: colors.border }]}>
                 <Mail size={20} color={colors.text.disabled} />
                 <TextInput
-                  style={[styles.input, { color: colors.text.primary }]}
+                  style={[styles.input, { color: colors.text.primary, fontSize: normalize(16) }]}
                   value={formData.companyEmail}
                   onChangeText={(v) => updateForm('companyEmail', v)}
                   placeholder="rh@entreprise.com"
@@ -142,11 +145,11 @@ export default function EmployerRequestScreen({ navigation }: any) {
               </View>
             </View>
             <View style={styles.inputGroup}>
-              <Text style={[styles.label, { color: colors.text.secondary }]}>Téléphone</Text>
+              <Text style={[styles.label, { color: colors.text.secondary, fontSize: normalize(14) }]}>Téléphone</Text>
               <View style={[styles.inputWrapper, { borderColor: colors.border }]}>
                 <Phone size={20} color={colors.text.disabled} />
                 <TextInput
-                  style={[styles.input, { color: colors.text.primary }]}
+                  style={[styles.input, { color: colors.text.primary, fontSize: normalize(16) }]}
                   value={formData.companyPhone}
                   onChangeText={(v) => updateForm('companyPhone', v)}
                   placeholder="+243..."
@@ -159,13 +162,13 @@ export default function EmployerRequestScreen({ navigation }: any) {
       case 3:
         return (
           <View style={styles.stepContainer}>
-            <Text style={[styles.stepTitle, { color: colors.text.primary }]}>Localisation</Text>
+            <Text style={[styles.stepTitle, { color: colors.text.primary, fontSize: normalize(22) }]}>Localisation</Text>
             <View style={styles.inputGroup}>
-              <Text style={[styles.label, { color: colors.text.secondary }]}>Adresse du siège social</Text>
+              <Text style={[styles.label, { color: colors.text.secondary, fontSize: normalize(14) }]}>Adresse du siège social</Text>
               <View style={[styles.inputWrapper, { borderColor: colors.border, height: 100, alignItems: 'flex-start', paddingTop: 12 }]}>
                 <MapPin size={20} color={colors.text.disabled} style={{ marginTop: 2 }} />
                 <TextInput
-                  style={[styles.input, { color: colors.text.primary, height: '100%' }]}
+                  style={[styles.input, { color: colors.text.primary, height: '100%', fontSize: normalize(16) }]}
                   value={formData.companyAddress}
                   onChangeText={(v) => updateForm('companyAddress', v)}
                   placeholder="N°, Rue, Commune, Ville..."
@@ -178,13 +181,13 @@ export default function EmployerRequestScreen({ navigation }: any) {
       case 4:
         return (
           <View style={styles.stepContainer}>
-            <Text style={[styles.stepTitle, { color: colors.text.primary }]}>Besoins en recrutement</Text>
+            <Text style={[styles.stepTitle, { color: colors.text.primary, fontSize: normalize(22) }]}>Besoins en recrutement</Text>
             <View style={styles.inputGroup}>
-              <Text style={[styles.label, { color: colors.text.secondary }]}>Taille de l'entreprise</Text>
+              <Text style={[styles.label, { color: colors.text.secondary, fontSize: normalize(14) }]}>Taille de l'entreprise</Text>
               <View style={[styles.inputWrapper, { borderColor: colors.border }]}>
                 <Users size={20} color={colors.text.disabled} />
                 <TextInput
-                  style={[styles.input, { color: colors.text.primary }]}
+                  style={[styles.input, { color: colors.text.primary, fontSize: normalize(16) }]}
                   value={formData.companySize}
                   onChangeText={(v) => updateForm('companySize', v)}
                   placeholder="Ex: 1-10, 11-50, +100 employés"
@@ -192,11 +195,11 @@ export default function EmployerRequestScreen({ navigation }: any) {
               </View>
             </View>
             <View style={styles.inputGroup}>
-              <Text style={[styles.label, { color: colors.text.secondary }]}>Description des besoins</Text>
+              <Text style={[styles.label, { color: colors.text.secondary, fontSize: normalize(14) }]}>Description des besoins</Text>
               <View style={[styles.inputWrapper, { borderColor: colors.border, height: 120, alignItems: 'flex-start', paddingTop: 12 }]}>
                 <ClipboardCheck size={20} color={colors.text.disabled} />
                 <TextInput
-                  style={[styles.input, { color: colors.text.primary, height: '100%' }]}
+                  style={[styles.input, { color: colors.text.primary, height: '100%', fontSize: normalize(16) }]}
                   value={formData.hiringNeeds}
                   onChangeText={(v) => updateForm('hiringNeeds', v)}
                   placeholder="Quels types de profils recherchez-vous ?"
@@ -209,18 +212,18 @@ export default function EmployerRequestScreen({ navigation }: any) {
       case 5:
         return (
           <View style={styles.stepContainer}>
-            <Text style={[styles.stepTitle, { color: colors.text.primary }]}>Confirmation</Text>
+            <Text style={[styles.stepTitle, { color: colors.text.primary, fontSize: normalize(22) }]}>Confirmation</Text>
             <View style={[styles.reviewCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <Text style={[styles.reviewLabel, { color: colors.text.secondary }]}>Entreprise</Text>
-              <Text style={[styles.reviewValue, { color: colors.text.primary }]}>{formData.companyName}</Text>
+              <Text style={[styles.reviewLabel, { color: colors.text.secondary, fontSize: normalize(12) }]}>Entreprise</Text>
+              <Text style={[styles.reviewValue, { color: colors.text.primary, fontSize: normalize(18) }]}>{formData.companyName}</Text>
 
-              <Text style={[styles.reviewLabel, { color: colors.text.secondary, marginTop: 15 }]}>Email RH</Text>
-              <Text style={[styles.reviewValue, { color: colors.text.primary }]}>{formData.companyEmail}</Text>
+              <Text style={[styles.reviewLabel, { color: colors.text.secondary, marginTop: 15, fontSize: normalize(12) }]}>Email RH</Text>
+              <Text style={[styles.reviewValue, { color: colors.text.primary, fontSize: normalize(18) }]}>{formData.companyEmail}</Text>
 
-              <Text style={[styles.reviewLabel, { color: colors.text.secondary, marginTop: 15 }]}>Secteur</Text>
-              <Text style={[styles.reviewValue, { color: colors.text.primary }]}>{formData.industry}</Text>
+              <Text style={[styles.reviewLabel, { color: colors.text.secondary, marginTop: 15, fontSize: normalize(12) }]}>Secteur</Text>
+              <Text style={[styles.reviewValue, { color: colors.text.primary, fontSize: normalize(18) }]}>{formData.industry}</Text>
             </View>
-            <Text style={[styles.note, { color: colors.text.secondary }]}>
+            <Text style={[styles.note, { color: colors.text.secondary, fontSize: normalize(13) }]}>
               En soumettant cette demande, vous acceptez que l'administration de Meet Me vérifie vos informations professionnelles.
             </Text>
           </View>
@@ -231,7 +234,7 @@ export default function EmployerRequestScreen({ navigation }: any) {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-        <View style={styles.header}>
+        <View style={[styles.header, { paddingHorizontal: isTablet ? '10%' : 15 }]}>
           <TouchableOpacity onPress={prevStep} style={styles.backBtn}>
             <ArrowLeft size={24} color={colors.text.primary} />
           </TouchableOpacity>
@@ -243,11 +246,11 @@ export default function EmployerRequestScreen({ navigation }: any) {
           </View>
         </View>
 
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+        <ScrollView contentContainerStyle={[styles.scrollContent, { paddingHorizontal: isTablet ? '20%' : 25 }]}>
           {renderStep()}
         </ScrollView>
 
-        <View style={[styles.footer, { borderTopColor: colors.border }]}>
+        <View style={[styles.footer, { borderTopColor: colors.border, paddingHorizontal: isTablet ? '20%' : 20 }]}>
           <TouchableOpacity
             style={[styles.nextBtn, { backgroundColor: colors.primary }]}
             onPress={step === 5 ? handleSubmit : nextStep}
@@ -257,7 +260,7 @@ export default function EmployerRequestScreen({ navigation }: any) {
               <ActivityIndicator color="#fff" />
             ) : (
               <>
-                <Text style={styles.nextBtnText}>{step === 5 ? 'SOUMETTRE LA DEMANDE' : 'CONTINUER'}</Text>
+                <Text style={[styles.nextBtnText, { fontSize: normalize(16) }]}>{step === 5 ? 'SOUMETTRE LA DEMANDE' : 'CONTINUER'}</Text>
                 {step < 5 && <ChevronRight size={20} color="#fff" />}
               </>
             )}
@@ -276,11 +279,11 @@ const styles = StyleSheet.create({
   progressBar: { height: 6, borderRadius: 3, width: '100%', marginBottom: 5, overflow: 'hidden' },
   progressFill: { height: '100%' },
   stepIndicator: { fontSize: 12, fontWeight: '600' },
-  scrollContent: { padding: 25 },
+  scrollContent: { paddingVertical: 25 },
   stepContainer: { width: '100%' },
-  stepTitle: { fontSize: 22, fontWeight: 'bold', marginBottom: 25 },
+  stepTitle: { fontWeight: 'bold', marginBottom: 25 },
   inputGroup: { marginBottom: 20 },
-  label: { fontSize: 14, fontWeight: '600', marginBottom: 8, marginLeft: 2 },
+  label: { fontWeight: '600', marginBottom: 8, marginLeft: 2 },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -289,8 +292,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     height: 55
   },
-  input: { flex: 1, marginLeft: 12, fontSize: 16 },
-  footer: { padding: 20, borderTopWidth: 0.5 },
+  input: { flex: 1, marginLeft: 12 },
+  footer: { paddingVertical: 20, borderTopWidth: 0.5 },
   nextBtn: {
     height: 55,
     borderRadius: 15,
@@ -303,9 +306,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 5
   },
-  nextBtnText: { color: '#fff', fontSize: 16, fontWeight: 'bold', marginRight: 8 },
+  nextBtnText: { color: '#fff', fontWeight: 'bold', marginRight: 8 },
   reviewCard: { padding: 20, borderRadius: 20, borderWidth: 1 },
-  reviewLabel: { fontSize: 12, textTransform: 'uppercase', letterSpacing: 1 },
-  reviewValue: { fontSize: 18, fontWeight: 'bold', marginTop: 5 },
-  note: { marginTop: 25, fontSize: 13, textAlign: 'center', fontStyle: 'italic', lineHeight: 20 }
+  reviewLabel: { textTransform: 'uppercase', letterSpacing: 1 },
+  reviewValue: { fontWeight: 'bold', marginTop: 5 },
+  note: { marginTop: 25, textAlign: 'center', fontStyle: 'italic', lineHeight: 20 }
 });
