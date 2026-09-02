@@ -771,6 +771,84 @@ class ApiService {
     } catch (e: any) { return this.handleError(e); }
   }
 
+  // School
+  async getSchoolOverview(): Promise<ApiResponse> {
+    try {
+      const res = await this.api.get('/school/overview');
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async getSchoolWorld(country?: string, city?: string, type?: string): Promise<ApiResponse> {
+    try {
+      const res = await this.api.get('/school/world', { params: { country, city, type } });
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async getSchoolDashboard(): Promise<ApiResponse> {
+    try {
+      const res = await this.api.get('/school/dashboard');
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async createSchool(data: any): Promise<ApiResponse> {
+    try {
+      const res = await this.api.post('/school/create', data);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async createSchoolStudent(data: any): Promise<ApiResponse> {
+    try {
+      const res = await this.api.post('/school/students', data);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async createSchoolClass(data: any): Promise<ApiResponse> {
+    try {
+      const res = await this.api.post('/school/classes', data);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async createSchoolTeacher(data: any): Promise<ApiResponse> {
+    try {
+      const res = await this.api.post('/school/teachers', data);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async createSchoolAssignment(data: any): Promise<ApiResponse> {
+    try {
+      const res = await this.api.post('/school/assignments', data);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async createSchoolGrade(data: any): Promise<ApiResponse> {
+    try {
+      const res = await this.api.post('/school/grades', data);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async createSchoolPayment(data: any): Promise<ApiResponse> {
+    try {
+      const res = await this.api.post('/school/payments', data);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async sendSchoolMessage(data: any): Promise<ApiResponse> {
+    try {
+      const res = await this.api.post('/school/messages', data);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
   // Employer & Jobs
   async submitEmployerRequest(data: any): Promise<ApiResponse> {
     try {
@@ -817,6 +895,29 @@ class ApiService {
   async getJobComments(jobId: string): Promise<ApiResponse> {
     try {
       const res = await this.api.get(`/employer/jobs/${jobId}/comments`);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  // Admin Moderation
+  async getModerationFeed(): Promise<ApiResponse> {
+    try {
+      const res = await this.api.get('/admin/moderation/feed');
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async moderateContent(data: {
+    contentId: string;
+    contentType: 'social' | 'market' | 'job';
+    action: 'delete' | 'correction' | 'boost';
+    reason?: string;
+    contentTitle?: string;
+    authorEmail?: string;
+    authorName?: string;
+  }): Promise<ApiResponse> {
+    try {
+      const res = await this.api.post('/admin/moderation/action', data);
       return res.data;
     } catch (e: any) { return this.handleError(e); }
   }
