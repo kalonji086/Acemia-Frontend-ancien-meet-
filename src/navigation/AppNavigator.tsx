@@ -33,6 +33,7 @@ import EmploiMainScreen from '../screens/EmploiMainScreen';
 import EmployerRequestScreen from '../screens/EmployerRequestScreen';
 import EmployerDashboardScreen from '../screens/EmployerDashboardScreen';
 import JobDiscoveryScreen from '../screens/JobDiscoveryScreen';
+import JobDetailsScreen from '../screens/JobDetailsScreen';
 import CreateJobPostingScreen from '../screens/CreateJobPostingScreen';
 import { useTheme } from '../context/ThemeContext';
 import { DefaultTheme, DarkTheme } from '@react-navigation/native';
@@ -306,6 +307,11 @@ export default function AppNavigator() {
         <Stack.Screen
           name="JobDiscovery"
           component={JobDiscoveryScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="JobDetails"
+          component={JobDetailsScreen}
           options={{ headerShown: false }}
         />
         <Stack.Screen
