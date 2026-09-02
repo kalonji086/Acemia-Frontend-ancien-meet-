@@ -899,6 +899,35 @@ class ApiService {
     } catch (e: any) { return this.handleError(e); }
   }
 
+  // School Module
+  async getSchoolOverview(): Promise<ApiResponse> {
+    try {
+      const res = await this.api.get('/school/overview');
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async getSchoolWorld(): Promise<ApiResponse> {
+    try {
+      const res = await this.api.get('/school/world');
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async getSchoolDashboard(schoolId: string): Promise<ApiResponse> {
+    try {
+      const res = await this.api.get('/school/dashboard', { params: { schoolId } });
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async createSchool(data: any): Promise<ApiResponse> {
+    try {
+      const res = await this.api.post('/school/create', data);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
   // Admin Moderation
   async getModerationFeed(): Promise<ApiResponse> {
     try {
@@ -918,6 +947,28 @@ class ApiService {
   }): Promise<ApiResponse> {
     try {
       const res = await this.api.post('/admin/moderation/action', data);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  // Admin School Management
+  async getPendingSchools(): Promise<ApiResponse> {
+    try {
+      const res = await this.api.get('/admin/schools/pending');
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async approveSchool(id: string): Promise<ApiResponse> {
+    try {
+      const res = await this.api.put(`/admin/schools/${id}/approve`);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async blockSchool(id: string, reason: string): Promise<ApiResponse> {
+    try {
+      const res = await this.api.put(`/admin/schools/${id}/block`, { reason });
       return res.data;
     } catch (e: any) { return this.handleError(e); }
   }
