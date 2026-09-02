@@ -3,7 +3,7 @@ import { View, StyleSheet, TouchableOpacity, Text, Dimensions, ActivityIndicator
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   MessageSquare, Aperture, Phone, ShoppingCart, AlertCircle,
-  MessagesSquare
+  MessagesSquare, Briefcase
 } from 'lucide-react-native';
 import apiService from '../services/api.service';
 import socketService from '../services/socket.service';
@@ -12,6 +12,7 @@ import ChatListScreen from './ChatListScreen';
 import StatusScreen from './StatusScreen';
 import MarketScreen from './MarketScreen';
 import ChatScreen from './ChatScreen';
+import EmploiMainScreen from './EmploiMainScreen';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
 import { useUser } from '../context/UserContext';
@@ -228,6 +229,7 @@ export default function MainScreen({ navigation, route }: any) {
           }
           return <ChatListScreen navigation={navigation} route={route} />;
         case 'status': return <StatusScreen />;
+        case 'emploi': return <EmploiMainScreen navigation={navigation} />;
         case 'market': return <MarketScreen />;
         default: return <ChatListScreen navigation={navigation} route={route} />;
       }
@@ -279,6 +281,18 @@ export default function MainScreen({ navigation, route }: any) {
           icon={<Aperture size={22} />}
           label={t('status')}
           onPress={() => setActiveTab('status')}
+          activeColor={colors.primary}
+          inactiveColor={colors.text.secondary}
+          activeBg={isDark ? colors.primary + '20' : '#F3E5F5'}
+          badge={0}
+          styles={styles}
+          normalize={normalize}
+        />
+        <TabItem
+          active={activeTab === 'emploi'}
+          icon={<Briefcase size={22} />}
+          label={t('emploi') || 'Emploi'}
+          onPress={() => setActiveTab('emploi')}
           activeColor={colors.primary}
           inactiveColor={colors.text.secondary}
           activeBg={isDark ? colors.primary + '20' : '#F3E5F5'}

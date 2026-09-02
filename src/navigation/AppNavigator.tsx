@@ -29,6 +29,11 @@ import UserProfileScreen from '../screens/UserProfileScreen';
 import BusinessRegistrationScreen from '../screens/BusinessRegistrationScreen';
 import BusinessDashboardScreen from '../screens/BusinessDashboardScreen';
 import BusinessPublicProfileScreen from '../screens/BusinessPublicProfileScreen';
+import EmploiMainScreen from '../screens/EmploiMainScreen';
+import EmployerRequestScreen from '../screens/EmployerRequestScreen';
+import EmployerDashboardScreen from '../screens/EmployerDashboardScreen';
+import JobDiscoveryScreen from '../screens/JobDiscoveryScreen';
+import CreateJobPostingScreen from '../screens/CreateJobPostingScreen';
 import { useTheme } from '../context/ThemeContext';
 import { DefaultTheme, DarkTheme } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -281,6 +286,31 @@ export default function AppNavigator() {
         <Stack.Screen
           name="BusinessPublicProfile"
           component={BusinessPublicProfileScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="EmploiMain"
+          component={EmploiMainScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="EmployerRequest"
+          component={EmployerRequestScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="EmployerDashboard"
+          component={EmployerDashboardScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="JobDiscovery"
+          component={JobDiscoveryScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="CreateJobPosting"
+          component={CreateJobPostingScreen}
           options={{ headerShown: false }}
         />
       </Stack.Navigator>

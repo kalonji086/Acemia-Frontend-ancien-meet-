@@ -771,6 +771,35 @@ class ApiService {
     } catch (e: any) { return this.handleError(e); }
   }
 
+  // Employer & Jobs
+  async submitEmployerRequest(data: any): Promise<ApiResponse> {
+    try {
+      const res = await this.api.post('/employer/request', data);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async getEmployerStatus(): Promise<ApiResponse> {
+    try {
+      const res = await this.api.get('/employer/status');
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async postJob(data: any): Promise<ApiResponse> {
+    try {
+      const res = await this.api.post('/employer/jobs', data);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async getAllJobs(): Promise<ApiResponse> {
+    try {
+      const res = await this.api.get('/employer/jobs');
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
   async getCurrentUser(): Promise<any> {
     try {
       const userString = await AsyncStorage.getItem('user');
