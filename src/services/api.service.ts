@@ -190,6 +190,13 @@ class ApiService {
     } catch (e: any) { return this.handleError(e); }
   }
 
+  async verifyOTP(email: string, otp: string): Promise<ApiResponse> {
+    try {
+      const res = await this.api.post('/auth/verify-otp', { email, otp });
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
   async resetPassword(email: string, otp: string, newPassword: string): Promise<ApiResponse> {
     try {
       const res = await this.api.post('/auth/reset-password', { email, otp, newPassword });

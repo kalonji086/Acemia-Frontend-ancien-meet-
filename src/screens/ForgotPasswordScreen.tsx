@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -31,9 +31,33 @@ export default function ForgotPasswordScreen({ navigation }: any) {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [step, setStep] = useState(1); // 1: email, 2: code, 3: new password
   const [loading, setLoading] = useState(false);
+  const [emailError, setEmailError] = useState('');
 
   // Refs pour l'OTP automatique
   const otpRefs = useRef<Array<TextInput | null>>([]);
+
+  // Vérification de l'existence de l'email en temps réel
+  useEffect(() => {
+    if (step !== 1) return;
+
+    const timer = setTimeout(async () => {
+      if (email.includes('@') && email.length > 5) {
+        try {
+          const res: any = await apiService.checkAvailability({ email });
+          // available: true signifie que l'email n'est PAS utilisé (donc n'existe pas)
+          if (res.success) {
+            setEmailError(res.available ? 'Cette adresse email n\'existe pas dans notre base de données.' : '');
+          }
+        } catch (e) {
+          // Ignorer les erreurs silencieuses en mode temps réel
+        }
+      } else {
+        setEmailError('');
+      }
+    }, 800);
+
+    return () => clearTimeout(timer);
+  }, [email, step]);
 
   const handleSendCode = async () => {
     if (!email) {
@@ -46,9 +70,9 @@ export default function ForgotPasswordScreen({ navigation }: any) {
       const response = await apiService.forgotPassword(email);
       if (response.success) {
         setStep(2);
-        Alert.alert('Succès', 'Un code OTP a été envoyé à votre email via Brevo');
+        Alert.alert('Succès', 'Un code OTP a été envoyé à votre email');
       } else {
-        throw new Error(response.error || 'Erreur lors de l\'envoi du code');
+        throw new Error(response.message || response.error || 'Erreur lors de l\'envoi du code');
       }
     } catch (error: any) {
       Alert.alert('Erreur', error.message);
@@ -57,13 +81,26 @@ export default function ForgotPasswordScreen({ navigation }: any) {
     }
   };
 
-  const handleVerifyCode = () => {
+  const handleVerifyCode = async () => {
     const code = otp.join('');
     if (code.length !== 6) {
       Alert.alert('Erreur', 'Veuillez entrer le code à 6 chiffres');
       return;
     }
-    setStep(3);
+
+    setLoading(true);
+    try {
+      const response = await apiService.verifyOTP(email, code);
+      if (response.success) {
+        setStep(3);
+      } else {
+        throw new Error(response.message || response.error || 'Code OTP invalide');
+      }
+    } catch (error: any) {
+      Alert.alert('Code invalide', error.message || 'Le code saisi est incorrect.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleResetPassword = async () => {
@@ -162,7 +199,14 @@ export default function ForgotPasswordScreen({ navigation }: any) {
                   />
                 </View>
 
-                <TouchableOpacity style={dynamicStyles.primaryButton} onPress={handleSendCode} disabled={loading}>
+                {emailError ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 15, paddingHorizontal: 5 }}>
+                    <MailWarning size={14} color={colors.danger} />
+                    <Text style={{ color: colors.danger, fontSize: 12, marginLeft: 5 }}>{emailError}</Text>
+                  </View>
+                ) : null}
+
+                <TouchableOpacity style={dynamicStyles.primaryButton} onPress={handleSendCode} disabled={loading || !!emailError}>
                   {loading ? <ActivityIndicator color="#fff" /> : <Text style={dynamicStyles.primaryButtonText}>Envoyer le code</Text>}
                 </TouchableOpacity>
               </>
