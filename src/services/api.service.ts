@@ -4,7 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
 
 // Types
-interface ApiResponse<T = any> {
+export interface ApiResponse<T = any> {
   success: boolean;
   data?: T;
   error?: string;
@@ -47,11 +47,8 @@ class ApiService {
 
   private setupInterceptors(): void {
     this.api.interceptors.request.use(async (config) => {
-      // Configuration de timeout adaptée au réveil de Render
-      config.timeout = 60000; // 60 secondes
+      config.timeout = 60000;
       config.timeoutErrorMessage = 'Request timeout';
-      
-      // Ajouter des headers de sécurité
       config.headers['X-Request-ID'] = Date.now().toString(36) + Math.random().toString(36).substr(2);
       
       const token = await this.getAuthToken();
@@ -63,23 +60,15 @@ class ApiService {
       (res) => res,
       async (error) => {
         const originalRequest = error.config;
-
-        // Gérer spécifiquement le bannissement (403)
         if (error.response?.status === 403 && error.response.data?.isLocked) {
           return Promise.reject(error);
         }
 
-        // Gestion des erreurs réseau avec retry
         if (!error.response && !originalRequest._retryCount) {
           originalRequest._retryCount = originalRequest._retryCount || 0;
-          
           if (originalRequest._retryCount < 3) {
             originalRequest._retryCount++;
-            
-            // Backoff exponentiel
             const delay = 1000 * Math.pow(2, originalRequest._retryCount);
-            console.log(`Retrying request (${originalRequest._retryCount}/3) in ${delay}ms`);
-            
             await new Promise(resolve => setTimeout(resolve, delay));
             return this.api(originalRequest);
           }
@@ -99,9 +88,7 @@ class ApiService {
           try {
             const rfToken = await this.getRefreshToken();
             if (!rfToken) throw new Error('Session expirée');
-
             const res = await axios.post(`${API_BASE_URL}/auth/refresh`, { refreshToken: rfToken });
-
             if (res.data.success) {
               const newToken = res.data.data.token;
               await this.setAuthToken(newToken);
@@ -117,16 +104,6 @@ class ApiService {
             return Promise.reject(e);
           } finally { this.isRefreshing = false; }
         }
-        
-        // Loguer l'erreur pour le debugging
-        console.error('API Error:', {
-          url: originalRequest?.url,
-          method: originalRequest?.method,
-          status: error.response?.status,
-          message: error.message,
-          retryCount: originalRequest?._retryCount
-        });
-        
         return Promise.reject(error);
       }
     );
@@ -136,12 +113,10 @@ class ApiService {
   async register(data: any): Promise<ApiResponse> {
     try {
       const res = await this.api.post('/auth/register', data);
-      if (res.data && res.data.success && res.data.data) {
+      if (res.data?.success && res.data.data) {
         if (res.data.data.token) await this.setAuthToken(res.data.data.token);
         if (res.data.data.refreshToken) await this.setRefreshToken(res.data.data.refreshToken);
-        if (res.data.data.user) {
-          await AsyncStorage.setItem('user', JSON.stringify(res.data.data.user));
-        }
+        if (res.data.data.user) await AsyncStorage.setItem('user', JSON.stringify(res.data.data.user));
       }
       return res.data;
     } catch (e: any) { return this.handleError(e); }
@@ -150,12 +125,10 @@ class ApiService {
   async login(credentials: any): Promise<ApiResponse> {
     try {
       const res = await this.api.post('/auth/login', credentials);
-      if (res.data && res.data.success && res.data.data) {
+      if (res.data?.success && res.data.data) {
         if (res.data.data.token) await this.setAuthToken(res.data.data.token);
         if (res.data.data.refreshToken) await this.setRefreshToken(res.data.data.refreshToken);
-        if (res.data.data.user) {
-          await AsyncStorage.setItem('user', JSON.stringify(res.data.data.user));
-        }
+        if (res.data.data.user) await AsyncStorage.setItem('user', JSON.stringify(res.data.data.user));
       }
       return res.data;
     } catch (e: any) { return this.handleError(e); }
@@ -167,20 +140,6 @@ class ApiService {
       await this.clearTokens();
       return res.data;
     } catch (e: any) { await this.clearTokens(); return this.handleError(e); }
-  }
-
-  async refreshAuthToken(refreshToken: string): Promise<ApiResponse> {
-    try {
-      const res = await this.api.post('/auth/refresh', { refreshToken });
-      return res.data;
-    } catch (e: any) { return this.handleError(e); }
-  }
-
-  async checkAvailability(params: any): Promise<ApiResponse> {
-    try {
-      const res = await this.api.get('/auth/check-availability', { params });
-      return res.data;
-    } catch (e: any) { return this.handleError(e); }
   }
 
   async forgotPassword(email: string): Promise<ApiResponse> {
@@ -204,16 +163,9 @@ class ApiService {
     } catch (e: any) { return this.handleError(e); }
   }
 
-  // User
-  async getMe(): Promise<ApiResponse> {
+  async checkAvailability(params: any): Promise<ApiResponse> {
     try {
-      const res = await this.api.get('/me');
-      if (res.data && res.data.success && res.data.data) {
-        const userData = res.data.data;
-        const localUser = await this.getCurrentUser();
-        const mergedUser = { ...(localUser || {}), ...(userData || {}) };
-        await AsyncStorage.setItem('user', JSON.stringify(mergedUser));
-      }
+      const res = await this.api.get('/auth/check-availability', { params });
       return res.data;
     } catch (e: any) { return this.handleError(e); }
   }
@@ -225,15 +177,88 @@ class ApiService {
     } catch (e: any) { return this.handleError(e); }
   }
 
+  // User
+  async getMe(): Promise<ApiResponse> {
+    try {
+      const res = await this.api.get('/me');
+      if (res.data?.success && res.data.data) {
+        const localUser = await this.getCurrentUser();
+        await AsyncStorage.setItem('user', JSON.stringify({ ...(localUser || {}), ...res.data.data }));
+      }
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
   async updateProfile(userData: any): Promise<ApiResponse> {
     try {
       const res = await this.api.put('/users/profile', userData);
-      if (res.data && res.data.success && res.data.data) {
-        const updatedData = res.data.data;
+      if (res.data?.success && res.data.data) {
         const localUser = await this.getCurrentUser();
-        const mergedUser = { ...(localUser || {}), ...(updatedData || {}) };
-        await AsyncStorage.setItem('user', JSON.stringify(mergedUser));
+        await AsyncStorage.setItem('user', JSON.stringify({ ...(localUser || {}), ...res.data.data }));
       }
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async searchUsers(query: string, limit: number = 20, onlyContacts: boolean = false): Promise<ApiResponse> {
+    try {
+      const res = await this.api.get('/users/search', { params: { query, limit, onlyContacts: onlyContacts.toString() } });
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async searchTalents(search?: string): Promise<ApiResponse> {
+    try {
+      const res = await this.api.get('/employer/talents', { params: { search } });
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async getUserById(userId: string): Promise<ApiResponse> {
+    try {
+      const res = await this.api.get(`/users/${userId}`);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async addContact(peerId: string): Promise<ApiResponse> {
+    try {
+      const res = await this.api.post('/users/contacts', { contactId: peerId });
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async checkUserByPhone(phone: string): Promise<ApiResponse> {
+    try {
+      const res = await this.api.get(`/users/check-phone/${encodeURIComponent(phone)}`);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async isContact(peerId: string): Promise<ApiResponse> {
+    try {
+      const res = await this.api.get(`/users/contacts/check/${peerId}`);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async syncContacts(phoneNumbers: string[]): Promise<ApiResponse> {
+    try {
+      const res = await this.api.post('/users/sync-contacts', { phoneNumbers });
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async blockUser(targetId: string): Promise<ApiResponse> {
+    try {
+      const res = await this.api.post('/users/block', { targetId });
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async reportUser(targetId: string, reason: string): Promise<ApiResponse> {
+    try {
+      const res = await this.api.post('/users/report', { targetId, reason });
       return res.data;
     } catch (e: any) { return this.handleError(e); }
   }
@@ -259,57 +284,9 @@ class ApiService {
     } catch (e: any) { return this.handleError(e); }
   }
 
-  async searchUsers(query: string, limit: number = 20, onlyContacts: boolean = false): Promise<ApiResponse> {
+  async submitVerification(documentUrl: string): Promise<ApiResponse> {
     try {
-      const res = await this.api.get('/users/search', { params: { query, limit, onlyContacts: onlyContacts.toString() } });
-      return res.data;
-    } catch (e: any) { return this.handleError(e); }
-  }
-
-  async syncContacts(phoneNumbers: string[]): Promise<ApiResponse> {
-    try {
-      const res = await this.api.post('/users/sync-contacts', { phoneNumbers });
-      return res.data;
-    } catch (e: any) { return this.handleError(e); }
-  }
-
-  async getBadges(): Promise<ApiResponse> {
-    try {
-      const res = await this.api.get('/users/badges');
-      return res.data;
-    } catch (e: any) { return this.handleError(e); }
-  }
-
-  async getUserById(userId: string): Promise<ApiResponse> {
-    try {
-      const res = await this.api.get(`/users/${userId}`);
-      return res.data;
-    } catch (e: any) { return this.handleError(e); }
-  }
-
-  async checkUserByPhone(phone: string): Promise<ApiResponse<{ found: boolean, user?: any, isSelf?: boolean }>> {
-    try {
-      const res = await this.api.get(`/users/check-phone/${encodeURIComponent(phone)}`);
-      return res.data;
-    } catch (e: any) { return this.handleError(e); }
-  }
-
-  async updatePushToken(pushToken: string | null): Promise<ApiResponse> {
-    try {
-      const res = await this.api.put('/users/push-token', { pushToken });
-      if (res.data.success) {
-        const localUser = await this.getCurrentUser();
-        if (localUser) {
-          await AsyncStorage.setItem('user', JSON.stringify({ ...localUser, push_token: pushToken }));
-        }
-      }
-      return res.data;
-    } catch (e: any) { return this.handleError(e); }
-  }
-
-  async blockUser(targetId: string): Promise<ApiResponse> {
-    try {
-      const res = await this.api.post('/users/block', { targetId });
+      const res = await this.api.post('/users/verify', { documentUrl });
       return res.data;
     } catch (e: any) { return this.handleError(e); }
   }
@@ -317,27 +294,6 @@ class ApiService {
   async submitAppeal(reason: string): Promise<ApiResponse> {
     try {
       const res = await this.api.post('/users/appeal', { reason });
-      return res.data;
-    } catch (e: any) { return this.handleError(e); }
-  }
-
-  async reportUser(targetId: string, reason: string): Promise<ApiResponse> {
-    try {
-      const res = await this.api.post('/users/report', { targetId, reason });
-      return res.data;
-    } catch (e: any) { return this.handleError(e); }
-  }
-
-  async addContact(peerId: string): Promise<ApiResponse> {
-    try {
-      const res = await this.api.post('/users/contacts', { contactId: peerId });
-      return res.data;
-    } catch (e: any) { return this.handleError(e); }
-  }
-
-  async isContact(peerId: string): Promise<ApiResponse<{ isContact: boolean }>> {
-    try {
-      const res = await this.api.get(`/users/contacts/check/${peerId}`);
       return res.data;
     } catch (e: any) { return this.handleError(e); }
   }
@@ -433,13 +389,7 @@ class ApiService {
 
   async sendMessage(chatId: string, content: string, type: string = 'text', fileUrl?: string, metadata?: any): Promise<ApiResponse> {
     try {
-      const res = await this.api.post('/messages', {
-        chat: chatId,
-        content,
-        type,
-        file_url: fileUrl,
-        ...metadata
-      });
+      const res = await this.api.post('/messages', { chat: chatId, content, type, file_url: fileUrl, ...metadata });
       return res.data;
     } catch (e: any) { return this.handleError(e); }
   }
@@ -479,48 +429,6 @@ class ApiService {
     } catch (e: any) { return this.handleError(e); }
   }
 
-  // Upload
-  async uploadFile(file: any, type: string = 'image', onProgress?: (progress: number) => void): Promise<ApiResponse> {
-    try {
-      const formData = new FormData();
-      let field = 'image';
-      let endpoint = `/upload/${type}`;
-
-      if (type === 'audio') {
-        field = 'audio';
-      } else if (type === 'document' || type === 'file') {
-        field = 'document';
-        endpoint = '/upload/document';
-      } else if (type === 'video') {
-        field = 'video';
-      } else if (type === 'image') {
-        field = 'image';
-      } else {
-        // Fallback générique
-        field = 'file';
-        endpoint = '/upload';
-      }
-
-      formData.append(field, {
-        uri: file.uri,
-        type: file.type || 'application/octet-stream',
-        name: file.name || 'upload'
-      } as any);
-
-      const res = await this.api.post(endpoint, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-        timeout: 0,
-        onUploadProgress: (progressEvent) => {
-          if (onProgress && progressEvent.total) {
-            const progress = progressEvent.loaded / progressEvent.total;
-            onProgress(progress);
-          }
-        }
-      });
-      return res.data;
-    } catch (e: any) { return this.handleError(e); }
-  }
-
   // Status
   async getStatuses(): Promise<ApiResponse> {
     try {
@@ -553,58 +461,6 @@ class ApiService {
   async addStatusReaction(statusId: string, data: { content: string, type: 'emoji' | 'comment' | 'like' }): Promise<ApiResponse> {
     try {
       const res = await this.api.post(`/statuses/${statusId}/reactions`, data);
-      return res.data;
-    } catch (e: any) { return this.handleError(e); }
-  }
-
-  // Helpdesk
-  async submitHelpdesk(data: { category: string, reason: string, email?: string }): Promise<ApiResponse> {
-    try {
-      const res = await this.api.post('/support/helpdesk', data);
-      return res.data;
-    } catch (e: any) { return this.handleError(e); }
-  }
-
-  async submitFeedback(data: { type: string, title: string, description: string, email?: string, deviceInfo?: any, context?: string }): Promise<ApiResponse> {
-    try {
-      const res = await this.api.post('/support/feedback', data);
-      return res.data;
-    } catch (e: any) { return this.handleError(e); }
-  }
-
-  // Update & Config
-  async checkUpdate(version: string, userId?: string): Promise<ApiResponse> {
-    try {
-      const res = await this.api.get('/check-update', { params: { version, userId } });
-      return res.data;
-    } catch (e: any) { return this.handleError(e); }
-  }
-
-  async getLegalDocs(): Promise<ApiResponse> {
-    try {
-      const res = await this.api.get('/legal');
-      return res.data;
-    } catch (e: any) { return this.handleError(e); }
-  }
-
-  async submitVerification(documentUrl: string): Promise<ApiResponse> {
-    try {
-      const res = await this.api.post('/users/verify', { documentUrl });
-      return res.data;
-    } catch (e: any) { return this.handleError(e); }
-  }
-
-  // Calls
-  async generateCallToken(channelName: string, role: string = 'publisher'): Promise<ApiResponse> {
-    try {
-      const res = await this.api.post('/calls/generate-token', { channelName, role });
-      return res.data;
-    } catch (e: any) { return this.handleError(e); }
-  }
-
-  async getCallHistory(): Promise<ApiResponse> {
-    try {
-      const res = await this.api.get('/calls/history');
       return res.data;
     } catch (e: any) { return this.handleError(e); }
   }
@@ -771,7 +627,7 @@ class ApiService {
     } catch (e: any) { return this.handleError(e); }
   }
 
-  // School
+  // School Module
   async getSchoolOverview(): Promise<ApiResponse> {
     try {
       const res = await this.api.get('/school/overview');
@@ -786,9 +642,44 @@ class ApiService {
     } catch (e: any) { return this.handleError(e); }
   }
 
-  async getSchoolDashboard(): Promise<ApiResponse> {
+  async getSchoolDashboard(schoolId: string): Promise<ApiResponse> {
     try {
-      const res = await this.api.get('/school/dashboard');
+      const res = await this.api.get('/school/dashboard', { params: { schoolId } });
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async getSchoolProfile(id: string): Promise<ApiResponse> {
+    try {
+      const res = await this.api.get(`/school/profile/${id}`);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async enrollInSchool(data: any): Promise<ApiResponse> {
+    try {
+      const res = await this.api.post('/school/enroll', data);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async handleEnrollment(id: string, data: { status: 'approved' | 'rejected', classId?: string }): Promise<ApiResponse> {
+    try {
+      const res = await this.api.put(`/school/enroll/${id}`, data);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async getEnrollmentRequests(schoolId: string): Promise<ApiResponse> {
+    try {
+      const res = await this.api.get(`/school/enroll/requests`, { params: { schoolId } });
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async getSchoolClasses(schoolId: string): Promise<ApiResponse> {
+    try {
+      const res = await this.api.get(`/school/classes`, { params: { schoolId } });
       return res.data;
     } catch (e: any) { return this.handleError(e); }
   }
@@ -828,6 +719,13 @@ class ApiService {
     } catch (e: any) { return this.handleError(e); }
   }
 
+  async submitAssignment(data: { assignmentId: string, content: string, fileUrl?: string }): Promise<ApiResponse> {
+    try {
+      const res = await this.api.post('/school/submissions', data);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
   async createSchoolGrade(data: any): Promise<ApiResponse> {
     try {
       const res = await this.api.post('/school/grades', data);
@@ -845,6 +743,13 @@ class ApiService {
   async sendSchoolMessage(data: any): Promise<ApiResponse> {
     try {
       const res = await this.api.post('/school/messages', data);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async requestSchoolStaff(data: any): Promise<ApiResponse> {
+    try {
+      const res = await this.api.post('/school/staff-request', data);
       return res.data;
     } catch (e: any) { return this.handleError(e); }
   }
@@ -899,108 +804,7 @@ class ApiService {
     } catch (e: any) { return this.handleError(e); }
   }
 
-  // School Module
-  async getSchoolOverview(): Promise<ApiResponse> {
-    try {
-      const res = await this.api.get('/school/overview');
-      return res.data;
-    } catch (e: any) { return this.handleError(e); }
-  }
-
-  async getSchoolWorld(): Promise<ApiResponse> {
-    try {
-      const res = await this.api.get('/school/world');
-      return res.data;
-    } catch (e: any) { return this.handleError(e); }
-  }
-
-  async getSchoolDashboard(schoolId: string): Promise<ApiResponse> {
-    try {
-      const res = await this.api.get('/school/dashboard', { params: { schoolId } });
-      return res.data;
-    } catch (e: any) { return this.handleError(e); }
-  }
-
-  async getSchoolProfile(id: string): Promise<ApiResponse> {
-    try {
-      const res = await this.api.get(`/school/profile/${id}`);
-      return res.data;
-    } catch (e: any) { return this.handleError(e); }
-  }
-
-  async enrollInSchool(data: { schoolId: string, firstName: string, lastName: string, age: number, level?: string }): Promise<ApiResponse> {
-    try {
-      const res = await this.api.post('/school/enroll', data);
-      return res.data;
-    } catch (e: any) { return this.handleError(e); }
-  }
-
-  async handleEnrollment(id: string, data: { status: 'approved' | 'rejected', classId?: string }): Promise<ApiResponse> {
-    try {
-      const res = await this.api.put(`/school/enroll/${id}`, data);
-      return res.data;
-    } catch (e: any) { return this.handleError(e); }
-  }
-
-  async getEnrollmentRequests(schoolId: string): Promise<ApiResponse> {
-    try {
-      const res = await this.api.get(`/school/enroll/requests`, { params: { schoolId } });
-      return res.data;
-    } catch (e: any) { return this.handleError(e); }
-  }
-
-  async getSchoolClasses(schoolId: string): Promise<ApiResponse> {
-    try {
-      const res = await this.api.get(`/school/classes`, { params: { schoolId } });
-      return res.data;
-    } catch (e: any) { return this.handleError(e); }
-  }
-
-  async submitAssignment(data: { assignmentId: string, content: string, fileUrl?: string }): Promise<ApiResponse> {
-    try {
-      const res = await this.api.post('/school/submissions', data);
-      return res.data;
-    } catch (e: any) { return this.handleError(e); }
-  }
-
-  async createSchool(data: any): Promise<ApiResponse> {
-    try {
-      const res = await this.api.post('/school/create', data);
-      return res.data;
-    } catch (e: any) { return this.handleError(e); }
-  }
-
-  async requestSchoolStaff(data: { schoolId: string, fullName: string, email: string, roleRequested: 'teacher' | 'director' }): Promise<ApiResponse> {
-    try {
-      const res = await this.api.post('/school/staff-request', data);
-      return res.data;
-    } catch (e: any) { return this.handleError(e); }
-  }
-
-  // Admin Moderation
-  async getModerationFeed(): Promise<ApiResponse> {
-    try {
-      const res = await this.api.get('/admin/moderation/feed');
-      return res.data;
-    } catch (e: any) { return this.handleError(e); }
-  }
-
-  async moderateContent(data: {
-    contentId: string;
-    contentType: 'social' | 'market' | 'job';
-    action: 'delete' | 'correction' | 'boost';
-    reason?: string;
-    contentTitle?: string;
-    authorEmail?: string;
-    authorName?: string;
-  }): Promise<ApiResponse> {
-    try {
-      const res = await this.api.post('/admin/moderation/action', data);
-      return res.data;
-    } catch (e: any) { return this.handleError(e); }
-  }
-
-  // Admin School Management
+  // Admin
   async getPendingSchools(): Promise<ApiResponse> {
     try {
       const res = await this.api.get('/admin/schools/pending');
@@ -1022,11 +826,71 @@ class ApiService {
     } catch (e: any) { return this.handleError(e); }
   }
 
+  async getModerationFeed(): Promise<ApiResponse> {
+    try {
+      const res = await this.api.get('/admin/moderation/feed');
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async moderateContent(data: any): Promise<ApiResponse> {
+    try {
+      const res = await this.api.post('/admin/moderation/action', data);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async getLegalDocs(): Promise<ApiResponse> {
+    try {
+      const res = await this.api.get('/legal');
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  // Helpdesk
+  async submitHelpdesk(data: { category: string, reason: string, email?: string }): Promise<ApiResponse> {
+    try {
+      const res = await this.api.post('/support/helpdesk', data);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async submitFeedback(data: any): Promise<ApiResponse> {
+    try {
+      const res = await this.api.post('/support/feedback', data);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  // General
+  async checkUpdate(version: string, userId?: string): Promise<ApiResponse> {
+    try {
+      const res = await this.api.get('/check-update', { params: { version, userId } });
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
   async getCurrentUser(): Promise<any> {
     try {
       const userString = await AsyncStorage.getItem('user');
       return userString ? JSON.parse(userString) : null;
     } catch (error) { return null; }
+  }
+
+  async uploadFile(file: any, type: string = 'image'): Promise<ApiResponse> {
+    try {
+      const formData = new FormData();
+      formData.append(type === 'audio' ? 'audio' : 'image', {
+        uri: file.uri,
+        type: file.type || 'application/octet-stream',
+        name: file.name || 'upload'
+      } as any);
+
+      const res = await this.api.post(`/upload/${type}`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
   }
 
   private handleError(error: any): ApiResponse {
@@ -1035,43 +899,10 @@ class ApiService {
       ? errorData.error
       : (errorData?.message || errorData?.error?.message || error.message || 'Server error');
 
-    console.error('API Service Error:', {
-      message: errorMessage,
-      status: error.response?.status
-    });
-    
     if (error.response) {
-      return {
-        success: false,
-        error: errorMessage,
-        isLocked: errorData?.isLocked,
-        message: errorData?.message,
-        statusCode: error.response.status
-      };
+      return { success: false, error: errorMessage, statusCode: error.response.status };
     }
-    
-    // Gestion spécifique des erreurs réseau
-    if (error.message?.includes('timeout')) {
-      return { 
-        success: false, 
-        error: 'Request timeout', 
-        message: 'Le serveur met trop de temps à répondre' 
-      };
-    }
-    
-    if (error.message?.includes('Network Error')) {
-      return { 
-        success: false, 
-        error: 'Network error', 
-        message: 'Vérifiez votre connexion internet' 
-      };
-    }
-    
-    return { 
-      success: false, 
-      error: 'Unknown error', 
-      message: 'Une erreur inattendue est survenue' 
-    };
+    return { success: false, error: errorMessage, message: 'Erreur réseau' };
   }
 }
 

@@ -32,9 +32,11 @@ import BusinessPublicProfileScreen from '../screens/BusinessPublicProfileScreen'
 import SchoolScreen from '../screens/SchoolScreen';
 import SchoolRegistrationScreen from '../screens/SchoolRegistrationScreen';
 import SchoolProfileScreen from '../screens/SchoolProfileScreen';
+import SchoolEnrollmentRequestsScreen from '../screens/SchoolEnrollmentRequestsScreen';
 import EmploiMainScreen from '../screens/EmploiMainScreen';
 import EmployerRequestScreen from '../screens/EmployerRequestScreen';
 import EmployerDashboardScreen from '../screens/EmployerDashboardScreen';
+import TalentSearchScreen from '../screens/TalentSearchScreen';
 import JobDiscoveryScreen from '../screens/JobDiscoveryScreen';
 import JobDetailsScreen from '../screens/JobDetailsScreen';
 import CreateJobPostingScreen from '../screens/CreateJobPostingScreen';
@@ -308,6 +310,11 @@ export default function AppNavigator() {
           options={{ headerShown: false }}
         />
         <Stack.Screen
+          name="SchoolEnrollmentRequests"
+          component={SchoolEnrollmentRequestsScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
           name="EmploiMain"
           component={EmploiMainScreen}
           options={{ headerShown: false }}
@@ -320,6 +327,11 @@ export default function AppNavigator() {
         <Stack.Screen
           name="EmployerDashboard"
           component={EmployerDashboardScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="TalentSearch"
+          component={TalentSearchScreen}
           options={{ headerShown: false }}
         />
         <Stack.Screen

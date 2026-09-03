@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Image, FlatList, Alert, Dimensions, Modal } from 'react-native';
-import { GraduationCap, Users, BookOpen, CreditCard, MessageSquare, Plus, ChevronRight, CheckCircle, Clock, Star, ShieldCheck, Building2, ArrowRight, X, Send } from 'lucide-react-native';
+import { GraduationCap, Users, BookOpen, CreditCard, MessageSquare, Plus, ChevronRight, CheckCircle, Clock, Star, ShieldCheck, Building2, ArrowRight, X, Send, UserPlus } from 'lucide-react-native';
 import apiService from '../services/api.service';
 import socketService from '../services/socket.service';
 import { useTheme } from '../context/ThemeContext';
@@ -67,6 +67,7 @@ export default function SchoolScreen({ navigation }: any) {
   const handleRoleSelection = (role: 'promoter' | 'parent' | 'student') => {
     if (role === 'promoter') {
       if (overview?.mySchool) {
+        // Navigate to dashboard tab, logic inside renderCurrentTab will handle the "pending" view
         setActiveTab('Mon Dashboard');
       } else {
         navigation.navigate('SchoolRegistration');
@@ -75,6 +76,23 @@ export default function SchoolScreen({ navigation }: any) {
       setActiveTab('Mon Dashboard');
     }
   };
+
+  const renderPendingUI = () => (
+    <View style={styles.centered}>
+      <Clock size={normalize(80)} color={colors.primary} />
+      <Text style={[styles.dashTitle, { color: colors.text.primary, marginTop: 20, textAlign: 'center' }]}>Examen en cours</Text>
+      <Text style={[styles.subtitle, { color: colors.text.secondary, marginTop: 10, textAlign: 'center' }]}>
+        Votre demande pour l'établissement "{overview.mySchool.name}" est en cours d'examen par notre équipe.
+        Dès qu'elle sera approuvée, vous pourrez gérer tout votre établissement ici.
+      </Text>
+      <TouchableOpacity
+        style={[styles.actionBtn, { backgroundColor: colors.primary, marginTop: 30, width: '80%' }]}
+        onPress={() => setActiveTab('Répertoire')}
+      >
+        <Text style={{ color: '#fff', fontWeight: 'bold' }}>RETOUR AU RÉPERTOIRE</Text>
+      </TouchableOpacity>
+    </View>
+  );
 
   const handleStaffRequest = async () => {
     if (!staffForm.fullName || !staffForm.email) return Alert.alert('Erreur', 'Informations incomplètes.');
@@ -107,9 +125,9 @@ export default function SchoolScreen({ navigation }: any) {
         <Text style={[styles.schoolName, { color: colors.text.primary }]}>{item.name}</Text>
         <Text style={[styles.schoolMeta, { color: colors.text.secondary }]}>{item.city}, {item.country}</Text>
         <View style={styles.tagRow}>
-          <div style={[styles.tag, { backgroundColor: colors.primary + '15' }]}>
+          <View style={[styles.tag, { backgroundColor: colors.primary + '15' }]}>
             <Text style={[styles.tagText, { color: colors.primary }]}>{item.school_type}</Text>
-          </div>
+          </View>
           {item.status === 'approved' && <ShieldCheck size={14} color="#4CAF50" />}
         </View>
       </View>
@@ -228,6 +246,32 @@ export default function SchoolScreen({ navigation }: any) {
     </ScrollView>
   );
 
+  const renderParentDashboard = () => (
+    <ScrollView style={styles.dashContainer}>
+      <View style={styles.dashHeaderRow}>
+        <Text style={[styles.dashTitle, { color: colors.text.primary }]}>Espace Parent</Text>
+        <TouchableOpacity onPress={() => setActiveTab('Répertoire')}><Text style={{color: colors.primary, fontWeight:'bold'}}>RETOUR</Text></TouchableOpacity>
+      </View>
+      <TouchableOpacity style={[styles.actionBtn, { backgroundColor: colors.primary }]}>
+        <Plus size={20} color="#fff" />
+        <Text style={styles.actionBtnText}>Inscrire un enfant</Text>
+      </TouchableOpacity>
+
+      <Text style={[styles.sectionHeader, { color: colors.text.primary }]}>Mes Enfants</Text>
+      {dashboard?.children?.map((c: any, i: number) => (
+        <TouchableOpacity key={i} style={[styles.childCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Users size={24} color={colors.text.secondary} />
+          <View style={{ flex: 1, marginLeft: 12 }}>
+            <Text style={[styles.childName, { color: colors.text.primary }]}>{c.first_name} {c.last_name}</Text>
+            <Text style={[styles.childClass, { color: colors.text.secondary }]}>{c.grade_level}</Text>
+          </View>
+          <ChevronRight size={20} color={colors.text.disabled} />
+        </TouchableOpacity>
+      ))}
+      <View style={{ height: 40 }} />
+    </ScrollView>
+  );
+
   const renderTeacherDashboard = () => (
     <ScrollView style={styles.dashContainer}>
       <View style={styles.dashHeaderRow}>
@@ -297,6 +341,12 @@ export default function SchoolScreen({ navigation }: any) {
        ))}
 
        <View style={[styles.adminActions, { marginTop: 30 }]}>
+          <AdminActionItem
+            icon={<UserPlus />}
+            label="Gérer Inscriptions"
+            onPress={() => navigation.navigate('SchoolEnrollmentRequests', { schoolId: overview.mySchool.id })}
+            colors={colors}
+          />
           <AdminActionItem icon={<Users />} label="Demander compte Staff" onPress={() => setShowStaffModal(true)} colors={colors} />
           <AdminActionItem icon={<GraduationCap />} label="Gérer Classes" colors={colors} />
           <AdminActionItem icon={<MessageSquare />} label="Annonces École" colors={colors} />
@@ -326,6 +376,11 @@ export default function SchoolScreen({ navigation }: any) {
            <TouchableOpacity onPress={() => setActiveTab('Répertoire')} style={{ marginTop: 20 }}><Text style={{ color: colors.primary, fontWeight: 'bold' }}>RETOUR</Text></TouchableOpacity>
         </View>
       );
+
+      // Si c'est un promoteur et que son école est en attente
+      if (overview.role === 'promoter' && overview.mySchool.status === 'pending') {
+        return renderPendingUI();
+      }
 
       switch (overview.role) {
         case 'student': return renderStudentDashboard();
@@ -440,7 +495,7 @@ const styles = StyleSheet.create({
   statBox: { width: '48%', padding: 20, borderRadius: 24, borderWidth: 1, alignItems: 'center' },
   statVal: { fontSize: 24, fontWeight: '900', marginTop: 10 },
   statLabel: { fontSize: 12, fontWeight: '600' },
-  sectionHeader: { fontSize: 18, fontWeight: 'bold', marginBottom: 15 },
+  sectionHeader: { fontSize: 18, fontWeight: 'bold' },
   itemRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 15, borderBottomWidth: 0.5 },
   itemTitle: { fontWeight: 'bold' },
   itemSub: { fontSize: 11, marginTop: 2 },

@@ -52,7 +52,7 @@ export default function SchoolRegistrationScreen({ navigation }: any) {
         Alert.alert(
           'Félicitations !',
           'Votre demande de création d’établissement a été soumise. Notre équipe va l’examiner sous 24/48h.',
-          [{ text: 'OK', onPress: () => navigation.navigate('School') }]
+          [{ text: 'OK', onPress: () => navigation.navigate('ChatList') }]
         );
       }
     } catch (e) {

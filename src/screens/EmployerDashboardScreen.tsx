@@ -17,18 +17,29 @@ export default function EmployerDashboardScreen({ navigation }: any) {
   const isTablet = windowWidth > 768;
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
-    activeJobs: 0,
+    activeJobsCount: 0,
     totalApplications: 0,
     views: 0
   });
+  const [recentJobs, setRecentJobs] = useState<any[]>([]);
 
   useEffect(() => {
-    // Simuler le chargement des stats
-    setTimeout(() => {
-      setStats({ activeJobs: 3, totalApplications: 124, views: 1540 });
-      setLoading(false);
-    }, 1000);
+    fetchData();
   }, []);
+
+  const fetchData = async () => {
+    try {
+      const res = await apiService.getAllJobs();
+      if (res.success) {
+        setRecentJobs(res.data.slice(0, 5));
+        setStats(prev => ({ ...prev, activeJobsCount: res.data.length }));
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const renderStatCard = (title: string, value: string | number, icon: any, color: string) => (
     <View style={[
@@ -68,7 +79,7 @@ export default function EmployerDashboardScreen({ navigation }: any) {
 
       <ScrollView contentContainerStyle={[styles.scrollContent, { paddingHorizontal: isTablet ? '5%' : 20 }]}>
         <View style={styles.statsGrid}>
-          {renderStatCard('Offres actives', stats.activeJobs, <Briefcase />, colors.primary)}
+          {renderStatCard('Offres actives', stats.activeJobsCount, <Briefcase />, colors.primary)}
           {renderStatCard('Candidats', stats.totalApplications, <Users />, '#4CAF50')}
           {renderStatCard('Vues', stats.views, <TrendingUp />, '#2196F3')}
         </View>
@@ -86,7 +97,10 @@ export default function EmployerDashboardScreen({ navigation }: any) {
             <Text style={[styles.actionText, { fontSize: normalize(14) }]}>Publier une offre</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={[styles.actionCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <TouchableOpacity
+            style={[styles.actionCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+            onPress={() => navigation.navigate('TalentSearch')}
+          >
             <Search size={normalize(28)} color={colors.text.primary} />
             <Text style={[styles.actionText, { color: colors.text.primary, fontSize: normalize(14) }]}>Chercher talents</Text>
           </TouchableOpacity>
@@ -99,26 +113,31 @@ export default function EmployerDashboardScreen({ navigation }: any) {
           </TouchableOpacity>
         </View>
 
-        {/* Liste factice d'offres */}
+        {/* Liste réelle d'offres */}
         <View style={isTablet ? styles.row : styles.column}>
-          {[1, 2].map((i) => (
-            <TouchableOpacity key={i} style={[
-              styles.jobCard,
-              { backgroundColor: colors.surface, borderColor: colors.border },
-              isTablet && { flex: 1, marginHorizontal: 5 }
-            ]}>
-              <View style={styles.jobInfo}>
-                <Text style={[styles.jobTitle, { color: colors.text.primary, fontSize: normalize(16) }]}>Développeur Fullstack Senior</Text>
-                <Text style={[styles.jobMeta, { color: colors.text.secondary, fontSize: normalize(12) }]}>CDI • Kinshasa • Il y a 2 jours</Text>
-                <View style={styles.badgeRow}>
-                  <View style={[styles.appBadge, { backgroundColor: colors.primary + '15' }]}>
-                    <Text style={[styles.appBadgeText, { color: colors.primary, fontSize: normalize(11) }]}>45 candidatures</Text>
-                  </View>
+          {recentJobs.length === 0 ? (
+             <Text style={{ textAlign: 'center', color: colors.text.secondary, marginTop: 20 }}>Aucune offre publiée pour le moment.</Text>
+          ) : (
+            recentJobs.map((item) => (
+              <TouchableOpacity
+                key={item.id}
+                style={[
+                  styles.jobCard,
+                  { backgroundColor: colors.surface, borderColor: colors.border },
+                  isTablet && { flex: 1, marginHorizontal: 5 }
+                ]}
+                onPress={() => navigation.navigate('JobDetails', { jobId: item.id })}
+              >
+                <View style={styles.jobInfo}>
+                  <Text style={[styles.jobTitle, { color: colors.text.primary, fontSize: normalize(16) }]}>{item.title}</Text>
+                  <Text style={[styles.jobMeta, { color: colors.text.secondary, fontSize: normalize(12) }]}>
+                    {item.job_type} • {item.location} • {new Date(item.created_at).toLocaleDateString()}
+                  </Text>
                 </View>
-              </View>
-              <ChevronRight size={normalize(20)} color={colors.text.disabled} />
-            </TouchableOpacity>
-          ))}
+                <ChevronRight size={normalize(20)} color={colors.text.disabled} />
+              </TouchableOpacity>
+            ))
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
