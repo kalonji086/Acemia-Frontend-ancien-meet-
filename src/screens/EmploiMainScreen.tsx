@@ -8,6 +8,7 @@ import { Briefcase, Building2, Search, ArrowRight, CheckCircle2, Clock, ShieldCh
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import apiService from '../services/api.service';
+import socketService from '../services/socket.service';
 
 export default function EmploiMainScreen({ navigation }: any) {
   const { colors, normalize, isDark } = useTheme();
@@ -19,6 +20,15 @@ export default function EmploiMainScreen({ navigation }: any) {
 
   useEffect(() => {
     checkStatus();
+
+    socketService.on('employer:request_approved', (data: any) => {
+      Alert.alert('Félicitations !', `Votre compte employeur pour ${data.companyName} a été activé.`);
+      checkStatus();
+    });
+
+    return () => {
+      socketService.off('employer:request_approved');
+    };
   }, []);
 
   const checkStatus = async () => {

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Image, FlatList, Alert, Dimensions } from 'react-native';
-import { GraduationCap, Users, BookOpen, CreditCard, MessageSquare, Plus, ChevronRight, CheckCircle, Clock, Star, ShieldCheck, Building2, ArrowRight } from 'lucide-react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Image, FlatList, Alert, Dimensions, Modal } from 'react-native';
+import { GraduationCap, Users, BookOpen, CreditCard, MessageSquare, Plus, ChevronRight, CheckCircle, Clock, Star, ShieldCheck, Building2, ArrowRight, X, Send } from 'lucide-react-native';
 import apiService from '../services/api.service';
 import socketService from '../services/socket.service';
 import { useTheme } from '../context/ThemeContext';
@@ -16,6 +16,11 @@ export default function SchoolScreen({ navigation }: any) {
   const [overview, setOverview] = useState<any>(null);
   const [dashboard, setDashboard] = useState<any>(null);
   const [schools, setSchools] = useState<any[]>([]);
+
+  // Modals state
+  const [showStaffModal, setShowStaffModal] = useState(false);
+  const [staffForm, setStaffForm] = useState({ fullName: '', email: '', role: 'teacher' as 'teacher' | 'director' });
+  const [sendingStaff, setSendingStaff] = useState(false);
 
   const loadData = async () => {
     setLoading(true);
@@ -71,6 +76,27 @@ export default function SchoolScreen({ navigation }: any) {
     }
   };
 
+  const handleStaffRequest = async () => {
+    if (!staffForm.fullName || !staffForm.email) return Alert.alert('Erreur', 'Informations incomplètes.');
+    setSendingStaff(true);
+    try {
+      const res = await apiService.requestSchoolStaff({
+        schoolId: overview.mySchool.id,
+        ...staffForm,
+        roleRequested: staffForm.role
+      });
+      if (res.success) {
+        Alert.alert('Envoyé', 'Votre demande de compte staff a été envoyée à l’administration.');
+        setShowStaffModal(false);
+        setStaffForm({ fullName: '', email: '', role: 'teacher' });
+      }
+    } catch (e) {
+      Alert.alert('Erreur', 'Impossible d’envoyer la demande.');
+    } finally {
+      setSendingStaff(false);
+    }
+  };
+
   const renderSchoolCard = ({ item }: any) => (
     <TouchableOpacity
       style={[styles.schoolCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
@@ -81,9 +107,9 @@ export default function SchoolScreen({ navigation }: any) {
         <Text style={[styles.schoolName, { color: colors.text.primary }]}>{item.name}</Text>
         <Text style={[styles.schoolMeta, { color: colors.text.secondary }]}>{item.city}, {item.country}</Text>
         <View style={styles.tagRow}>
-          <View style={[styles.tag, { backgroundColor: colors.primary + '15' }]}>
+          <div style={[styles.tag, { backgroundColor: colors.primary + '15' }]}>
             <Text style={[styles.tagText, { color: colors.primary }]}>{item.school_type}</Text>
-          </View>
+          </div>
           {item.status === 'approved' && <ShieldCheck size={14} color="#4CAF50" />}
         </View>
       </View>
@@ -131,10 +157,43 @@ export default function SchoolScreen({ navigation }: any) {
   );
 
   const renderStudentDashboard = () => (
-    <View style={styles.dashContainer}>
+    <ScrollView style={styles.dashContainer}>
       <View style={styles.dashHeaderRow}>
         <Text style={[styles.dashTitle, { color: colors.text.primary }]}>Mon Espace Élève</Text>
         <TouchableOpacity onPress={() => setActiveTab('Répertoire')}><Text style={{color: colors.primary, fontWeight:'bold'}}>RETOUR</Text></TouchableOpacity>
+      </View>
+
+      <View style={[styles.infoCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <View style={styles.infoRowSimple}>
+          <Text style={[styles.infoLabel, { color: colors.text.secondary }]}>Ma Classe :</Text>
+          <Text style={[styles.infoValue, { color: colors.text.primary }]}>{dashboard?.profile?.grade_level || 'Non assigné'}</Text>
+        </View>
+        <View style={styles.infoRowSimple}>
+          <Text style={[styles.infoLabel, { color: colors.text.secondary }]}>Camarades :</Text>
+          <Text style={[styles.infoValue, { color: colors.text.primary }]}>{dashboard?.profile?.classmates_count || 0} élèves</Text>
+        </View>
+        <View style={styles.infoRowSimple}>
+          <Text style={[styles.infoLabel, { color: colors.text.secondary }]}>Enseignant :</Text>
+          <Text style={[styles.infoValue, { color: colors.text.primary }]}>{dashboard?.assignments?.[0]?.teacher_name || 'À venir'}</Text>
+        </View>
+        <View style={styles.infoRowSimple}>
+          <Text style={[styles.infoLabel, { color: colors.text.secondary }]}>Directeur :</Text>
+          <Text style={[styles.infoValue, { color: colors.text.primary }]}>{dashboard?.schoolInfo?.director_name || 'Direction'}</Text>
+        </View>
+      </View>
+
+      <Text style={[styles.sectionHeader, { color: colors.text.primary, marginTop: 20 }]}>Frais Scolaires</Text>
+      <View style={[styles.feesCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        {dashboard?.fees?.length === 0 ? (
+          <Text style={{ color: colors.text.disabled, fontSize: 12 }}>Aucun frais configuré.</Text>
+        ) : (
+          dashboard?.fees?.map((f: any, i: number) => (
+            <View key={i} style={styles.feeItem}>
+               <Text style={[styles.feeName, { color: colors.text.primary }]}>{f.fee_name}</Text>
+               <Text style={[styles.feeAmount, { color: colors.primary }]}>{f.amount}$</Text>
+            </View>
+          ))
+        )}
       </View>
 
       <View style={styles.grid}>
@@ -150,42 +209,58 @@ export default function SchoolScreen({ navigation }: any) {
         </View>
       </View>
 
-      <Text style={[styles.sectionHeader, { color: colors.text.primary }]}>Dernières Notes</Text>
-      {dashboard?.grades?.map((g: any, i: number) => (
+      <Text style={[styles.sectionHeader, { color: colors.text.primary }]}>Devoirs & Exercices</Text>
+      {dashboard?.assignments?.map((a: any, i: number) => (
         <View key={i} style={[styles.itemRow, { borderBottomColor: colors.border }]}>
-          <View>
-            <Text style={[styles.itemTitle, { color: colors.text.primary }]}>{g.subject}</Text>
-            <Text style={[styles.itemSub, { color: colors.text.secondary }]}>{new Date(g.created_at).toLocaleDateString()}</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.itemTitle, { color: colors.text.primary }]}>{a.title}</Text>
+            <Text style={[styles.itemSub, { color: colors.text.secondary }]} numberOfLines={1}>{a.description}</Text>
           </View>
-          <Text style={[styles.scoreText, { color: colors.primary }]}>{g.score}/{g.max_score || 20}</Text>
+          <TouchableOpacity
+            style={[styles.smallActionBtn, { backgroundColor: colors.primary }]}
+            onPress={() => Alert.alert('Travail', 'Interface de soumission de travail à venir.')}
+          >
+            <Text style={styles.smallActionText}>RÉPONDRE</Text>
+          </TouchableOpacity>
         </View>
       ))}
-    </View>
+      <View style={{ height: 40 }} />
+    </ScrollView>
   );
 
-  const renderParentDashboard = () => (
-    <View style={styles.dashContainer}>
+  const renderTeacherDashboard = () => (
+    <ScrollView style={styles.dashContainer}>
       <View style={styles.dashHeaderRow}>
-        <Text style={[styles.dashTitle, { color: colors.text.primary }]}>Espace Parent</Text>
+        <Text style={[styles.dashTitle, { color: colors.text.primary }]}>Mon Espace Enseignant</Text>
         <TouchableOpacity onPress={() => setActiveTab('Répertoire')}><Text style={{color: colors.primary, fontWeight:'bold'}}>RETOUR</Text></TouchableOpacity>
       </View>
-      <TouchableOpacity style={[styles.actionBtn, { backgroundColor: colors.primary }]}>
-        <Plus size={20} color="#fff" />
-        <Text style={styles.actionBtnText}>Inscrire un enfant</Text>
-      </TouchableOpacity>
 
-      <Text style={[styles.sectionHeader, { color: colors.text.primary }]}>Mes Enfants</Text>
-      {dashboard?.children?.map((c: any, i: number) => (
-        <TouchableOpacity key={i} style={[styles.childCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <Users size={24} color={colors.text.secondary} />
-          <View style={{ flex: 1, marginLeft: 12 }}>
-            <Text style={[styles.childName, { color: colors.text.primary }]}>{c.first_name} {c.last_name}</Text>
-            <Text style={[styles.childClass, { color: colors.text.secondary }]}>{c.grade_level}</Text>
+      <Text style={[styles.sectionHeader, { color: colors.text.primary }]}>Ma Classe ({dashboard?.students?.length || 0} élèves)</Text>
+      {dashboard?.students?.map((s: any, i: number) => (
+        <View key={i} style={[styles.itemRow, { borderBottomColor: colors.border }]}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <View style={[styles.avatarMini, { backgroundColor: colors.primary + '20' }]}>
+              <Text style={{ color: colors.primary, fontWeight: 'bold' }}>{s.first_name[0]}</Text>
+            </View>
+            <View style={{ marginLeft: 10 }}>
+               <Text style={[styles.itemTitle, { color: colors.text.primary }]}>{s.first_name} {s.last_name}</Text>
+               {s.is_new && (
+                 <View style={styles.newBadge}><Text style={styles.newBadgeText}>NOUVEAU</Text></View>
+               )}
+            </View>
           </View>
-          <ChevronRight size={20} color={colors.text.disabled} />
-        </TouchableOpacity>
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <TouchableOpacity onPress={() => Alert.alert('Note', 'Attribuer une note à ' + s.first_name)}><Star size={20} color={colors.text.disabled} /></TouchableOpacity>
+            <TouchableOpacity onPress={() => Alert.alert('Message', 'Écrire à ' + s.first_name)}><MessageSquare size={20} color={colors.primary} /></TouchableOpacity>
+          </View>
+        </View>
       ))}
-    </View>
+
+      <TouchableOpacity style={[styles.actionBtn, { backgroundColor: colors.primary, marginTop: 20 }]}>
+        <Plus size={20} color="#fff" />
+        <Text style={styles.actionBtnText}>Envoyer un devoir à la classe</Text>
+      </TouchableOpacity>
+    </ScrollView>
   );
 
   const renderAdminDashboards = () => (
@@ -210,8 +285,19 @@ export default function SchoolScreen({ navigation }: any) {
           </View>
        </View>
 
-       <View style={styles.adminActions}>
-          <AdminActionItem icon={<Users />} label="Demander compte Staff" onPress={() => Alert.alert('Staff', 'Formulaire de demande staff à venir.')} colors={colors} />
+       <Text style={[styles.sectionHeader, { color: colors.text.primary }]}>Derniers Élèves Inscrits</Text>
+       {dashboard?.students?.slice(0, 5).map((s: any, i: number) => (
+         <View key={i} style={[styles.itemRow, { borderBottomColor: colors.border }]}>
+            <View>
+              <Text style={[styles.itemTitle, { color: colors.text.primary }]}>{s.first_name} {s.last_name}</Text>
+              <Text style={[styles.itemSub, { color: colors.text.secondary }]}>{s.grade_level}</Text>
+            </View>
+            {s.is_new && <View style={styles.newBadge}><Text style={styles.newBadgeText}>NOUVEAU</Text></View>}
+         </View>
+       ))}
+
+       <View style={[styles.adminActions, { marginTop: 30 }]}>
+          <AdminActionItem icon={<Users />} label="Demander compte Staff" onPress={() => setShowStaffModal(true)} colors={colors} />
           <AdminActionItem icon={<GraduationCap />} label="Gérer Classes" colors={colors} />
           <AdminActionItem icon={<MessageSquare />} label="Annonces École" colors={colors} />
        </View>
@@ -244,7 +330,7 @@ export default function SchoolScreen({ navigation }: any) {
       switch (overview.role) {
         case 'student': return renderStudentDashboard();
         case 'parent': return renderParentDashboard();
-        case 'teacher': return <View style={styles.centered}><Text style={{ color: colors.text.primary }}>Dashboard Enseignant (À venir)</Text></View>;
+        case 'teacher': return renderTeacherDashboard();
         case 'director':
         case 'promoter': return renderAdminDashboards();
         default: return <View style={styles.centered}><Text style={{ color: colors.text.primary }}>Accès limité.</Text></View>;
@@ -255,6 +341,43 @@ export default function SchoolScreen({ navigation }: any) {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {renderCurrentTab()}
+
+      {/* Modal Staff Request */}
+      <Modal visible={showStaffModal} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.text.primary }]}>Demande de compte Staff</Text>
+              <TouchableOpacity onPress={() => setShowStaffModal(false)}><X size={24} color={colors.text.secondary} /></TouchableOpacity>
+            </View>
+            <Text style={[styles.modalSub, { color: colors.text.secondary }]}>Demandez à l'administrateur principal Meet Me de créer un compte pour un enseignant ou préfet de votre école.</Text>
+
+            <TextInput placeholder="Nom complet de la personne" style={[styles.input, { borderColor: colors.border, color: colors.text.primary }]} value={staffForm.fullName} onChangeText={v => setStaffForm({...staffForm, fullName: v})} placeholderTextColor={colors.text.disabled} />
+            <TextInput placeholder="Adresse Email (Meet Me)" style={[styles.input, { borderColor: colors.border, color: colors.text.primary }]} value={staffForm.email} onChangeText={v => setStaffForm({...staffForm, email: v})} placeholderTextColor={colors.text.disabled} keyboardType="email-address" />
+
+            <View style={styles.roleSelectRow}>
+              {['teacher', 'director'].map(r => (
+                <TouchableOpacity key={r} onPress={() => setStaffForm({...staffForm, role: r as any})} style={[styles.roleOption, { borderColor: colors.border }, staffForm.role === r && { backgroundColor: colors.primary, borderColor: colors.primary }]}>
+                   <Text style={[styles.roleOptionText, { color: staffForm.role === r ? '#fff' : colors.text.secondary }]}>{r === 'teacher' ? 'Enseignant' : 'Directeur'}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <TouchableOpacity
+              onPress={handleStaffRequest}
+              disabled={sendingStaff}
+              style={[styles.confirmBtn, { backgroundColor: colors.primary, marginTop: 20 }]}
+            >
+              {sendingStaff ? <ActivityIndicator color="#fff" /> : (
+                <>
+                  <Send size={18} color="#fff" />
+                  <Text style={{ color: '#fff', fontWeight: 'bold', marginLeft: 10 }}>ENVOYER LA DEMANDE</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -305,17 +428,30 @@ const styles = StyleSheet.create({
   dashContainer: { padding: 20, paddingTop: 60 },
   dashHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 25 },
   dashTitle: { fontSize: 22, fontWeight: '900' },
+  infoCard: { padding: 20, borderRadius: 24, borderWidth: 1, marginBottom: 25 },
+  infoRowSimple: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
+  infoLabel: { fontSize: 12, fontWeight: '600' },
+  infoValue: { fontWeight: 'bold', fontSize: 13 },
+  feesCard: { padding: 20, borderRadius: 20, borderWidth: 1, marginBottom: 25 },
+  feeItem: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: 0.5, borderBottomColor: '#eee' },
+  feeName: { fontWeight: '600', fontSize: 13 },
+  feeAmount: { fontWeight: '900' },
   grid: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 25 },
   statBox: { width: '48%', padding: 20, borderRadius: 24, borderWidth: 1, alignItems: 'center' },
   statVal: { fontSize: 24, fontWeight: '900', marginTop: 10 },
   statLabel: { fontSize: 12, fontWeight: '600' },
-  sectionHeader: { fontSize: 18, fontWeight: 'bold' },
+  sectionHeader: { fontSize: 18, fontWeight: 'bold', marginBottom: 15 },
   itemRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 15, borderBottomWidth: 0.5 },
   itemTitle: { fontWeight: 'bold' },
   itemSub: { fontSize: 11, marginTop: 2 },
   scoreText: { fontSize: 18, fontWeight: '900' },
+  smallActionBtn: { paddingHorizontal: 15, paddingVertical: 8, borderRadius: 10 },
+  smallActionText: { color: '#fff', fontSize: 10, fontWeight: 'bold' },
   actionBtn: { flexDirection: 'row', alignItems: 'center', padding: 15, borderRadius: 15, justifyContent: 'center', marginBottom: 25 },
   actionBtnText: { color: '#fff', fontWeight: 'bold', marginLeft: 10 },
+  avatarMini: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
+  newBadge: { backgroundColor: '#4CAF50', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, marginTop: 4, alignSelf: 'flex-start' },
+  newBadgeText: { color: '#fff', fontSize: 8, fontWeight: 'bold' },
   childCard: { flexDirection: 'row', alignItems: 'center', padding: 18, borderRadius: 20, borderWidth: 1, marginBottom: 12 },
   childName: { fontWeight: 'bold' },
   childClass: { fontSize: 12 },
@@ -324,6 +460,13 @@ const styles = StyleSheet.create({
   adminActionLabel: { fontWeight: 'bold', marginLeft: 15 },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 },
   input: { padding: 18, borderRadius: 18, borderWidth: 1, marginBottom: 15, fontSize: 16 },
-  submitBtn: { padding: 20, borderRadius: 18, alignItems: 'center', marginTop: 10 },
-  submitBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 16 }
+  confirmBtn: { flexDirection: 'row', padding: 18, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 },
+  modalContent: { padding: 30, borderRadius: 40 },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+  modalTitle: { fontSize: 20, fontWeight: 'bold' },
+  modalSub: { fontSize: 12, marginBottom: 25, lineHeight: 18 },
+  roleSelectRow: { flexDirection: 'row', gap: 10, marginBottom: 20 },
+  roleOption: { flex: 1, padding: 15, borderRadius: 15, borderWidth: 1, alignItems: 'center' },
+  roleOptionText: { fontWeight: 'bold', fontSize: 13 }
 });
