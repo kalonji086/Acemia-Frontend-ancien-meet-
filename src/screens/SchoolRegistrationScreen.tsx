@@ -12,12 +12,15 @@ import {
 import { useTheme } from '../context/ThemeContext';
 import apiService from '../services/api.service';
 
+import * as ImagePicker from 'expo-image-picker';
+
 export default function SchoolRegistrationScreen({ navigation }: any) {
   const { colors, normalize } = useTheme();
   const { width: windowWidth } = useWindowDimensions();
   const isTablet = windowWidth > 768;
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [pickingImage, setPickingImage] = useState(false);
 
   const [form, setForm] = useState({
     name: '',
@@ -30,6 +33,32 @@ export default function SchoolRegistrationScreen({ navigation }: any) {
     description: '',
     logoUrl: ''
   });
+
+  const handlePickLogo = async () => {
+    try {
+      setPickingImage(true);
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.7,
+      });
+
+      if (!result.canceled && result.assets && result.assets[0]) {
+        const file = result.assets[0];
+        const uploadRes = await apiService.uploadFile(file, 'image');
+        if (uploadRes.success) {
+          setForm({ ...form, logoUrl: uploadRes.data.fileUrl });
+        } else {
+          Alert.alert('Erreur', 'Impossible de télécharger le logo.');
+        }
+      }
+    } catch (e) {
+      Alert.alert('Erreur', 'Erreur lors de la sélection du logo.');
+    } finally {
+      setPickingImage(false);
+    }
+  };
 
   const nextStep = () => {
     if (step === 1 && !form.name) return Alert.alert('Attention', 'Le nom de l\'école est obligatoire.');
@@ -69,9 +98,21 @@ export default function SchoolRegistrationScreen({ navigation }: any) {
           <View style={styles.stepContainer}>
             <Text style={[styles.stepTitle, { color: colors.text.primary, fontSize: normalize(22) }]}>Identité de l'école</Text>
 
-            <TouchableOpacity style={[styles.logoPicker, { borderColor: colors.border, backgroundColor: colors.surface }]}>
-               <Camera size={24} color={colors.primary} />
-               <Text style={[styles.logoText, { color: colors.text.secondary }]}>Ajouter le logo</Text>
+            <TouchableOpacity
+              onPress={handlePickLogo}
+              disabled={pickingImage}
+              style={[styles.logoPicker, { borderColor: colors.border, backgroundColor: colors.surface }]}
+            >
+               {pickingImage ? (
+                 <ActivityIndicator color={colors.primary} />
+               ) : form.logoUrl ? (
+                 <Image source={{ uri: form.logoUrl }} style={styles.pickedLogo} />
+               ) : (
+                 <>
+                   <Camera size={24} color={colors.primary} />
+                   <Text style={[styles.logoText, { color: colors.text.secondary }]}>Ajouter le logo</Text>
+                 </>
+               )}
             </TouchableOpacity>
 
             <View style={styles.inputGroup}>
@@ -255,7 +296,8 @@ const styles = StyleSheet.create({
   scrollContent: { paddingVertical: 25 },
   stepContainer: { width: '100%' },
   stepTitle: { fontWeight: 'bold', marginBottom: 25 },
-  logoPicker: { width: 100, height: 100, borderRadius: 25, borderWidth: 1.5, borderStyle: 'dashed', justifyContent: 'center', alignItems: 'center', marginBottom: 30 },
+  logoPicker: { width: 100, height: 100, borderRadius: 25, borderWidth: 1.5, borderStyle: 'dashed', justifyContent: 'center', alignItems: 'center', marginBottom: 30, overflow: 'hidden' },
+  pickedLogo: { width: '100%', height: '100%' },
   logoText: { fontSize: 10, fontWeight: 'bold', marginTop: 5 },
   inputGroup: { marginBottom: 20 },
   label: { fontSize: 13, fontWeight: '700', marginBottom: 8, marginLeft: 4 },

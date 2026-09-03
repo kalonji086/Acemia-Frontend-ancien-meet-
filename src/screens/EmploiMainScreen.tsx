@@ -92,6 +92,14 @@ export default function EmploiMainScreen({ navigation }: any) {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.mainHeader, { backgroundColor: colors.surface }]}>
+        <TouchableOpacity onPress={() => navigation.navigate('ChatList')} style={styles.backButton}>
+          <ArrowLeft size={24} color={colors.text.primary} />
+        </TouchableOpacity>
+        <Text style={[styles.headerTitle, { color: colors.text.primary }]}>Meet Emploi</Text>
+        <View style={{ width: 40 }} />
+      </View>
+
       <ScrollView contentContainerStyle={[styles.scrollContent, { paddingHorizontal: isTablet ? '10%' : 25 }]}>
         <View style={styles.header}>
           <View style={[styles.iconBadge, { backgroundColor: colors.primary + '15', width: normalize(80), height: normalize(80), borderRadius: normalize(40) }]}>
@@ -158,6 +166,9 @@ export default function EmploiMainScreen({ navigation }: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  mainHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 15, borderBottomWidth: 0.5, borderBottomColor: '#ddd' },
+  backButton: { padding: 5 },
+  headerTitle: { fontSize: 18, fontWeight: 'bold' },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 },
   scrollContent: { paddingVertical: 25, flexGrow: 1, justifyContent: 'center' },
   header: { alignItems: 'center', marginBottom: 40 },
