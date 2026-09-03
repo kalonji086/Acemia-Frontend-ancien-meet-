@@ -31,6 +31,7 @@ import BusinessDashboardScreen from '../screens/BusinessDashboardScreen';
 import BusinessPublicProfileScreen from '../screens/BusinessPublicProfileScreen';
 import SchoolScreen from '../screens/SchoolScreen';
 import SchoolRegistrationScreen from '../screens/SchoolRegistrationScreen';
+import SchoolProfileScreen from '../screens/SchoolProfileScreen';
 import EmploiMainScreen from '../screens/EmploiMainScreen';
 import EmployerRequestScreen from '../screens/EmployerRequestScreen';
 import EmployerDashboardScreen from '../screens/EmployerDashboardScreen';
@@ -299,6 +300,11 @@ export default function AppNavigator() {
         <Stack.Screen
           name="SchoolRegistration"
           component={SchoolRegistrationScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="SchoolProfile"
+          component={SchoolProfileScreen}
           options={{ headerShown: false }}
         />
         <Stack.Screen

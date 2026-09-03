@@ -921,6 +921,27 @@ class ApiService {
     } catch (e: any) { return this.handleError(e); }
   }
 
+  async getSchoolProfile(id: string): Promise<ApiResponse> {
+    try {
+      const res = await this.api.get(`/school/profile/${id}`);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async enrollInSchool(data: { schoolId: string, firstName: string, lastName: string, age: number, level?: string }): Promise<ApiResponse> {
+    try {
+      const res = await this.api.post('/school/enroll', data);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async handleEnrollment(id: string, data: { status: 'approved' | 'rejected', classId?: string }): Promise<ApiResponse> {
+    try {
+      const res = await this.api.put(`/school/enroll/${id}`, data);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
   async createSchool(data: any): Promise<ApiResponse> {
     try {
       const res = await this.api.post('/school/create', data);

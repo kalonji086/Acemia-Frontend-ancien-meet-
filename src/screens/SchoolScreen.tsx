@@ -74,7 +74,7 @@ export default function SchoolScreen({ navigation }: any) {
   const renderSchoolCard = ({ item }: any) => (
     <TouchableOpacity
       style={[styles.schoolCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
-      onPress={() => Alert.alert(item.name, item.description)}
+      onPress={() => navigation.navigate('SchoolProfile', { schoolId: item.id })}
     >
       <Image source={{ uri: item.logo_url || 'https://placehold.co/100x100?text=School' }} style={styles.schoolLogo} />
       <View style={styles.schoolInfo}>
