@@ -928,6 +928,13 @@ class ApiService {
     } catch (e: any) { return this.handleError(e); }
   }
 
+  async requestSchoolStaff(data: { schoolId: string, fullName: string, email: string, roleRequested: 'teacher' | 'director' }): Promise<ApiResponse> {
+    try {
+      const res = await this.api.post('/school/staff-request', data);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
   // Admin Moderation
   async getModerationFeed(): Promise<ApiResponse> {
     try {
