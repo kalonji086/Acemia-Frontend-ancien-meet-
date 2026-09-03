@@ -4,7 +4,7 @@ import {
   ScrollView, SafeAreaView, ActivityIndicator, Alert,
   useWindowDimensions
 } from 'react-native';
-import { Briefcase, Building2, Search, ArrowRight, CheckCircle2, Clock, ShieldCheck } from 'lucide-react-native';
+import { Briefcase, Building2, Search, ArrowRight, CheckCircle2, Clock, ShieldCheck, ArrowLeft } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import apiService from '../services/api.service';

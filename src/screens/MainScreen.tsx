@@ -3,7 +3,7 @@ import { View, StyleSheet, TouchableOpacity, Text, Dimensions, ActivityIndicator
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   MessageSquare, Aperture, Phone, ShoppingCart, AlertCircle,
-  MessagesSquare, Briefcase
+  MessagesSquare, Briefcase, GraduationCap
 } from 'lucide-react-native';
 import apiService from '../services/api.service';
 import socketService from '../services/socket.service';
@@ -316,7 +316,7 @@ export default function MainScreen({ navigation, route }: any) {
         />
         <TabItem
           active={activeTab === 'school'}
-          icon={<Text style={{ fontSize: 20 }}>🎓</Text>}
+          icon={<GraduationCap size={22} />}
           label={t('school') || 'School'}
           onPress={() => setActiveTab('school')}
           activeColor={colors.primary}
