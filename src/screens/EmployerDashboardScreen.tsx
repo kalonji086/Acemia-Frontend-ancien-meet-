@@ -6,7 +6,7 @@ import {
 } from 'react-native';
 import {
   Plus, Users, Briefcase, TrendingUp, ChevronRight,
-  Settings, Bell, Search, Filter
+  Settings, Bell, Search, Filter, ArrowLeft
 } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
 import apiService from '../services/api.service';
