@@ -108,34 +108,19 @@ export default function CreateJobPostingScreen({ navigation }: any) {
 
       if (response.success) {
         Alert.alert('Succès', 'Votre offre d\'emploi a été publiée avec succès !', [
-          { 
-            text: 'Voir le dashboard', 
-            onPress: () => navigation.navigate('EmployerDashboard') 
-          },
-          { 
-            text: 'Publier une autre offre', 
-            onPress: () => {
-              // Réinitialiser le formulaire
-              setFormData({
-                title: '',
-                description: '',
-                location: '',
-                jobType: 'CDI',
-                salaryRange: '',
-                requirements: '',
-                benefits: '',
-                category: 'all'
-              });
-              setStep(1);
-            }
+          {
+            text: 'Voir le dashboard',
+            onPress: () => navigation.navigate('EmployerDashboard')
           }
         ]);
       } else {
-        Alert.alert('Erreur', response.error || 'Impossible de publier l\'offre');
+        // Gérer les erreurs renvoyées par le serveur (ex: 403, 400)
+        Alert.alert('Échec de la publication', response.error || 'Une erreur est survenue sur le serveur.');
       }
     } catch (error: any) {
       console.error('Erreur publication:', error);
-      Alert.alert('Erreur', error.response?.data?.error || error.message || 'Une erreur est survenue lors de la publication');
+      const errorMsg = error.response?.data?.error || error.message || 'Problème de connexion au serveur.';
+      Alert.alert('Erreur', errorMsg);
     } finally {
       setLoading(false);
     }

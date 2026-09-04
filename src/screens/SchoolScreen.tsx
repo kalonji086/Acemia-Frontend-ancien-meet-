@@ -64,12 +64,21 @@ export default function SchoolScreen({ navigation }: any) {
       setActiveTab('Mon Dashboard');
     };
 
+    const onNewSchoolActive = (data: any) => {
+      setSchools(prev => {
+        if (prev.some(s => s.id === data.id)) return prev;
+        return [data, ...prev];
+      });
+    };
+
     socketService.on('school:new_grade', onNewGrade);
     socketService.on('school:approved', onSchoolApproved);
+    socketService.on('school:new_active', onNewSchoolActive);
 
     return () => {
       socketService.off('school:new_grade', onNewGrade);
       socketService.off('school:approved', onSchoolApproved);
+      socketService.off('school:new_active', onNewSchoolActive);
     };
   }, []);
 

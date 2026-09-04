@@ -76,11 +76,16 @@ export default function EmployerDashboardScreen({ navigation }: any) {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { backgroundColor: colors.surface, paddingHorizontal: isTablet ? '5%' : 20 }]}>
-        <View>
-          <Text style={[styles.greeting, { color: colors.text.secondary, fontSize: normalize(13) }]}>Dashboard Employeur</Text>
-          <Text style={[styles.companyName, { color: colors.text.primary, fontSize: normalize(20) }]}>
-            {companyName || 'Votre entreprise'}
-          </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <TouchableOpacity onPress={() => navigation.navigate('EmploiMain')} style={{ marginRight: 15 }}>
+            <ArrowLeft size={24} color={colors.text.primary} />
+          </TouchableOpacity>
+          <View>
+            <Text style={[styles.greeting, { color: colors.text.secondary, fontSize: normalize(13) }]}>Dashboard Employeur</Text>
+            <Text style={[styles.companyName, { color: colors.text.primary, fontSize: normalize(20) }]}>
+              {companyName || 'Votre entreprise'}
+            </Text>
+          </View>
         </View>
         <TouchableOpacity style={[styles.iconButton, { backgroundColor: colors.background }]}>
           <Bell size={normalize(22)} color={colors.text.primary} />
