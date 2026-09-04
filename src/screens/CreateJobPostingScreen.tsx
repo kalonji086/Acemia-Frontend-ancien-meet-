@@ -36,18 +36,37 @@ export default function CreateJobPostingScreen({ navigation }: any) {
   });
 
   const CATEGORIES = [
+    { id: 'all', name: 'Tous' },
     { id: 'tech', name: 'Tech' },
     { id: 'sales', name: 'Vente' },
     { id: 'health', name: 'Santé' },
     { id: 'manual', name: 'Artisan' },
+    { id: 'education', name: 'Éducation' },
+    { id: 'finance', name: 'Finance' },
+    { id: 'marketing', name: 'Marketing' },
+    { id: 'logistics', name: 'Logistique' },
+    { id: 'other', name: 'Autre' }
   ];
 
   const nextStep = () => {
-    if (step === 1 && (!formData.title || !formData.location)) {
-      return Alert.alert('Attention', 'Veuillez remplir le titre et la localisation.');
+    if (step === 1) {
+      if (!formData.title.trim()) {
+        return Alert.alert('Attention', 'Le titre du poste est obligatoire.');
+      }
+      if (!formData.location.trim()) {
+        return Alert.alert('Attention', 'La localisation est obligatoire.');
+      }
+      if (formData.title.length < 5) {
+        return Alert.alert('Attention', 'Le titre doit contenir au moins 5 caractères.');
+      }
     }
-    if (step === 2 && !formData.description) {
-      return Alert.alert('Attention', 'Veuillez saisir une description.');
+    if (step === 2) {
+      if (!formData.description.trim()) {
+        return Alert.alert('Attention', 'La description détaillée est obligatoire.');
+      }
+      if (formData.description.length < 50) {
+        return Alert.alert('Attention', 'La description doit contenir au moins 50 caractères.');
+      }
     }
     if (step < 3) setStep(step + 1);
   };
@@ -60,19 +79,63 @@ export default function CreateJobPostingScreen({ navigation }: any) {
   const handleSubmit = async () => {
     setLoading(true);
     try {
-      const response = await apiService.postJob({
-        ...formData,
+      // Préparer les données
+      const jobData = {
+        title: formData.title.trim(),
+        description: formData.description.trim(),
+        location: formData.location.trim(),
+        jobType: formData.jobType,
+        salaryRange: formData.salaryRange.trim() || 'Non spécifié',
         requirements: formData.requirements.split('\n').filter(r => r.trim()),
-        benefits: formData.benefits.split('\n').filter(b => b.trim())
-      });
+        benefits: formData.benefits.split('\n').filter(b => b.trim()),
+        category: formData.category
+      };
+
+      // Validation finale
+      if (jobData.title.length < 5) {
+        Alert.alert('Erreur', 'Le titre est trop court (minimum 5 caractères)');
+        setLoading(false);
+        return;
+      }
+
+      if (jobData.description.length < 50) {
+        Alert.alert('Erreur', 'La description est trop courte (minimum 50 caractères)');
+        setLoading(false);
+        return;
+      }
+
+      const response = await apiService.postJob(jobData);
 
       if (response.success) {
-        Alert.alert('Succès', 'Votre offre d\'emploi a été publiée !', [
-          { text: 'OK', onPress: () => navigation.navigate('EmployerDashboard') }
+        Alert.alert('Succès', 'Votre offre d\'emploi a été publiée avec succès !', [
+          { 
+            text: 'Voir le dashboard', 
+            onPress: () => navigation.navigate('EmployerDashboard') 
+          },
+          { 
+            text: 'Publier une autre offre', 
+            onPress: () => {
+              // Réinitialiser le formulaire
+              setFormData({
+                title: '',
+                description: '',
+                location: '',
+                jobType: 'CDI',
+                salaryRange: '',
+                requirements: '',
+                benefits: '',
+                category: 'all'
+              });
+              setStep(1);
+            }
+          }
         ]);
+      } else {
+        Alert.alert('Erreur', response.error || 'Impossible de publier l\'offre');
       }
     } catch (error: any) {
-      Alert.alert('Erreur', error.message || 'Impossible de publier l\'offre');
+      console.error('Erreur publication:', error);
+      Alert.alert('Erreur', error.response?.data?.error || error.message || 'Une erreur est survenue lors de la publication');
     } finally {
       setLoading(false);
     }
@@ -195,7 +258,7 @@ export default function CreateJobPostingScreen({ navigation }: any) {
                   style={[styles.input, { color: colors.text.primary, height: '100%', textAlignVertical: 'top' }]}
                   value={formData.requirements}
                   onChangeText={(v) => setFormData({...formData, requirements: v})}
-                  placeholder="Ex: 3 ans d'expérience en React Native&#10;Maîtrise de TypeScript"
+                  placeholder="Ex: 3 ans d'expérience en React Native\nMaîtrise de TypeScript\nDiplôme en informatique"
                   placeholderTextColor={colors.text.disabled}
                   multiline
                 />
@@ -210,7 +273,7 @@ export default function CreateJobPostingScreen({ navigation }: any) {
                   style={[styles.input, { color: colors.text.primary, height: '100%', textAlignVertical: 'top' }]}
                   value={formData.benefits}
                   onChangeText={(v) => setFormData({...formData, benefits: v})}
-                  placeholder="Ex: Assurance santé complète&#10;Travail hybride"
+                  placeholder="Ex: Assurance santé complète\nTravail hybride\nFormation continue\nTickets restaurant"
                   placeholderTextColor={colors.text.disabled}
                   multiline
                 />

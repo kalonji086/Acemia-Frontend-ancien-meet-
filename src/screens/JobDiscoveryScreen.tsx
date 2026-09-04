@@ -58,15 +58,15 @@ export default function JobDiscoveryScreen({ navigation }: any) {
     >
       <View style={styles.cardHeader}>
         <View style={[styles.companyLogo, { backgroundColor: colors.background }]}>
-          {item.logo ? (
-            <Image source={{ uri: item.logo }} style={styles.logoImage} />
+          {item.company_logo || item.logo ? (
+            <Image source={{ uri: item.company_logo || item.logo }} style={styles.logoImage} />
           ) : (
             <Briefcase size={normalize(24)} color={colors.primary} />
           )}
         </View>
         <View style={styles.jobMainInfo}>
           <Text style={[styles.jobTitle, { color: colors.text.primary, fontSize: normalize(17) }]} numberOfLines={1}>{item.title}</Text>
-          <Text style={[styles.companyName, { color: colors.primary, fontSize: normalize(14) }]} numberOfLines={1}>{item.company}</Text>
+          <Text style={[styles.companyName, { color: colors.primary, fontSize: normalize(14) }]} numberOfLines={1}>{item.company_name || item.company || 'Entreprise'}</Text>
         </View>
       </View>
 
@@ -77,7 +77,7 @@ export default function JobDiscoveryScreen({ navigation }: any) {
         </View>
         <View style={[styles.tag, { backgroundColor: colors.background }]}>
           <Clock size={12} color={colors.text.secondary} />
-          <Text style={[styles.tagText, { color: colors.text.secondary, fontSize: normalize(11) }]}>{item.job_type || item.type}</Text>
+          <Text style={[styles.tagText, { color: colors.text.secondary, fontSize: normalize(11) }]}>{item.job_type || item.type || 'Type non spécifié'}</Text>
         </View>
       </View>
 

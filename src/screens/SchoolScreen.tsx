@@ -12,7 +12,7 @@ const tabs = ['Répertoire', 'Mon Dashboard'];
 export default function SchoolScreen({ navigation }: any) {
   const { colors, normalize, isDark } = useTheme();
   const [activeTab, setActiveTab] = useState('Répertoire');
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [overview, setOverview] = useState<any>(null);
   const [dashboard, setDashboard] = useState<any>(null);
   const [schools, setSchools] = useState<any[]>([]);
@@ -22,8 +22,8 @@ export default function SchoolScreen({ navigation }: any) {
   const [staffForm, setStaffForm] = useState({ fullName: '', email: '', role: 'teacher' as 'teacher' | 'director' });
   const [sendingStaff, setSendingStaff] = useState(false);
 
-  const loadData = async () => {
-    setLoading(true);
+  const loadData = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const res = await apiService.getSchoolOverview();
       if (res.success) {
@@ -31,43 +31,51 @@ export default function SchoolScreen({ navigation }: any) {
         setSchools(res.data.worldSchools || []);
 
         if (res.data.mySchool) {
-          fetchDashboard(res.data.mySchool.id);
+          await fetchDashboard(res.data.mySchool.id);
         }
+      } else {
+        console.error('API Error:', res.error);
       }
-    } catch (e) { console.error(e); }
-    finally { setLoading(false); }
+    } catch (e) {
+      console.error('Error loading school data:', e);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const fetchDashboard = async (schoolId: string) => {
     try {
       const res = await apiService.getSchoolDashboard(schoolId);
       if (res.success) setDashboard(res.data);
-    } catch (e) { console.error(e); }
+    } catch (e) { console.error('Error loading school dashboard:', e); }
   };
 
   useEffect(() => {
     loadData();
 
-    socketService.on('school:new_grade', (data: any) => {
+    const onNewGrade = (data: any) => {
       Alert.alert('Nouvelle Note !', `Vous avez reçu une note en ${data.subject}: ${data.score}/20`);
       if (overview?.mySchool) fetchDashboard(overview.mySchool.id);
-    });
+    };
 
-    socketService.on('school:approved', (data: any) => {
-      Alert.alert('Établissement Approuvé !', `Votre école ${data.schoolName} a été validée par l'administration.`);
-      loadData();
-    });
+    const onSchoolApproved = (data: any) => {
+      Alert.alert('Félicitations !', `Votre établissement "${data.schoolName}" a été approuvé par l'administration.`);
+      loadData(false); // Reload with spinner to show transition
+      setActiveTab('Mon Dashboard');
+    };
+
+    socketService.on('school:new_grade', onNewGrade);
+    socketService.on('school:approved', onSchoolApproved);
 
     return () => {
-      socketService.off('school:new_grade');
-      socketService.off('school:approved');
+      socketService.off('school:new_grade', onNewGrade);
+      socketService.off('school:approved', onSchoolApproved);
     };
   }, []);
 
   const handleRoleSelection = (role: 'promoter' | 'parent' | 'student') => {
     if (role === 'promoter') {
       if (overview?.mySchool) {
-        // Navigate to dashboard tab, logic inside renderCurrentTab will handle the "pending" view
         setActiveTab('Mon Dashboard');
       } else {
         navigation.navigate('SchoolRegistration');
@@ -81,7 +89,7 @@ export default function SchoolScreen({ navigation }: any) {
     <View style={styles.centered}>
       <Clock size={normalize(80)} color={colors.primary} />
       <Text style={[styles.dashTitle, { color: colors.text.primary, marginTop: 20, textAlign: 'center' }]}>Examen en cours</Text>
-      <Text style={[styles.subtitle, { color: colors.text.secondary, marginTop: 10, textAlign: 'center' }]}>
+      <Text style={[styles.subtitle, { color: colors.text.secondary, marginTop: 10, textAlign: 'center', paddingHorizontal: 30 }]}>
         Votre demande pour l'établissement "{overview.mySchool.name}" est en cours d'examen par notre équipe.
         Dès qu'elle sera approuvée, vous pourrez gérer tout votre établissement ici.
       </Text>
@@ -152,16 +160,16 @@ export default function SchoolScreen({ navigation }: any) {
 
           <View style={styles.roleGrid}>
             <RoleCard
-              title="Parent / Élève"
-              desc="Suivi académique et paiements"
+              title={overview?.mySchool ? (overview.mySchool.status === 'approved' ? "Mon Dashboard" : "Demande en cours") : "Parent / Élève"}
+              desc={overview?.mySchool ? "Accéder à votre espace école" : "Suivi académique et paiements"}
               icon={<Users size={24} color="#4CAF50" />}
               onPress={() => handleRoleSelection('parent')}
               colors={colors}
               normalize={normalize}
             />
             <RoleCard
-              title="Promoteur"
-              desc="Gérer votre établissement"
+              title={overview?.mySchool ? (overview.mySchool.status === 'approved' ? "Gestion École" : "Demande envoyée") : "Promoteur"}
+              desc={overview?.mySchool ? "Tableau de bord de gestion" : "Gérer votre établissement"}
               icon={<Building2 size={24} color={colors.primary} />}
               onPress={() => handleRoleSelection('promoter')}
               colors={colors}
@@ -355,6 +363,15 @@ export default function SchoolScreen({ navigation }: any) {
   );
 
   const renderCurrentTab = () => {
+    if (loading) {
+       return (
+         <View style={styles.centered}>
+           <ActivityIndicator size="large" color={colors.primary} />
+           <Text style={{ marginTop: 20, color: colors.text.secondary, fontWeight: 'bold' }}>Synchronisation Meet School...</Text>
+         </View>
+       );
+    }
+
     if (activeTab === 'Répertoire') {
       return (
         <FlatList
@@ -363,7 +380,12 @@ export default function SchoolScreen({ navigation }: any) {
           keyExtractor={item => item.id}
           contentContainerStyle={{ paddingBottom: 40 }}
           ListHeaderComponent={renderWelcome}
-          ListEmptyComponent={<ActivityIndicator color={colors.primary} style={{ marginTop: 20 }} />}
+          ListEmptyComponent={
+            <View style={{ padding: 40, alignItems: 'center' }}>
+              <Building2 size={60} color={colors.text.disabled} />
+              <Text style={{ marginTop: 20, color: colors.text.secondary, textAlign: 'center' }}>Aucune école répertoriée pour le moment.</Text>
+            </View>
+          }
         />
       );
     }

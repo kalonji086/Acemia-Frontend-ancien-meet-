@@ -22,6 +22,7 @@ export default function EmployerDashboardScreen({ navigation }: any) {
     views: 0
   });
   const [recentJobs, setRecentJobs] = useState<any[]>([]);
+  const [companyName, setCompanyName] = useState<string>('');
 
   useEffect(() => {
     fetchData();
@@ -29,10 +30,17 @@ export default function EmployerDashboardScreen({ navigation }: any) {
 
   const fetchData = async () => {
     try {
-      const res = await apiService.getAllJobs();
-      if (res.success) {
-        setRecentJobs(res.data.slice(0, 5));
-        setStats(prev => ({ ...prev, activeJobsCount: res.data.length }));
+      // Récupérer le statut employeur pour avoir le nom de l'entreprise
+      const statusRes = await apiService.getEmployerStatus();
+      if (statusRes.success && statusRes.data?.profile?.company_name) {
+        setCompanyName(statusRes.data.profile.company_name);
+      }
+
+      // Récupérer les offres
+      const jobsRes = await apiService.getMyJobs();
+      if (jobsRes.success) {
+        setRecentJobs(jobsRes.data.slice(0, 5));
+        setStats(prev => ({ ...prev, activeJobsCount: jobsRes.data.length }));
       }
     } catch (e) {
       console.error(e);
@@ -70,7 +78,9 @@ export default function EmployerDashboardScreen({ navigation }: any) {
       <View style={[styles.header, { backgroundColor: colors.surface, paddingHorizontal: isTablet ? '5%' : 20 }]}>
         <View>
           <Text style={[styles.greeting, { color: colors.text.secondary, fontSize: normalize(13) }]}>Dashboard Employeur</Text>
-          <Text style={[styles.companyName, { color: colors.text.primary, fontSize: normalize(20) }]}>Together Tech</Text>
+          <Text style={[styles.companyName, { color: colors.text.primary, fontSize: normalize(20) }]}>
+            {companyName || 'Votre entreprise'}
+          </Text>
         </View>
         <TouchableOpacity style={[styles.iconButton, { backgroundColor: colors.background }]}>
           <Bell size={normalize(22)} color={colors.text.primary} />

@@ -804,6 +804,13 @@ class ApiService {
     } catch (e: any) { return this.handleError(e); }
   }
 
+  async getMyJobs(): Promise<ApiResponse> {
+    try {
+      const res = await this.api.get('/employer/me/jobs');
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
   // Admin
   async getPendingSchools(): Promise<ApiResponse> {
     try {

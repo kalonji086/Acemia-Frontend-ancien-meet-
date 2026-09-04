@@ -36,6 +36,7 @@ import SchoolEnrollmentRequestsScreen from '../screens/SchoolEnrollmentRequestsS
 import EmploiMainScreen from '../screens/EmploiMainScreen';
 import EmployerRequestScreen from '../screens/EmployerRequestScreen';
 import EmployerDashboardScreen from '../screens/EmployerDashboardScreen';
+import NewEmployerDashboard from '../screens/NewEmployerDashboard';
 import TalentSearchScreen from '../screens/TalentSearchScreen';
 import JobDiscoveryScreen from '../screens/JobDiscoveryScreen';
 import JobDetailsScreen from '../screens/JobDetailsScreen';
@@ -326,7 +327,7 @@ export default function AppNavigator() {
         />
         <Stack.Screen
           name="EmployerDashboard"
-          component={EmployerDashboardScreen}
+          component={NewEmployerDashboard}
           options={{ headerShown: false }}
         />
         <Stack.Screen

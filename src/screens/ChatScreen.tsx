@@ -817,7 +817,17 @@ export default function ChatScreen({ navigation, route }: any) {
       <View style={{ height: insets.top, backgroundColor: themeColors.primary }} />
       <StatusBar barStyle="light-content" backgroundColor={themeColors.primary} translucent />
       <View style={[styles.header, { backgroundColor: themeColors.primary }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}><ArrowLeft size={24} color="#fff" /></TouchableOpacity>
+        <TouchableOpacity onPress={() => {
+          // Vérifier si on doit retourner vers les détails de l'offre
+          const returnTo = route.params?.returnTo;
+          const returnParams = route.params?.returnParams;
+          
+          if (returnTo && returnParams) {
+            navigation.navigate(returnTo, returnParams);
+          } else {
+            navigation.goBack();
+          }
+        }} style={styles.backButton}><ArrowLeft size={24} color="#fff" /></TouchableOpacity>
         <TouchableOpacity style={styles.headerUserInfo} onPress={() => isGroup ? navigation.navigate('GroupInfo', { chatId }) : navigation.navigate('UserProfile', { userId: peerUserId, name: peerName, avatar: peerAvatar })}>
           <Image
             source={{ uri: onProfileRetouch((getFullUrl(peerAvatar || '') || `https://ui-avatars.com/api/?name=${peerName}`)) || undefined }}

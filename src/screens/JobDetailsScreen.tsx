@@ -64,13 +64,27 @@ export default function JobDetailsScreen({ navigation, route }: any) {
   const handleContactEmployer = async () => {
     try {
       // Créer ou obtenir une discussion privée avec l'employeur
-      const employerUserId = job.employer_user_id || job.employerId;
+      const employerUserId = job.employer_user_id || job.employerId || null;
+      if (!employerUserId) {
+        Alert.alert('Information', 'Impossible de contacter cet employeur pour le moment.');
+        return;
+      }
+      
+      // Sauvegarder l'état actuel pour pouvoir revenir
+      const currentJobId = jobId;
+      const currentJobTitle = job.title;
+      
       const res = await apiService.createChat([employerUserId]);
       if (res.success) {
+        // Naviguer vers le chat avec possibilité de revenir
         navigation.navigate('Chat', {
           chatId: res.data.id,
-          name: job.company_name || job.company,
-          peerUserId: employerUserId
+          name: job.company_name || job.company || 'Employeur',
+          peerUserId: employerUserId,
+          // Ajouter des métadonnées pour le retour
+          returnTo: 'JobDetails',
+          returnParams: { jobId: currentJobId },
+          returnTitle: `Retour à: ${currentJobTitle}`
         });
       }
     } catch (e) {
@@ -121,10 +135,10 @@ export default function JobDetailsScreen({ navigation, route }: any) {
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={isTablet && { paddingHorizontal: '15%' }}>
           <View style={[styles.mainInfo, { backgroundColor: colors.surface }]}>
             <View style={[styles.logoContainer, { backgroundColor: colors.background, width: normalize(80), height: normalize(80) }]}>
-              {job.logo ? <Image source={{ uri: job.logo }} style={styles.logo} /> : <Building2 size={normalize(40)} color={colors.primary} />}
+              {job.company_logo || job.logo ? <Image source={{ uri: job.company_logo || job.logo }} style={styles.logo} /> : <Building2 size={normalize(40)} color={colors.primary} />}
             </View>
             <Text style={[styles.title, { color: colors.text.primary, fontSize: normalize(22) }]}>{job.title}</Text>
-            <Text style={[styles.company, { color: colors.primary, fontSize: normalize(16) }]}>{job.company}</Text>
+            <Text style={[styles.company, { color: colors.primary, fontSize: normalize(16) }]}>{job.company_name || job.company || 'Entreprise'}</Text>
 
             <View style={styles.badgeRow}>
               <View style={[styles.badge, { backgroundColor: colors.background }]}>
@@ -133,7 +147,7 @@ export default function JobDetailsScreen({ navigation, route }: any) {
               </View>
               <View style={[styles.badge, { backgroundColor: colors.background }]}>
                 <Clock size={14} color={colors.text.secondary} />
-                <Text style={[styles.badgeText, { color: colors.text.secondary, fontSize: normalize(12) }]}>{job.type}</Text>
+                <Text style={[styles.badgeText, { color: colors.text.secondary, fontSize: normalize(12) }]}>{job.job_type || job.type || 'Type non spécifié'}</Text>
               </View>
             </View>
           </View>
@@ -145,7 +159,7 @@ export default function JobDetailsScreen({ navigation, route }: any) {
 
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: colors.text.primary, fontSize: normalize(18) }]}>Pré-requis</Text>
-            {job.requirements.map((req: string, idx: number) => (
+            {(Array.isArray(job.requirements) ? job.requirements : []).map((req: string, idx: number) => (
               <View key={idx} style={styles.listItem}>
                 <CheckCircle2 size={16} color={colors.primary} />
                 <Text style={[styles.listText, { color: colors.text.secondary, fontSize: normalize(15) }]}>{req}</Text>
@@ -182,8 +196,8 @@ export default function JobDetailsScreen({ navigation, route }: any) {
                   <View style={[styles.avatarSmall, { backgroundColor: colors.background }]}>
                     <User size={14} color={colors.text.disabled} />
                   </View>
-                  <Text style={[styles.commentUser, { color: colors.text.primary, fontSize: normalize(14) }]}>{item.user}</Text>
-                  <Text style={[styles.commentTime, { color: colors.text.disabled, fontSize: normalize(12) }]}>{item.time}</Text>
+                  <Text style={[styles.commentUser, { color: colors.text.primary, fontSize: normalize(14) }]}>{item.user || 'Utilisateur'}</Text>
+                  <Text style={[styles.commentTime, { color: colors.text.disabled, fontSize: normalize(12) }]}>{item.created_at || item.time || 'Récemment'}</Text>
                 </View>
                 <Text style={[styles.commentContent, { color: colors.text.secondary, fontSize: normalize(14) }]}>{item.content}</Text>
               </View>
