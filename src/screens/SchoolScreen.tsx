@@ -64,7 +64,7 @@ export default function SchoolScreen({ navigation }: any) {
 
     const onSchoolApproved = (data: any) => {
       Alert.alert('Félicitations !', `Votre établissement "${data.schoolName}" a été approuvé par l'administration.`);
-      loadData(false); // Reload with spinner to show transition
+      loadData(false);
       setActiveTab('Mon Dashboard');
     };
 
@@ -245,7 +245,7 @@ export default function SchoolScreen({ navigation }: any) {
 
       <Text style={[styles.sectionHeader, { color: colors.text.primary, marginTop: 20 }]}>Frais Scolaires</Text>
       <View style={[styles.feesCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-        {dashboard?.fees?.length === 0 ? (
+        {(!dashboard?.fees || dashboard?.fees?.length === 0) ? (
           <Text style={{ color: colors.text.disabled, fontSize: 12 }}>Aucun frais configuré.</Text>
         ) : (
           dashboard?.fees?.map((f: any, i: number) => (
@@ -301,16 +301,20 @@ export default function SchoolScreen({ navigation }: any) {
       </TouchableOpacity>
 
       <Text style={[styles.sectionHeader, { color: colors.text.primary }]}>Mes Enfants</Text>
-      {dashboard?.children?.map((c: any, i: number) => (
-        <TouchableOpacity key={i} style={[styles.childCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <Users size={24} color={colors.text.secondary} />
-          <View style={{ flex: 1, marginLeft: 12 }}>
-            <Text style={[styles.childName, { color: colors.text.primary }]}>{c.first_name} {c.last_name}</Text>
-            <Text style={[styles.childClass, { color: colors.text.secondary }]}>{c.grade_level}</Text>
-          </View>
-          <ChevronRight size={20} color={colors.text.disabled} />
-        </TouchableOpacity>
-      ))}
+      {(!dashboard?.children || dashboard?.children?.length === 0) ? (
+        <Text style={{ color: colors.text.disabled, padding: 20 }}>Aucun enfant inscrit.</Text>
+      ) : (
+        dashboard?.children?.map((c: any, i: number) => (
+          <TouchableOpacity key={i} style={[styles.childCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Users size={24} color={colors.text.secondary} />
+            <View style={{ flex: 1, marginLeft: 12 }}>
+              <Text style={[styles.childName, { color: colors.text.primary }]}>{c.first_name} {c.last_name}</Text>
+              <Text style={[styles.childClass, { color: colors.text.secondary }]}>{c.grade_level}</Text>
+            </View>
+            <ChevronRight size={20} color={colors.text.disabled} />
+          </TouchableOpacity>
+        ))
+      )}
       <View style={{ height: 40 }} />
     </ScrollView>
   );
@@ -608,7 +612,7 @@ const styles = StyleSheet.create({
   statBox: { width: '48%', padding: 20, borderRadius: 24, borderWidth: 1, alignItems: 'center' },
   statVal: { fontSize: 24, fontWeight: '900', marginTop: 10 },
   statLabel: { fontSize: 12, fontWeight: '600' },
-  sectionHeader: { fontSize: 18, fontWeight: 'bold' },
+  sectionHeader: { fontSize: 18, fontWeight: 'bold', marginBottom: 15 },
   itemRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 15, borderBottomWidth: 0.5 },
   itemTitle: { fontWeight: 'bold' },
   itemSub: { fontSize: 11, marginTop: 2 },
