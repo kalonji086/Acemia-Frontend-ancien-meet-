@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Image, FlatList, Alert, Dimensions, Modal } from 'react-native';
-import { GraduationCap, Users, BookOpen, CreditCard, MessageSquare, Plus, ChevronRight, CheckCircle, Clock, Star, ShieldCheck, Building2, ArrowRight, X, Send, UserPlus } from 'lucide-react-native';
+import { GraduationCap, Users, BookOpen, CreditCard, MessageSquare, Plus, ChevronRight, CheckCircle, Clock, Star, ShieldCheck, Building2, ArrowRight, X, Send, UserPlus, Menu } from 'lucide-react-native';
 import apiService from '../services/api.service';
 import socketService from '../services/socket.service';
 import { useTheme } from '../context/ThemeContext';
+import SchoolSideMenu from '../components/SchoolSideMenu';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -23,6 +24,7 @@ export default function SchoolScreen({ navigation }: any) {
   const [sendingStaff, setSendingStaff] = useState(false);
   const [showEnrollChildModal, setShowEnrollChildModal] = useState(false);
   const [enrollChildForm, setEnrollChildForm] = useState({ firstName: '', lastName: '', age: '', gradeLevel: '' });
+  const [showSideMenu, setShowSideMenu] = useState(false);
 
   const loadData = async (silent = false) => {
     if (!silent) setLoading(true);
@@ -112,6 +114,28 @@ export default function SchoolScreen({ navigation }: any) {
       </TouchableOpacity>
     </View>
   );
+
+  const handleEnrollChild = async () => {
+    if (!enrollChildForm.firstName || !enrollChildForm.lastName) return Alert.alert('Erreur', 'Le prénom et le nom sont obligatoires.');
+    try {
+      const res = await apiService.enrollInSchool({
+        schoolId: overview.mySchool.id,
+        firstName: enrollChildForm.firstName,
+        lastName: enrollChildForm.lastName,
+        age: parseInt(enrollChildForm.age) || 0,
+        level: enrollChildForm.gradeLevel
+      });
+      if (res.success) {
+        Alert.alert('Succès', 'Votre demande d\'inscription a été envoyée.', [{ text: 'OK', onPress: () => loadData() }]);
+        setShowEnrollChildModal(false);
+        setEnrollChildForm({ firstName: '', lastName: '', age: '', gradeLevel: '' });
+      } else {
+        Alert.alert('Erreur', res.error || 'Impossible d\'envoyer la demande.');
+      }
+    } catch (e) {
+      Alert.alert('Erreur', 'Impossible d\'envoyer la demande.');
+    }
+  };
 
   const handleStaffRequest = async () => {
     if (!staffForm.fullName || !staffForm.email) return Alert.alert('Erreur', 'Informations incomplètes.');
@@ -428,7 +452,36 @@ export default function SchoolScreen({ navigation }: any) {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Header with Menu Button */}
+      <View style={[styles.topHeader, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+        <TouchableOpacity onPress={() => setShowSideMenu(true)} style={styles.menuBtn}>
+          <Menu size={24} color={colors.text.primary} />
+        </TouchableOpacity>
+        <Text style={[styles.headerTitle, { color: colors.text.primary }]}>Meet School</Text>
+        <View style={{ width: 40 }} />
+      </View>
+
       {renderCurrentTab()}
+
+      {/* Side Menu */}
+      <Modal visible={showSideMenu} transparent animationType="slide">
+        <View style={{ flex: 1, flexDirection: 'row' }}>
+          <TouchableOpacity 
+            style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' }} 
+            onPress={() => setShowSideMenu(false)}
+            activeOpacity={1}
+          />
+          <View style={{ width: 300 }}>
+            <SchoolSideMenu
+              navigation={navigation}
+              currentScreen="School"
+              schoolName={overview?.mySchool?.name}
+              userRole={overview?.role}
+              onClose={() => setShowSideMenu(false)}
+            />
+          </View>
+        </View>
+      </Modal>
 
       {/* Modal Staff Request */}
       <Modal visible={showStaffModal} transparent animationType="slide">
@@ -517,7 +570,10 @@ const AdminActionItem = ({ icon, label, onPress, colors }: any) => (
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  welcomeContainer: { padding: 20, paddingTop: 60 },
+  topHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 15, paddingTop: 50, paddingBottom: 15 },
+  menuBtn: { padding: 8 },
+  headerTitle: { fontSize: 20, fontWeight: 'bold' },
+  welcomeContainer: { padding: 20, paddingTop: 20 },
   welcomeHeader: { alignItems: 'center', marginBottom: 40 },
   iconBadge: { justifyContent: 'center', alignItems: 'center', marginBottom: 20 },
   title: { fontWeight: 'bold', marginBottom: 10, textAlign: 'center' },
