@@ -21,6 +21,8 @@ export default function SchoolScreen({ navigation }: any) {
   const [showStaffModal, setShowStaffModal] = useState(false);
   const [staffForm, setStaffForm] = useState({ fullName: '', email: '', role: 'teacher' as 'teacher' | 'director' });
   const [sendingStaff, setSendingStaff] = useState(false);
+  const [showEnrollChildModal, setShowEnrollChildModal] = useState(false);
+  const [enrollChildForm, setEnrollChildForm] = useState({ firstName: '', lastName: '', age: '', gradeLevel: '' });
 
   const loadData = async (silent = false) => {
     if (!silent) setLoading(true);
@@ -143,7 +145,7 @@ export default function SchoolScreen({ navigation }: any) {
         <Text style={[styles.schoolMeta, { color: colors.text.secondary }]}>{item.city}, {item.country}</Text>
         <View style={styles.tagRow}>
           <View style={[styles.tag, { backgroundColor: colors.primary + '15' }]}>
-            <Text style={[styles.tagText, { color: colors.primary }]}>{item.school_type}</Text>
+            <Text style={[styles.tagText, { color: colors.primary }]}>{item.school_type || 'Privé'}</Text>
           </View>
           {item.status === 'approved' && <ShieldCheck size={14} color="#4CAF50" />}
         </View>
@@ -269,7 +271,7 @@ export default function SchoolScreen({ navigation }: any) {
         <Text style={[styles.dashTitle, { color: colors.text.primary }]}>Espace Parent</Text>
         <TouchableOpacity onPress={() => setActiveTab('Répertoire')}><Text style={{color: colors.primary, fontWeight:'bold'}}>RETOUR</Text></TouchableOpacity>
       </View>
-      <TouchableOpacity style={[styles.actionBtn, { backgroundColor: colors.primary }]}>
+      <TouchableOpacity style={[styles.actionBtn, { backgroundColor: colors.primary }]} onPress={() => setShowEnrollChildModal(true)}>
         <Plus size={20} color="#fff" />
         <Text style={styles.actionBtnText}>Inscrire un enfant</Text>
       </TouchableOpacity>
@@ -460,6 +462,30 @@ export default function SchoolScreen({ navigation }: any) {
                   <Text style={{ color: '#fff', fontWeight: 'bold', marginLeft: 10 }}>ENVOYER LA DEMANDE</Text>
                 </>
               )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal Inscription Enfant */}
+      <Modal visible={showEnrollChildModal} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.text.primary }]}>Inscrire un enfant</Text>
+              <TouchableOpacity onPress={() => setShowEnrollChildModal(false)}><X size={24} color={colors.text.secondary} /></TouchableOpacity>
+            </View>
+            <Text style={[styles.modalSub, { color: colors.text.secondary }]}>Remplissez les informations de l'enfant à inscrire.</Text>
+            <TextInput placeholder="Prénom" style={[styles.input, { borderColor: colors.border, color: colors.text.primary }]} value={enrollChildForm.firstName} onChangeText={v => setEnrollChildForm({...enrollChildForm, firstName: v})} placeholderTextColor={colors.text.disabled} />
+            <TextInput placeholder="Nom" style={[styles.input, { borderColor: colors.border, color: colors.text.primary }]} value={enrollChildForm.lastName} onChangeText={v => setEnrollChildForm({...enrollChildForm, lastName: v})} placeholderTextColor={colors.text.disabled} />
+            <TextInput placeholder="Âge" style={[styles.input, { borderColor: colors.border, color: colors.text.primary }]} value={enrollChildForm.age} onChangeText={v => setEnrollChildForm({...enrollChildForm, age: v})} placeholderTextColor={colors.text.disabled} keyboardType="numeric" />
+            <TextInput placeholder="Classe souhaitée" style={[styles.input, { borderColor: colors.border, color: colors.text.primary }]} value={enrollChildForm.gradeLevel} onChangeText={v => setEnrollChildForm({...enrollChildForm, gradeLevel: v})} placeholderTextColor={colors.text.disabled} />
+            <TouchableOpacity
+              onPress={handleEnrollChild}
+              style={[styles.confirmBtn, { backgroundColor: colors.primary, marginTop: 10 }]}
+            >
+              <Send size={18} color="#fff" />
+              <Text style={{ color: '#fff', fontWeight: 'bold', marginLeft: 10 }}>ENVOYER LA DEMANDE</Text>
             </TouchableOpacity>
           </View>
         </View>
