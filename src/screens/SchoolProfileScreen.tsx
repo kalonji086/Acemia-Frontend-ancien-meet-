@@ -11,6 +11,7 @@ import {
 } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
 import apiService from '../services/api.service';
+import { SOCKET_URL } from '../utils/constants';
 
 export default function SchoolProfileScreen({ navigation, route }: any) {
   const { schoolId } = route.params;
@@ -57,6 +58,12 @@ export default function SchoolProfileScreen({ navigation, route }: any) {
 
   if (loading) return <View style={styles.centered}><ActivityIndicator size="large" color={colors.primary} /></View>;
 
+  const getFullUrl = (url: string) => {
+    if (!url || url === 'null') return null;
+    if (url.startsWith('http')) return url;
+    return `${SOCKET_URL}${url.startsWith('/') ? '' : '/'}${url}`;
+  };
+
   const { school, announcements } = data;
 
   return (
@@ -70,7 +77,7 @@ export default function SchoolProfileScreen({ navigation, route }: any) {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
-        <Image source={{ uri: school.logo_url || 'https://placehold.co/600x300?text=School' }} style={styles.banner} />
+        <Image source={{ uri: getFullUrl(school.logo_url) || 'https://placehold.co/600x300?text=School' }} style={styles.banner} />
 
         <View style={[styles.mainInfo, { backgroundColor: colors.surface }]}>
           <Text style={[styles.schoolName, { color: colors.text.primary }]}>{school.name}</Text>

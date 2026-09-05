@@ -943,13 +943,17 @@ class ApiService {
   async uploadFile(file: any, type: string = 'image'): Promise<ApiResponse> {
     try {
       const formData = new FormData();
-      formData.append(type === 'audio' ? 'audio' : 'image', {
+
+      // Adaptation pour Expo ImagePicker et DocumentPicker (Asset properties: uri, mimeType, fileName)
+      const fieldName = type === 'audio' ? 'audio' : (type === 'image' ? 'image' : 'file');
+
+      formData.append(fieldName, {
         uri: file.uri,
-        type: file.type || 'application/octet-stream',
-        name: file.name || 'upload'
+        type: file.mimeType || file.type || 'application/octet-stream',
+        name: file.fileName || file.name || 'upload'
       } as any);
 
-      const res = await this.api.post(`/upload/${type}`, formData, {
+      const res = await this.api.post(`/upload/${type === 'image' || type === 'audio' ? type : ''}`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       return res.data;

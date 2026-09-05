@@ -5,6 +5,7 @@ import apiService from '../services/api.service';
 import socketService from '../services/socket.service';
 import { useTheme } from '../context/ThemeContext';
 import SchoolSideMenu from '../components/SchoolSideMenu';
+import { SOCKET_URL } from '../utils/constants';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -171,12 +172,18 @@ export default function SchoolScreen({ navigation, route }: any) {
     }
   };
 
+  const getFullUrl = (url: string) => {
+    if (!url || url === 'null') return null;
+    if (url.startsWith('http')) return url;
+    return `${SOCKET_URL}${url.startsWith('/') ? '' : '/'}${url}`;
+  };
+
   const renderSchoolCard = ({ item }: any) => (
     <TouchableOpacity
       style={[styles.schoolCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
       onPress={() => navigation.navigate('SchoolProfile', { schoolId: item.id })}
     >
-      <Image source={{ uri: item.logo_url || 'https://placehold.co/100x100?text=School' }} style={styles.schoolLogo} />
+      <Image source={{ uri: getFullUrl(item.logo_url) || 'https://placehold.co/100x100?text=School' }} style={styles.schoolLogo} />
       <View style={styles.schoolInfo}>
         <Text style={[styles.schoolName, { color: colors.text.primary }]}>{item.name}</Text>
         <Text style={[styles.schoolMeta, { color: colors.text.secondary }]}>{item.city}, {item.country}</Text>
@@ -184,7 +191,7 @@ export default function SchoolScreen({ navigation, route }: any) {
           <View style={[styles.tag, { backgroundColor: colors.primary + '15' }]}>
             <Text style={[styles.tagText, { color: colors.primary }]}>{item.school_type || 'Privé'}</Text>
           </View>
-          {item.status === 'approved' && <ShieldCheck size={14} color="#4CAF50" />}
+          {(item.status === 'approved' || item.status === 'active') && <ShieldCheck size={14} color="#4CAF50" />}
         </View>
       </View>
       <ChevronRight size={20} color={colors.text.disabled} />
