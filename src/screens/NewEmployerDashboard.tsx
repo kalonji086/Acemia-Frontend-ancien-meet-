@@ -274,17 +274,6 @@ export default function NewEmployerDashboard({ navigation }: any) {
 
           <TouchableOpacity
             style={styles.menuItem}
-            onPress={() => navigation.reset({
-              index: 0,
-              routes: [{ name: 'ChatList' }],
-            })}
-          >
-            <Home size={20} color={colors.primary} />
-            <Text style={[styles.menuItemText, { color: colors.primary, fontWeight: 'bold' }]}>Retour à l'accueil</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.menuItem}
             onPress={async () => {
               await apiService.logout();
               navigation.reset({
@@ -295,6 +284,17 @@ export default function NewEmployerDashboard({ navigation }: any) {
           >
             <LogOut size={20} color={colors.danger} />
             <Text style={[styles.menuItemText, { color: colors.danger }]}>Déconnexion</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => navigation.reset({
+              index: 0,
+              routes: [{ name: 'ChatList' }],
+            })}
+          >
+            <Home size={20} color={colors.primary} />
+            <Text style={[styles.menuItemText, { color: colors.primary, fontWeight: 'bold' }]}>Retour</Text>
           </TouchableOpacity>
         </ScrollView>
       </Animated.View>

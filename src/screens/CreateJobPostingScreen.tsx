@@ -105,21 +105,22 @@ export default function CreateJobPostingScreen({ navigation }: any) {
       }
 
       const response = await apiService.postJob(jobData);
+      console.log('Publication response:', response);
 
       if (response.success) {
         Alert.alert('Succès', 'Votre offre d\'emploi a été publiée avec succès !', [
           {
-            text: 'Voir le dashboard',
-            onPress: () => navigation.navigate('EmployerDashboard')
+            text: 'Voir mes offres',
+            onPress: () => navigation.navigate('MyJobs')
           }
         ]);
       } else {
         // Gérer les erreurs renvoyées par le serveur (ex: 403, 400)
-        Alert.alert('Échec de la publication', response.error || 'Une erreur est survenue sur le serveur.');
+        Alert.alert('Échec de la publication', response.error || response.message || 'Une erreur est survenue sur le serveur. Veuillez vérifier vos accès employeur.');
       }
     } catch (error: any) {
       console.error('Erreur publication:', error);
-      const errorMsg = error.response?.data?.error || error.message || 'Problème de connexion au serveur.';
+      const errorMsg = error.response?.data?.error || error.response?.data?.message || error.message || 'Problème de connexion au serveur.';
       Alert.alert('Erreur', errorMsg);
     } finally {
       setLoading(false);
