@@ -138,7 +138,13 @@ export default function NewEmployerDashboard({ navigation }: any) {
   };
 
   const handlePlanning = () => {
-    navigation.navigate('EmployerPlanning');
+    console.log("Planning button pressed");
+    try {
+      navigation.navigate('EmployerPlanning');
+    } catch (e) {
+      console.error("Navigation to Planning failed", e);
+      Alert.alert('Erreur', 'Impossible d\'ouvrir le module de planification.');
+    }
   };
 
   const handleSettings = () => {
