@@ -35,10 +35,13 @@ export default function EmploiMainScreen({ navigation }: any) {
     try {
       const res = await apiService.getEmployerStatus();
       if (res.success) {
+        // On ne redirige plus automatiquement sans laisser le choix
+        // setStatus(res.data);
         setStatus(res.data);
-        // Si déjà approuvé, on redirige vers le dashboard
         if (res.data.profile) {
-          navigation.replace('EmployerDashboard');
+           // On peut optionnellement ajouter une redirection automatique ici
+           // mais il est préférable de laisser l'utilisateur choisir s'il veut aller au dashboard
+           // ou voir les offres (JobDiscovery)
         }
       }
     } catch (e) {
@@ -50,7 +53,9 @@ export default function EmploiMainScreen({ navigation }: any) {
 
   const handleRoleSelection = (role: 'employer' | 'seeker') => {
     if (role === 'employer') {
-      if (status?.request?.status === 'pending') {
+      if (status?.profile) {
+        navigation.navigate('EmployerDashboard');
+      } else if (status?.request?.status === 'pending') {
         Alert.alert('Demande en cours', 'Votre demande employeur est en cours d\'examen.');
       } else {
         navigation.navigate('EmployerRequest');
@@ -139,9 +144,11 @@ export default function EmploiMainScreen({ navigation }: any) {
                 <Building2 size={normalize(28)} color={colors.primary} />
               </View>
               <View style={styles.cardInfo}>
-                <Text style={[styles.cardTitle, { color: colors.text.primary, fontSize: normalize(17) }]}>Je suis un employeur</Text>
+                <Text style={[styles.cardTitle, { color: colors.text.primary, fontSize: normalize(17) }]}>
+                  {status?.profile ? "Mon Dashboard Employeur" : "Je suis un employeur"}
+                </Text>
                 <Text style={[styles.cardDesc, { color: colors.text.secondary, fontSize: normalize(13) }]}>
-                  Recrutez les meilleurs talents et gérez vos offres sur un dashboard pro.
+                  {status?.profile ? "Gérez vos offres, vos candidats et vos recrutements." : "Recrutez les meilleurs talents et gérez vos offres sur un dashboard pro."}
                 </Text>
               </View>
               {!isTablet && <ArrowRight size={20} color={colors.text.disabled} />}

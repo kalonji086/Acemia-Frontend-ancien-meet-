@@ -24,7 +24,9 @@ import {
   ChevronRight,
   RefreshCw,
   Download,
-  Filter
+  Filter,
+  Home,
+  LogOut
 } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
 import apiService from '../services/api.service';
@@ -249,6 +251,33 @@ export default function NewEmployerDashboard({ navigation }: any) {
             <Filter size={20} color={colors.text.secondary} />
             <Text style={[styles.menuItemText, { color: colors.text.secondary }]}>Paramètres</Text>
           </TouchableOpacity>
+
+          <View style={[styles.menuDivider, { backgroundColor: colors.border }]} />
+
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => navigation.reset({
+              index: 0,
+              routes: [{ name: 'ChatList' }],
+            })}
+          >
+            <Home size={20} color={colors.primary} />
+            <Text style={[styles.menuItemText, { color: colors.primary, fontWeight: 'bold' }]}>Retour à l'accueil</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={async () => {
+              await apiService.logout();
+              navigation.reset({
+                index: 0,
+                routes: [{ name: 'Login' }],
+              });
+            }}
+          >
+            <LogOut size={20} color={colors.danger} />
+            <Text style={[styles.menuItemText, { color: colors.danger }]}>Déconnexion</Text>
+          </TouchableOpacity>
         </ScrollView>
       </Animated.View>
 
@@ -269,6 +298,15 @@ export default function NewEmployerDashboard({ navigation }: any) {
           </View>
           
           <View style={styles.headerActions}>
+            <TouchableOpacity
+              style={styles.headerButton}
+              onPress={() => navigation.reset({
+                index: 0,
+                routes: [{ name: 'ChatList' }],
+              })}
+            >
+              <Home size={22} color={colors.text.primary} />
+            </TouchableOpacity>
             <TouchableOpacity style={styles.headerButton}>
               <Bell size={22} color={colors.text.primary} />
             </TouchableOpacity>
@@ -501,6 +539,11 @@ const styles = StyleSheet.create({
   menuItemText: {
     fontSize: 15,
     marginLeft: 12
+  },
+  menuDivider: {
+    height: 1,
+    marginVertical: 15,
+    marginHorizontal: 8
   },
   header: {
     flexDirection: 'row',

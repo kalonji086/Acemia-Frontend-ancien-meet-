@@ -77,7 +77,7 @@ export default function EmployerDashboardScreen({ navigation }: any) {
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { backgroundColor: colors.surface, paddingHorizontal: isTablet ? '5%' : 20 }]}>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <TouchableOpacity onPress={() => navigation.navigate('EmploiMain')} style={{ marginRight: 15 }}>
+          <TouchableOpacity onPress={() => navigation.reset({ index: 0, routes: [{ name: 'ChatList' }] })} style={{ marginRight: 15 }}>
             <ArrowLeft size={24} color={colors.text.primary} />
           </TouchableOpacity>
           <View>
