@@ -2,6 +2,7 @@ import axios, { AxiosInstance } from 'axios';
 import { API_BASE_URL } from '../utils/constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
+import { Platform } from 'react-native';
 
 // Types
 export interface ApiResponse<T = any> {
@@ -944,16 +945,19 @@ class ApiService {
     try {
       const formData = new FormData();
 
-      // Adaptation pour Expo ImagePicker et DocumentPicker (Asset properties: uri, mimeType, fileName)
-      const fieldName = type === 'audio' ? 'audio' : (type === 'image' ? 'image' : 'file');
+      // Adaptation pour Expo ImagePicker et DocumentPicker
+      const fieldName = type === 'audio' ? 'audio' : (type === 'image' ? 'image' : (type === 'video' ? 'video' : (type === 'document' ? 'document' : 'file')));
 
       formData.append(fieldName, {
-        uri: file.uri,
-        type: file.mimeType || file.type || 'application/octet-stream',
-        name: file.fileName || file.name || 'upload'
+        uri: Platform.OS === 'android' ? file.uri : file.uri.replace('file://', ''),
+        type: file.mimeType || file.type || (type === 'image' ? 'image/jpeg' : 'application/octet-stream'),
+        name: file.fileName || file.name || `upload_${Date.now()}${type === 'image' ? '.jpg' : ''}`
       } as any);
 
-      const res = await this.api.post(`/upload/${type === 'image' || type === 'audio' ? type : ''}`, formData, {
+      // Route spécifique ou générique
+      const uploadRoute = (['image', 'audio', 'video', 'document'].includes(type)) ? `/upload/${type}` : '/upload';
+
+      const res = await this.api.post(uploadRoute, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       return res.data;

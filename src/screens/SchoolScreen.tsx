@@ -101,12 +101,13 @@ export default function SchoolScreen({ navigation, route }: any) {
   }, [route?.params?.tab, route?.params?.refresh]);
 
   const handleRoleSelection = (role: 'promoter' | 'parent' | 'student') => {
+    if (overview?.mySchool) {
+      setActiveTab('Mon Dashboard');
+      return;
+    }
+
     if (role === 'promoter') {
-      if (overview?.mySchool) {
-        setActiveTab('Mon Dashboard');
-      } else {
-        navigation.navigate('SchoolRegistration');
-      }
+      navigation.navigate('SchoolRegistration');
     } else {
       setActiveTab('Mon Dashboard');
     }
