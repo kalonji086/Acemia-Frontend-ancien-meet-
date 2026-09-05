@@ -9,7 +9,8 @@ import {
   ActivityIndicator,
   Animated,
   Dimensions,
-  useWindowDimensions
+  useWindowDimensions,
+  Alert
 } from 'react-native';
 import {
   Menu,
@@ -66,13 +67,6 @@ export default function NewEmployerDashboard({ navigation }: any) {
 
   useEffect(() => {
     fetchDashboardData();
-    
-    // Simuler des données en temps réel
-    const interval = setInterval(() => {
-      updateRealTimeData();
-    }, 10000); // Mise à jour toutes les 10 secondes
-
-    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
@@ -85,27 +79,44 @@ export default function NewEmployerDashboard({ navigation }: any) {
 
   const fetchDashboardData = async () => {
     try {
-      // Récupérer les données utilisateur
+      // 1. Récupérer les données utilisateur
       const user = await apiService.getCurrentUser();
       setUserName(user?.full_name || '');
       
-      // Récupérer le statut employeur
+      // 2. Récupérer le statut employeur
       const statusRes = await apiService.getEmployerStatus();
       if (statusRes.success && statusRes.data?.profile?.company_name) {
         setCompanyName(statusRes.data.profile.company_name);
       }
 
-      // Récupérer les offres
+      // 3. Récupérer les offres réelles
       const jobsRes = await apiService.getMyJobs();
       if (jobsRes.success) {
         setRecentJobs(jobsRes.data.slice(0, 4));
         setStats(prev => ({
           ...prev,
-          activeJobs: jobsRes.data.length,
-          totalApplications: Math.floor(Math.random() * 100) + 20, // Données simulées
-          totalViews: Math.floor(Math.random() * 500) + 100,
-          conversionRate: Math.floor(Math.random() * 20) + 5
+          activeJobs: jobsRes.data.length
         }));
+      }
+
+      // 4. Récupérer les analytiques réelles
+      const analyticsRes = await apiService.getEmployerAnalytics();
+      if (analyticsRes.success) {
+        const d = analyticsRes.data;
+        setStats(prev => ({
+          ...prev,
+          totalApplications: d.totalApplications,
+          totalViews: d.totalViews,
+          conversionRate: d.totalViews > 0 ? Math.round((d.totalApplications / d.totalViews) * 100) : 0
+        }));
+
+        setChartData({
+          views: d.dailyViews,
+          applications: d.dailyApplications,
+          categories: d.categories.length > 0 ? d.categories : [
+            { label: 'Aucune donnée', value: 1, color: colors.border }
+          ]
+        });
       }
     } catch (error) {
       console.error('Erreur chargement dashboard:', error);
@@ -114,26 +125,33 @@ export default function NewEmployerDashboard({ navigation }: any) {
     }
   };
 
-  const updateRealTimeData = () => {
-    // Simuler des mises à jour en temps réel
-    setChartData(prev => ({
-      ...prev,
-      views: prev.views.map(value => {
-        const change = Math.floor(Math.random() * 10) - 5;
-        return Math.max(10, value + change);
-      }),
-      applications: prev.applications.map(value => {
-        const change = Math.floor(Math.random() * 5) - 2;
-        return Math.max(5, value + change);
-      })
-    }));
+  const handleExportData = async () => {
+    try {
+      setLoading(true);
+      const res = await apiService.exportEmployerData();
+      if (res.success) {
+        Alert.alert('Succès', 'Vos données ont été exportées. Format: ' + res.message);
+        console.log('Export data:', res.data);
+      }
+    } catch (e) {
+      Alert.alert('Erreur', 'Échec de l\'exportation');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    setStats(prev => ({
-      ...prev,
-      totalApplications: prev.totalApplications + Math.floor(Math.random() * 3),
-      totalViews: prev.totalViews + Math.floor(Math.random() * 10),
-      conversionRate: Math.min(30, Math.max(5, prev.conversionRate + (Math.random() * 2 - 1)))
-    }));
+  const handlePlanning = () => {
+    Alert.alert('Info', 'Le module de planification est en cours de déploiement et sera disponible dans la prochaine mise à jour.');
+  };
+
+  const handleSettings = () => {
+    navigation.navigate('Settings');
+  };
+
+  const handleAnalytics = () => {
+    // Si on est déjà sur le dashboard, on rafraîchit simplement ou on scroll vers les charts
+    fetchDashboardData();
+    Alert.alert('Analytiques', 'Les données ont été rafraîchies avec les dernières statistiques réelles.');
   };
 
   const renderStatCard = (title: string, value: string | number, icon: any, color: string, change?: number) => (
@@ -239,7 +257,7 @@ export default function NewEmployerDashboard({ navigation }: any) {
             <Users size={20} color={colors.text.secondary} />
             <Text style={[styles.menuItemText, { color: colors.text.secondary }]}>Recherche talents</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.menuItem}>
+          <TouchableOpacity style={styles.menuItem} onPress={handleAnalytics}>
             <TrendingUp size={20} color={colors.text.secondary} />
             <Text style={[styles.menuItemText, { color: colors.text.secondary }]}>Analytiques</Text>
           </TouchableOpacity>
@@ -247,7 +265,7 @@ export default function NewEmployerDashboard({ navigation }: any) {
             <Bell size={20} color={colors.text.secondary} />
             <Text style={[styles.menuItemText, { color: colors.text.secondary }]}>Notifications</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.menuItem}>
+          <TouchableOpacity style={styles.menuItem} onPress={handleSettings}>
             <Filter size={20} color={colors.text.secondary} />
             <Text style={[styles.menuItemText, { color: colors.text.secondary }]}>Paramètres</Text>
           </TouchableOpacity>
@@ -388,6 +406,7 @@ export default function NewEmployerDashboard({ navigation }: any) {
               
               <TouchableOpacity
                 style={[styles.actionCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                onPress={handleExportData}
               >
                 <Download size={28} color={colors.text.primary} />
                 <Text style={[styles.actionText, { color: colors.text.primary }]}>
@@ -397,6 +416,7 @@ export default function NewEmployerDashboard({ navigation }: any) {
               
               <TouchableOpacity
                 style={[styles.actionCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                onPress={handlePlanning}
               >
                 <Calendar size={28} color={colors.text.primary} />
                 <Text style={[styles.actionText, { color: colors.text.primary }]}>

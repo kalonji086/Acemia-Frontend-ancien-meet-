@@ -41,6 +41,7 @@ import TalentSearchScreen from '../screens/TalentSearchScreen';
 import JobDiscoveryScreen from '../screens/JobDiscoveryScreen';
 import JobDetailsScreen from '../screens/JobDetailsScreen';
 import CreateJobPostingScreen from '../screens/CreateJobPostingScreen';
+import MyJobsScreen from '../screens/MyJobsScreen';
 import { useTheme } from '../context/ThemeContext';
 import { DefaultTheme, DarkTheme } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -348,6 +349,11 @@ export default function AppNavigator() {
         <Stack.Screen
           name="CreateJobPosting"
           component={CreateJobPostingScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="MyJobs"
+          component={MyJobsScreen}
           options={{ headerShown: false }}
         />
       </Stack.Navigator>

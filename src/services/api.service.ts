@@ -811,6 +811,27 @@ class ApiService {
     } catch (e: any) { return this.handleError(e); }
   }
 
+  async getEmployerAnalytics(): Promise<ApiResponse> {
+    try {
+      const res = await this.api.get('/employer/analytics');
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async exportEmployerData(): Promise<ApiResponse> {
+    try {
+      const res = await this.api.get('/employer/export');
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async updateEmployerSettings(data: any): Promise<ApiResponse> {
+    try {
+      const res = await this.api.put('/employer/settings', data);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
   // Admin
   async getPendingSchools(): Promise<ApiResponse> {
     try {
