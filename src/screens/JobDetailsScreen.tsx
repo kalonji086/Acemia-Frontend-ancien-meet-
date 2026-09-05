@@ -61,6 +61,12 @@ export default function JobDetailsScreen({ navigation, route }: any) {
     }
   };
 
+  const getFullUrl = (url: string) => {
+    if (!url || url === 'null') return null;
+    if (url.startsWith('http')) return url;
+    return `https://meet-me-backend-sg5c.onrender.com${url.startsWith('/') ? '' : '/'}${url}`;
+  };
+
   const handleContactEmployer = async () => {
     try {
       // Créer ou obtenir une discussion privée avec l'employeur
@@ -135,7 +141,7 @@ export default function JobDetailsScreen({ navigation, route }: any) {
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={isTablet && { paddingHorizontal: '15%' }}>
           <View style={[styles.mainInfo, { backgroundColor: colors.surface }]}>
             <View style={[styles.logoContainer, { backgroundColor: colors.background, width: normalize(80), height: normalize(80) }]}>
-              {job.company_logo || job.logo ? <Image source={{ uri: job.company_logo || job.logo }} style={styles.logo} /> : <Building2 size={normalize(40)} color={colors.primary} />}
+              {job.company_logo ? <Image source={{ uri: getFullUrl(job.company_logo)! }} style={styles.logo} /> : <Building2 size={normalize(40)} color={colors.primary} />}
             </View>
             <Text style={[styles.title, { color: colors.text.primary, fontSize: normalize(22) }]}>{job.title}</Text>
             <Text style={[styles.company, { color: colors.primary, fontSize: normalize(16) }]}>{job.company_name || job.company || 'Entreprise'}</Text>

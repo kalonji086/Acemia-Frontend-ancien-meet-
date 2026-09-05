@@ -47,6 +47,7 @@ import SchoolStatisticsScreen from '../screens/SchoolStatisticsScreen';
 import SchoolClassesScreen from '../screens/SchoolClassesScreen';
 import SchoolFeesScreen from '../screens/SchoolFeesScreen';
 import SchoolAssignmentsScreen from '../screens/SchoolAssignmentsScreen';
+import EmployerPlanningScreen from '../screens/EmployerPlanningScreen';
 import { useTheme } from '../context/ThemeContext';
 import { DefaultTheme, DarkTheme } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -384,6 +385,11 @@ export default function AppNavigator() {
         <Stack.Screen
           name="MyJobs"
           component={MyJobsScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="EmployerPlanning"
+          component={EmployerPlanningScreen}
           options={{ headerShown: false }}
         />
       </Stack.Navigator>

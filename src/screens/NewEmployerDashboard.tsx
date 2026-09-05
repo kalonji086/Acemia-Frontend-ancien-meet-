@@ -141,7 +141,7 @@ export default function NewEmployerDashboard({ navigation }: any) {
   };
 
   const handlePlanning = () => {
-    Alert.alert('Info', 'Le module de planification est en cours de déploiement et sera disponible dans la prochaine mise à jour.');
+    navigation.navigate('EmployerPlanning');
   };
 
   const handleSettings = () => {

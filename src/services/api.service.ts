@@ -846,6 +846,27 @@ class ApiService {
     } catch (e: any) { return this.handleError(e); }
   }
 
+  async getEmployerSchedules(): Promise<ApiResponse> {
+    try {
+      const res = await this.api.get('/employer/schedules');
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async createEmployerSchedule(data: any): Promise<ApiResponse> {
+    try {
+      const res = await this.api.post('/employer/schedules', data);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async deleteEmployerSchedule(id: string): Promise<ApiResponse> {
+    try {
+      const res = await this.api.delete(`/employer/schedules/${id}`);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
   // Admin
   async getPendingSchools(): Promise<ApiResponse> {
     try {

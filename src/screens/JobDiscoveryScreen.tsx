@@ -33,15 +33,25 @@ export default function JobDiscoveryScreen({ navigation }: any) {
 
   const fetchJobs = async () => {
     try {
+      console.log('Fetching jobs for category:', activeCategory);
       const res = await apiService.getAllJobs(activeCategory, searchQuery);
       if (res.success) {
+        console.log('Jobs loaded:', res.data.length);
         setJobs(res.data);
+      } else {
+        console.warn('API returned error:', res.error);
       }
     } catch (e) {
-      console.error(e);
+      console.error('Network error fetching jobs:', e);
     } finally {
       setLoading(false);
     }
+  };
+
+  const getFullUrl = (url: string) => {
+    if (!url || url === 'null') return null;
+    if (url.startsWith('http')) return url;
+    return `https://meet-me-backend-sg5c.onrender.com${url.startsWith('/') ? '' : '/'}${url}`;
   };
 
   const filteredJobs = jobs; // Filter is now handled by API
@@ -58,8 +68,8 @@ export default function JobDiscoveryScreen({ navigation }: any) {
     >
       <View style={styles.cardHeader}>
         <View style={[styles.companyLogo, { backgroundColor: colors.background }]}>
-          {item.company_logo || item.logo ? (
-            <Image source={{ uri: item.company_logo || item.logo }} style={styles.logoImage} />
+          {item.company_logo ? (
+            <Image source={{ uri: getFullUrl(item.company_logo)! }} style={styles.logoImage} />
           ) : (
             <Briefcase size={normalize(24)} color={colors.primary} />
           )}

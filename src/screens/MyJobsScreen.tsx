@@ -35,6 +35,12 @@ export default function MyJobsScreen({ navigation }: any) {
     }
   };
 
+  const getFullUrl = (url: string) => {
+    if (!url || url === 'null') return null;
+    if (url.startsWith('http')) return url;
+    return `https://meet-me-backend-sg5c.onrender.com${url.startsWith('/') ? '' : '/'}${url}`;
+  };
+
   const renderJobItem = ({ item }: { item: any }) => (
     <TouchableOpacity
       style={[
@@ -47,7 +53,7 @@ export default function MyJobsScreen({ navigation }: any) {
       <View style={styles.cardHeader}>
         <View style={[styles.companyLogo, { backgroundColor: colors.background }]}>
           {item.company_logo ? (
-            <Image source={{ uri: item.company_logo }} style={styles.logoImage} />
+            <Image source={{ uri: getFullUrl(item.company_logo)! }} style={styles.logoImage} />
           ) : (
             <Briefcase size={normalize(24)} color={colors.primary} />
           )}
