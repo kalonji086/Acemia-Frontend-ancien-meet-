@@ -1,6 +1,6 @@
 {
   "name": "docteurparlemoi",
-  "version": "80.0.0",
+  "version": "87.0.0",
   "main": "index.ts",
   "scripts": {
     "start": "node scripts/start.js",

@@ -89,15 +89,15 @@ export default function SchoolScreen({ navigation, route }: any) {
   }, []);
 
   useEffect(() => {
-    if (route.params?.tab) {
+    if (route?.params?.tab) {
       setActiveTab(route.params.tab);
     }
-    if (route.params?.refresh) {
+    if (route?.params?.refresh) {
       loadData();
       // On nettoie les paramètres pour éviter de rafraîchir en boucle
       navigation.setParams({ refresh: undefined });
     }
-  }, [route.params?.tab, route.params?.refresh]);
+  }, [route?.params?.tab, route?.params?.refresh]);
 
   const handleRoleSelection = (role: 'promoter' | 'parent' | 'student') => {
     if (role === 'promoter') {

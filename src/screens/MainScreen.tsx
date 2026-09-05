@@ -232,7 +232,7 @@ export default function MainScreen({ navigation, route }: any) {
         case 'status': return <StatusScreen />;
         case 'emploi': return <EmploiMainScreen navigation={navigation} />;
         case 'market': return <MarketScreen />;
-        case 'school': return <SchoolScreen navigation={navigation} />;
+        case 'school': return <SchoolScreen navigation={navigation} route={route} />;
         default: return <ChatListScreen navigation={navigation} route={route} />;
       }
     } catch (err) {

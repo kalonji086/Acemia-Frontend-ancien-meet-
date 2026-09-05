@@ -2,7 +2,7 @@
   "expo": {
     "name": "Docteur Parle-moi",
     "slug": "docteurparlemoi",
-    "version": "86.0.0",
+    "version": "87.0.0",
     "orientation": "portrait",
     "icon": "./assets/Logo.png",
     "userInterfaceStyle": "light",
@@ -30,7 +30,7 @@
     },
     "android": {
       "package": "com.deve",
-      "versionCode": 86,
+      "versionCode": 87,
       "adaptiveIcon": {
         "foregroundImage": "./assets/Logo.png",
         "backgroundColor": "#ffffff"

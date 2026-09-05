@@ -17,6 +17,7 @@ export default function SchoolSideMenu({
 }: any) {
   const { colors, normalize } = useTheme();
 
+  const menuItems = [
     { id: 'dashboard', icon: Home, label: 'Dashboard', screen: 'School', params: { tab: 'Mon Dashboard' } },
     { id: 'directory', icon: Building2, label: 'Répertoire', screen: 'School', params: { tab: 'Répertoire' } },
     { id: 'enrollment', icon: Users, label: 'Inscriptions', screen: 'SchoolEnrollmentRequests', roles: ['promoter', 'director'] },
