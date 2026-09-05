@@ -13,6 +13,7 @@ import { useTheme } from '../context/ThemeContext';
 import apiService from '../services/api.service';
 import socketService from '../services/socket.service';
 import { useLanguage } from '../context/LanguageContext';
+import { SOCKET_URL } from '../utils/constants';
 
 export default function JobDetailsScreen({ navigation, route }: any) {
   const { jobId } = route.params;
@@ -64,7 +65,7 @@ export default function JobDetailsScreen({ navigation, route }: any) {
   const getFullUrl = (url: string) => {
     if (!url || url === 'null') return null;
     if (url.startsWith('http')) return url;
-    return `https://meet-me-backend-sg5c.onrender.com${url.startsWith('/') ? '' : '/'}${url}`;
+    return `${SOCKET_URL}${url.startsWith('/') ? '' : '/'}${url}`;
   };
 
   const handleContactEmployer = async () => {

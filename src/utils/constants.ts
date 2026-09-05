@@ -3,7 +3,7 @@ import Constants from 'expo-constants';
 // Constantes de l'application
 
 export const APP_NAME = 'Docteur Parle-moi';
-export const APP_VERSION = "87.0.0";
+export const APP_VERSION = "88.0.0";
 
 // URLs API
 const extra = Constants?.expoConfig?.extra || {};

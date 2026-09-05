@@ -53,13 +53,10 @@ export default function NewEmployerDashboard({ navigation }: any) {
   });
   const [recentJobs, setRecentJobs] = useState<any[]>([]);
   const [chartData, setChartData] = useState({
-    views: [45, 60, 75, 90, 65, 80, 95],
-    applications: [12, 18, 25, 30, 22, 28, 35],
+    views: [0, 0, 0, 0, 0, 0, 0],
+    applications: [0, 0, 0, 0, 0, 0, 0],
     categories: [
-      { label: 'Tech', value: 45, color: '#4CAF50' },
-      { label: 'Vente', value: 25, color: '#2196F3' },
-      { label: 'Santé', value: 15, color: '#FF9800' },
-      { label: 'Autre', value: 15, color: '#9C27B0' }
+      { label: 'Aucune donnée', value: 1, color: '#ccc' }
     ]
   });
 

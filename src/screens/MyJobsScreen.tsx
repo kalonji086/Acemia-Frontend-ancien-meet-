@@ -7,6 +7,7 @@ import {
 import { Briefcase, MapPin, Clock, ChevronRight, ArrowLeft, Plus } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
 import apiService from '../services/api.service';
+import { SOCKET_URL } from '../utils/constants';
 
 export default function MyJobsScreen({ navigation }: any) {
   const { colors, normalize, isDark } = useTheme();
@@ -38,7 +39,7 @@ export default function MyJobsScreen({ navigation }: any) {
   const getFullUrl = (url: string) => {
     if (!url || url === 'null') return null;
     if (url.startsWith('http')) return url;
-    return `https://meet-me-backend-sg5c.onrender.com${url.startsWith('/') ? '' : '/'}${url}`;
+    return `${SOCKET_URL}${url.startsWith('/') ? '' : '/'}${url}`;
   };
 
   const renderJobItem = ({ item }: { item: any }) => (

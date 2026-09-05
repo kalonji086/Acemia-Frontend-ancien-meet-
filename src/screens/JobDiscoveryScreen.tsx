@@ -7,6 +7,7 @@ import {
 import { Search, Filter, MapPin, Briefcase, DollarSign, Clock, ChevronRight, LayoutGrid, Zap, Monitor, HeartPulse, Hammer, ArrowLeft } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
 import apiService from '../services/api.service';
+import { SOCKET_URL } from '../utils/constants';
 
 const CATEGORIES = [
   { id: 'all', name: 'Tous', icon: <LayoutGrid size={16} /> },
@@ -51,7 +52,7 @@ export default function JobDiscoveryScreen({ navigation }: any) {
   const getFullUrl = (url: string) => {
     if (!url || url === 'null') return null;
     if (url.startsWith('http')) return url;
-    return `https://meet-me-backend-sg5c.onrender.com${url.startsWith('/') ? '' : '/'}${url}`;
+    return `${SOCKET_URL}${url.startsWith('/') ? '' : '/'}${url}`;
   };
 
   const filteredJobs = jobs; // Filter is now handled by API
