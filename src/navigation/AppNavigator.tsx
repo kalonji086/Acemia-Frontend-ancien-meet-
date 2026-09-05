@@ -42,6 +42,11 @@ import JobDiscoveryScreen from '../screens/JobDiscoveryScreen';
 import JobDetailsScreen from '../screens/JobDetailsScreen';
 import CreateJobPostingScreen from '../screens/CreateJobPostingScreen';
 import MyJobsScreen from '../screens/MyJobsScreen';
+import SchoolCalendarScreen from '../screens/SchoolCalendarScreen';
+import SchoolStatisticsScreen from '../screens/SchoolStatisticsScreen';
+import SchoolClassesScreen from '../screens/SchoolClassesScreen';
+import SchoolFeesScreen from '../screens/SchoolFeesScreen';
+import SchoolAssignmentsScreen from '../screens/SchoolAssignmentsScreen';
 import { useTheme } from '../context/ThemeContext';
 import { DefaultTheme, DarkTheme } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -314,6 +319,31 @@ export default function AppNavigator() {
         <Stack.Screen
           name="SchoolEnrollmentRequests"
           component={SchoolEnrollmentRequestsScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="SchoolCalendar"
+          component={SchoolCalendarScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="SchoolStatistics"
+          component={SchoolStatisticsScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="SchoolClasses"
+          component={SchoolClassesScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="SchoolFees"
+          component={SchoolFeesScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="SchoolAssignments"
+          component={SchoolAssignmentsScreen}
           options={{ headerShown: false }}
         />
         <Stack.Screen

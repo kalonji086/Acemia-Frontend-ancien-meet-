@@ -17,15 +17,14 @@ export default function SchoolSideMenu({
 }: any) {
   const { colors, normalize } = useTheme();
 
-  const menuItems = [
     { id: 'dashboard', icon: Home, label: 'Dashboard', screen: 'School', params: { tab: 'Mon Dashboard' } },
     { id: 'directory', icon: Building2, label: 'Répertoire', screen: 'School', params: { tab: 'Répertoire' } },
     { id: 'enrollment', icon: Users, label: 'Inscriptions', screen: 'SchoolEnrollmentRequests', roles: ['promoter', 'director'] },
-    { id: 'classes', icon: BookOpen, label: 'Gestion Classes', roles: ['promoter', 'director', 'teacher'] },
-    { id: 'fees', icon: CreditCard, label: 'Frais Scolaires', roles: ['promoter', 'director', 'parent'] },
-    { id: 'assignments', icon: FileText, label: 'Devoirs', roles: ['teacher', 'student', 'parent'] },
-    { id: 'calendar', icon: Calendar, label: 'Calendrier', roles: ['teacher', 'student', 'parent', 'promoter', 'director'] },
-    { id: 'statistics', icon: BarChart3, label: 'Statistiques', roles: ['promoter', 'director'] },
+    { id: 'classes', icon: BookOpen, label: 'Gestion Classes', screen: 'SchoolClasses', roles: ['promoter', 'director', 'teacher'] },
+    { id: 'fees', icon: CreditCard, label: 'Frais Scolaires', screen: 'SchoolFees', roles: ['promoter', 'director', 'parent'] },
+    { id: 'assignments', icon: FileText, label: 'Devoirs', screen: 'SchoolAssignments', roles: ['teacher', 'student', 'parent'] },
+    { id: 'calendar', icon: Calendar, label: 'Calendrier', screen: 'SchoolCalendar', roles: ['teacher', 'student', 'parent', 'promoter', 'director'] },
+    { id: 'statistics', icon: BarChart3, label: 'Statistiques', screen: 'SchoolStatistics', roles: ['promoter', 'director'] },
   ];
 
   const bottomItems = [
