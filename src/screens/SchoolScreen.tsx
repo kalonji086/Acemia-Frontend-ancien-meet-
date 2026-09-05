@@ -10,7 +10,7 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 const tabs = ['Répertoire', 'Mon Dashboard'];
 
-export default function SchoolScreen({ navigation }: any) {
+export default function SchoolScreen({ navigation, route }: any) {
   const { colors, normalize, isDark } = useTheme();
   const [activeTab, setActiveTab] = useState('Répertoire');
   const [loading, setLoading] = useState(true);
@@ -35,6 +35,8 @@ export default function SchoolScreen({ navigation }: any) {
         setSchools(res.data.worldSchools || []);
 
         if (res.data.mySchool) {
+          // Si membre, on va directement sur le dashboard sauf si un autre onglet est demandé
+          if (!route.params?.tab) setActiveTab('Mon Dashboard');
           await fetchDashboard(res.data.mySchool.id);
         }
       } else {
@@ -85,6 +87,17 @@ export default function SchoolScreen({ navigation }: any) {
       socketService.off('school:new_active', onNewSchoolActive);
     };
   }, []);
+
+  useEffect(() => {
+    if (route.params?.tab) {
+      setActiveTab(route.params.tab);
+    }
+    if (route.params?.refresh) {
+      loadData();
+      // On nettoie les paramètres pour éviter de rafraîchir en boucle
+      navigation.setParams({ refresh: undefined });
+    }
+  }, [route.params?.tab, route.params?.refresh]);
 
   const handleRoleSelection = (role: 'promoter' | 'parent' | 'student') => {
     if (role === 'promoter') {

@@ -18,19 +18,19 @@ export default function SchoolSideMenu({
   const { colors, normalize } = useTheme();
 
   const menuItems = [
-    { id: 'dashboard', icon: Home, label: 'Dashboard', screen: 'School' },
-    { id: 'directory', icon: Building2, label: 'Répertoire', screen: 'School', params: { tab: 'directory' } },
+    { id: 'dashboard', icon: Home, label: 'Dashboard', screen: 'School', params: { tab: 'Mon Dashboard' } },
+    { id: 'directory', icon: Building2, label: 'Répertoire', screen: 'School', params: { tab: 'Répertoire' } },
     { id: 'enrollment', icon: Users, label: 'Inscriptions', screen: 'SchoolEnrollmentRequests', roles: ['promoter', 'director'] },
     { id: 'classes', icon: BookOpen, label: 'Gestion Classes', roles: ['promoter', 'director', 'teacher'] },
     { id: 'fees', icon: CreditCard, label: 'Frais Scolaires', roles: ['promoter', 'director', 'parent'] },
     { id: 'assignments', icon: FileText, label: 'Devoirs', roles: ['teacher', 'student', 'parent'] },
-    { id: 'calendar', icon: Calendar, label: 'Calendrier', screen: 'SchoolCalendar' },
+    { id: 'calendar', icon: Calendar, label: 'Calendrier', roles: ['teacher', 'student', 'parent', 'promoter', 'director'] },
     { id: 'statistics', icon: BarChart3, label: 'Statistiques', roles: ['promoter', 'director'] },
   ];
 
   const bottomItems = [
-    { id: 'settings', icon: Settings, label: 'Paramètres' },
-    { id: 'help', icon: HelpCircle, label: 'Aide & Support' },
+    { id: 'settings', icon: Settings, label: 'Paramètres', screen: 'Settings' },
+    { id: 'help', icon: HelpCircle, label: 'Aide & Support', screen: 'Helpdesk' },
   ];
 
   const handleLogout = () => {
@@ -56,6 +56,11 @@ export default function SchoolSideMenu({
     onClose?.();
     if (item.screen) {
       navigation.navigate(item.screen, item.params);
+    } else {
+      Alert.alert(
+        'Module à venir',
+        `Le module "${item.label}" est en cours de développement et sera disponible prochainement.`
+      );
     }
   };
 
@@ -110,7 +115,11 @@ export default function SchoolSideMenu({
 
         <View style={styles.menuSection}>
           {bottomItems.map((item) => (
-            <TouchableOpacity key={item.id} style={styles.menuItem}>
+            <TouchableOpacity
+              key={item.id}
+              style={styles.menuItem}
+              onPress={() => handleItemPress(item)}
+            >
               <item.icon size={22} color={colors.text.secondary} />
               <Text style={[styles.menuLabel, { color: colors.text.primary }]}>{item.label}</Text>
               <ChevronRight size={18} color={colors.text.disabled} />
