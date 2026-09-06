@@ -75,7 +75,10 @@
     ],
     "extra": {
       "apiUrl": "https://meet-me-backend-sg5c.onrender.com/api",
-      "socketUrl": "https://meet-me-backend-sg5c.onrender.com"
+      "socketUrl": "https://meet-me-backend-sg5c.onrender.com",
+      "eas": {
+        "projectId": "756b143f-e1ce-4d7d-870c-1aa4ead509cb"
+      }
     },
     "owner": "imagess-team"
   }

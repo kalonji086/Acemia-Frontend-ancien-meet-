@@ -4,7 +4,7 @@ import {
   TouchableOpacity, ActivityIndicator, Alert, Modal, TextInput,
   FlatList
 } from 'react-native';
-import { ArrowLeft, Calendar, Plus, Clock, MapPin, X, User, Trash2 } from 'lucide-react-native';
+import { ArrowLeft, Calendar, Plus, Clock, MapPin, X, User, Trash2, ChevronRight } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
 import apiService from '../services/api.service';
 

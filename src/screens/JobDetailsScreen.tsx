@@ -184,19 +184,19 @@ export default function JobDetailsScreen({ navigation, route }: any) {
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={isTablet ? { paddingHorizontal: '15%' } : undefined}>
           <View style={[styles.mainInfo, { backgroundColor: colors.surface }]}>
             <View style={[styles.logoContainer, { backgroundColor: colors.background, width: normalize(80), height: normalize(80) }]}>
-              {job.company_logo ? <Image source={{ uri: getFullUrl(job.company_logo)! }} style={styles.logo} /> : <Building2 size={normalize(40)} color={colors.primary} />}
+              {job?.company_logo ? <Image source={{ uri: getFullUrl(job.company_logo)! }} style={styles.logo} /> : <Building2 size={normalize(40)} color={colors.primary} />}
             </View>
-            <Text style={[styles.title, { color: colors.text.primary, fontSize: normalize(22) }]}>{job.title}</Text>
-            <Text style={[styles.company, { color: colors.primary, fontSize: normalize(16) }]}>{job.company_name || job.company || 'Entreprise'}</Text>
+            <Text style={[styles.title, { color: colors.text.primary, fontSize: normalize(22) }]}>{job?.title || "Chargement..."}</Text>
+            <Text style={[styles.company, { color: colors.primary, fontSize: normalize(16) }]}>{job?.company_name || job?.company || 'Entreprise'}</Text>
 
             <View style={styles.badgeRow}>
               <View style={[styles.badge, { backgroundColor: colors.background }]}>
                 <MapPin size={14} color={colors.text.secondary} />
-                <Text style={[styles.badgeText, { color: colors.text.secondary, fontSize: normalize(12) }]}>{job.location}</Text>
+                <Text style={[styles.badgeText, { color: colors.text.secondary, fontSize: normalize(12) }]}>{job?.location || "N/C"}</Text>
               </View>
               <View style={[styles.badge, { backgroundColor: colors.background }]}>
                 <Clock size={14} color={colors.text.secondary} />
-                <Text style={[styles.badgeText, { color: colors.text.secondary, fontSize: normalize(12) }]}>{job.job_type || job.type || 'Type non spécifié'}</Text>
+                <Text style={[styles.badgeText, { color: colors.text.secondary, fontSize: normalize(12) }]}>{job?.job_type || job?.type || 'Type non spécifié'}</Text>
               </View>
             </View>
 
