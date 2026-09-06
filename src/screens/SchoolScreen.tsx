@@ -101,12 +101,19 @@ export default function SchoolScreen({ navigation, route }: any) {
   }, [route?.params?.tab, route?.params?.refresh]);
 
   const handleRoleSelection = (role: 'promoter' | 'parent' | 'student') => {
+    // Si l'utilisateur a déjà une école (en attente ou approuvée), on l'envoie vers son dashboard
     if (overview?.mySchool) {
       setActiveTab('Mon Dashboard');
       return;
     }
 
     if (role === 'promoter') {
+      // Vérification supplémentaire : si dans worldSchools il y a une école qu'il a créé
+      const createdByMe = schools.find(s => s.created_by === overview?.userId);
+      if (createdByMe) {
+        setActiveTab('Mon Dashboard');
+        return;
+      }
       navigation.navigate('SchoolRegistration');
     } else {
       setActiveTab('Mon Dashboard');
@@ -217,19 +224,21 @@ export default function SchoolScreen({ navigation, route }: any) {
           <View style={styles.roleGrid}>
             <RoleCard
               title={overview?.mySchool ? (overview.mySchool.status === 'approved' ? "Mon Dashboard" : "Demande en cours") : "Parent / Élève"}
-              desc={overview?.mySchool ? "Accéder à votre espace école" : "Suivi académique et paiements"}
+              desc={overview?.mySchool ? (overview.mySchool.status === 'approved' ? "Suivi académique" : "Attente de validation") : "Suivi académique et paiements"}
               icon={<Users size={24} color="#4CAF50" />}
               onPress={() => handleRoleSelection('parent')}
               colors={colors}
               normalize={normalize}
+              status={overview?.mySchool?.status}
             />
             <RoleCard
-              title={overview?.mySchool ? (overview.mySchool.status === 'approved' ? "Gestion École" : "Demande envoyée") : "Promoteur"}
-              desc={overview?.mySchool ? "Tableau de bord de gestion" : "Gérer votre établissement"}
+              title={overview?.mySchool ? (overview.mySchool.status === 'approved' ? "Gestion École" : "Établissement créé") : "Promoteur"}
+              desc={overview?.mySchool ? (overview.mySchool.status === 'approved' ? "Pilotage & Statistiques" : "Examen en cours...") : "Gérer votre établissement"}
               icon={<Building2 size={24} color={colors.primary} />}
               onPress={() => handleRoleSelection('promoter')}
               colors={colors}
               normalize={normalize}
+              status={overview?.mySchool?.status}
             />
           </View>
         </View>
@@ -572,14 +581,18 @@ export default function SchoolScreen({ navigation, route }: any) {
   );
 }
 
-const RoleCard = ({ title, desc, icon, onPress, colors, normalize }: any) => (
+const RoleCard = ({ title, desc, icon, onPress, colors, normalize, status }: any) => (
   <TouchableOpacity
-    style={[styles.roleCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+    style={[styles.roleCard, { backgroundColor: colors.surface, borderColor: status === 'approved' ? '#4CAF50' : (status === 'pending' ? '#FF9800' : colors.border) }]}
     onPress={onPress}
   >
     <View style={styles.roleIcon}>{icon}</View>
     <View style={{ flex: 1 }}>
-      <Text style={[styles.roleTitle, { color: colors.text.primary }]}>{title}</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <Text style={[styles.roleTitle, { color: colors.text.primary }]}>{title}</Text>
+        {status === 'approved' && <CheckCircle size={14} color="#4CAF50" style={{ marginLeft: 5 }} />}
+        {status === 'pending' && <Clock size={14} color="#FF9800" style={{ marginLeft: 5 }} />}
+      </View>
       <Text style={[styles.roleDesc, { color: colors.text.secondary }]}>{desc}</Text>
     </View>
     <ArrowRight size={18} color={colors.text.disabled} />
