@@ -82,8 +82,8 @@ export default function SchoolScreen({ navigation, route }: any) {
       loadData(true); // Silent refresh
       setActiveTab('Mon Dashboard');
     };
-Line 83:
-Line 84:     const onNewSchoolActive = (data: any) => {
+
+    const onNewSchoolActive = (data: any) => {
       setSchools(prev => {
         const index = prev.findIndex(s => s.id === data.id);
         if (index > -1) {
@@ -94,9 +94,10 @@ Line 84:     const onNewSchoolActive = (data: any) => {
         return [data, ...prev];
       });
     };
-Line 75:     socketService.on('school:new_grade', onNewGrade);
-Line 76:     socketService.on('school:approved', onSchoolApproved);
-Line 77:     socketService.on('school:new_active', onNewSchoolActive);
+
+    socketService.on('school:new_grade', onNewGrade);
+    socketService.on('school:approved', onSchoolApproved);
+    socketService.on('school:new_active', onNewSchoolActive);
 
     return () => {
       socketService.off('school:new_grade', onNewGrade);

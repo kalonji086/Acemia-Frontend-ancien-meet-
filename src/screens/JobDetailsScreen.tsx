@@ -78,10 +78,6 @@ export default function JobDetailsScreen({ navigation, route }: any) {
     if (!coverLetter.trim()) return Alert.alert('Attention', 'Veuillez écrire un petit message de motivation.');
     setApplying(true);
     try {
-      const res = await apiService.enrollInSchool({ // REUSE enroll logic if generic, but better use a dedicated one
-         jobId, coverLetter
-      });
-      // Actually we implemented applyForJob in backend
       const response = await apiService.applyForJob(jobId, coverLetter);
       if (response.success) {
         Alert.alert('Succès', 'Votre candidature a été envoyée !');
