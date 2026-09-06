@@ -95,14 +95,23 @@ export default function SchoolScreen({ navigation, route }: any) {
       });
     };
 
+    const onNewSchoolCreated = (data: any) => {
+      setSchools(prev => {
+        if (prev.some(s => s.id === data.id)) return prev;
+        return [data, ...prev];
+      });
+    };
+
     socketService.on('school:new_grade', onNewGrade);
     socketService.on('school:approved', onSchoolApproved);
     socketService.on('school:new_active', onNewSchoolActive);
+    socketService.on('school:new_created', onNewSchoolCreated);
 
     return () => {
       socketService.off('school:new_grade', onNewGrade);
       socketService.off('school:approved', onSchoolApproved);
       socketService.off('school:new_active', onNewSchoolActive);
+      socketService.off('school:new_created', onNewSchoolCreated);
     };
   }, []);
 
