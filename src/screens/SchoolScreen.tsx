@@ -67,20 +67,36 @@ export default function SchoolScreen({ navigation, route }: any) {
 
     const onSchoolApproved = (data: any) => {
       Alert.alert('Félicitations !', `Votre établissement "${data.schoolName}" a été approuvé par l'administration.`);
-      loadData(false);
+
+      // Update local state immediately for real-time activation
+      setOverview((prev: any) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          role: data.role || 'promoter',
+          mySchool: prev.mySchool ? { ...prev.mySchool, status: 'approved' } : null
+        };
+      });
+
+      if (data.schoolId) fetchDashboard(data.schoolId);
+      loadData(true); // Silent refresh
       setActiveTab('Mon Dashboard');
     };
-
-    const onNewSchoolActive = (data: any) => {
+Line 83:
+Line 84:     const onNewSchoolActive = (data: any) => {
       setSchools(prev => {
-        if (prev.some(s => s.id === data.id)) return prev;
+        const index = prev.findIndex(s => s.id === data.id);
+        if (index > -1) {
+          const newSchools = [...prev];
+          newSchools[index] = { ...newSchools[index], ...data };
+          return newSchools;
+        }
         return [data, ...prev];
       });
     };
-
-    socketService.on('school:new_grade', onNewGrade);
-    socketService.on('school:approved', onSchoolApproved);
-    socketService.on('school:new_active', onNewSchoolActive);
+Line 75:     socketService.on('school:new_grade', onNewGrade);
+Line 76:     socketService.on('school:approved', onSchoolApproved);
+Line 77:     socketService.on('school:new_active', onNewSchoolActive);
 
     return () => {
       socketService.off('school:new_grade', onNewGrade);
@@ -102,18 +118,12 @@ export default function SchoolScreen({ navigation, route }: any) {
 
   const handleRoleSelection = (role: 'promoter' | 'parent' | 'student') => {
     // Si l'utilisateur a déjà une école (en attente ou approuvée), on l'envoie vers son dashboard
-    if (overview?.mySchool) {
+    if (overview?.mySchool || (role === 'promoter' && schools.find(s => s.created_by === overview?.userId))) {
       setActiveTab('Mon Dashboard');
       return;
     }
 
     if (role === 'promoter') {
-      // Vérification supplémentaire : si dans worldSchools il y a une école qu'il a créé
-      const createdByMe = schools.find(s => s.created_by === overview?.userId);
-      if (createdByMe) {
-        setActiveTab('Mon Dashboard');
-        return;
-      }
       navigation.navigate('SchoolRegistration');
     } else {
       setActiveTab('Mon Dashboard');
