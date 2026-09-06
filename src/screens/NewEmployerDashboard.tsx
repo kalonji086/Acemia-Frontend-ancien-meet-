@@ -31,8 +31,11 @@ import {
 } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
 import apiService from '../services/api.service';
+import socketService from '../services/socket.service';
 import SimpleChart from '../components/SimpleChart';
 import PieChart from '../components/PieChart';
+import { SOCKET_URL } from '../utils/constants';
+import { Image } from 'react-native';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -52,6 +55,8 @@ export default function NewEmployerDashboard({ navigation }: any) {
     conversionRate: 0
   });
   const [recentJobs, setRecentJobs] = useState<any[]>([]);
+  const [applications, setApplications] = useState<any[]>([]);
+  const [recentChats, setRecentChats] = useState<any[]>([]);
   const [chartData, setChartData] = useState({
     views: [0, 0, 0, 0, 0, 0, 0],
     applications: [0, 0, 0, 0, 0, 0, 0],
@@ -64,15 +69,23 @@ export default function NewEmployerDashboard({ navigation }: any) {
 
   useEffect(() => {
     fetchDashboardData();
-  }, []);
 
-  useEffect(() => {
-    Animated.timing(menuAnimation, {
-      toValue: showMenu ? 0 : -280,
-      duration: 300,
-      useNativeDriver: true
-    }).start();
-  }, [showMenu]);
+    // Sockets pour temps réel
+    socketService.on('employer:new_application', (data: any) => {
+      fetchDashboardData(); // Recharger stats et listes
+      Alert.alert('Nouveauté !', `Nouvelle candidature pour: ${data.jobTitle}`);
+    });
+
+    socketService.on('new_message', (data: any) => {
+       // Si le message vient d'une conversation avec un candidat, rafraîchir la liste des chats
+       fetchRecentChats();
+    });
+
+    return () => {
+      socketService.off('employer:new_application');
+      socketService.off('new_message');
+    };
+  }, []);
 
   const fetchDashboardData = async () => {
     try {
@@ -96,7 +109,16 @@ export default function NewEmployerDashboard({ navigation }: any) {
         }));
       }
 
-      // 4. Récupérer les analytiques réelles
+      // 4. Récupérer les candidatures
+      const appRes = await apiService.getApplications();
+      if (appRes.success) {
+        setApplications(appRes.data.slice(0, 5));
+      }
+
+      // 5. Récupérer les discussions récentes
+      fetchRecentChats();
+
+      // 6. Récupérer les analytiques réelles
       const analyticsRes = await apiService.getEmployerAnalytics();
       if (analyticsRes.success) {
         const d = analyticsRes.data;
@@ -120,6 +142,13 @@ export default function NewEmployerDashboard({ navigation }: any) {
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchRecentChats = async () => {
+    try {
+      const res = await apiService.getEmployerRecentChats();
+      if (res.success) setRecentChats(res.data);
+    } catch (e) { console.error("Error fetching chats", e); }
   };
 
   const handleExportData = async () => {
@@ -185,6 +214,12 @@ export default function NewEmployerDashboard({ navigation }: any) {
       <Text style={[styles.statTitle, { color: colors.text.secondary }]}>{title}</Text>
     </View>
   );
+
+  const getFullUrl = (url: string) => {
+    if (!url || url === 'null') return null;
+    if (url.startsWith('http')) return url;
+    return `${SOCKET_URL}${url.startsWith('/') ? '' : '/'}${url}`;
+  };
 
   if (loading) {
     return (
@@ -378,6 +413,69 @@ export default function NewEmployerDashboard({ navigation }: any) {
               data={chartData.categories}
               size={140}
             />
+          </View>
+
+          {/* Candidatures Récentes */}
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>
+                Candidatures Récentes
+              </Text>
+            </View>
+
+            {applications.length === 0 ? (
+              <Text style={{ color: colors.text.disabled, fontStyle: 'italic' }}>Aucune candidature pour le moment.</Text>
+            ) : (
+              <View style={styles.jobsList}>
+                {applications.map((app) => (
+                  <View key={app.id} style={[styles.jobCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                    <View style={styles.jobInfo}>
+                      <Text style={[styles.jobTitle, { color: colors.text.primary }]}>{app.applicant_name}</Text>
+                      <Text style={[styles.jobMeta, { color: colors.text.secondary }]}>Postulant pour: {app.job_title}</Text>
+                    </View>
+                    <View style={[styles.changeBadge, { backgroundColor: colors.primary + '20' }]}>
+                       <Text style={{ color: colors.primary, fontSize: 10, fontWeight: 'bold' }}>{app.status.toUpperCase()}</Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+
+          {/* Messages des Candidats */}
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>
+                Messages des Candidats
+              </Text>
+            </View>
+
+            {recentChats.length === 0 ? (
+              <Text style={{ color: colors.text.disabled, fontStyle: 'italic' }}>Aucune discussion active.</Text>
+            ) : (
+              <View style={styles.jobsList}>
+                {recentChats.map((chat) => (
+                  <TouchableOpacity
+                    key={chat.id}
+                    style={[styles.jobCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                    onPress={() => navigation.navigate('Chat', {
+                      chatId: chat.id,
+                      name: chat.peer_name,
+                      peerUserId: chat.peer_id
+                    })}
+                  >
+                    <View style={[styles.menuAvatar, { backgroundColor: colors.primary, width: 36, height: 36, borderRadius: 18, marginRight: 12 }]}>
+                       {chat.peer_avatar ? <Image source={{ uri: getFullUrl(chat.peer_avatar)! }} style={{ width: '100%', height: '100%', borderRadius: 18 }} /> : <Text style={{ color: '#fff', fontSize: 14 }}>{chat.peer_name[0]}</Text>}
+                    </View>
+                    <View style={styles.jobInfo}>
+                      <Text style={[styles.jobTitle, { color: colors.text.primary }]}>{chat.peer_name}</Text>
+                      <Text style={[styles.jobMeta, { color: colors.text.secondary }]} numberOfLines={1}>{chat.last_message || "Démarrer la discussion"}</Text>
+                    </View>
+                    <Text style={{ color: colors.text.disabled, fontSize: 10 }}>{chat.last_message_at ? new Date(chat.last_message_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
           </View>
 
           {/* Actions rapides */}

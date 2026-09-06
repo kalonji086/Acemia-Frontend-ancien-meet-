@@ -19,7 +19,9 @@ export default function EmployerPlanningScreen({ navigation }: any) {
   const { colors, normalize } = useTheme();
   const [loading, setLoading] = useState(true);
   const [schedules, setSchedules] = useState<any[]>([]);
+  const [applications, setApplications] = useState<any[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showCandidatePicker, setShowCandidatePicker] = useState(false);
   const [form, setForm] = useState({
     title: '',
     description: '',
@@ -27,11 +29,13 @@ export default function EmployerPlanningScreen({ navigation }: any) {
     endAt: '',
     type: 'interview',
     candidateName: '',
+    candidateId: '',
     location: ''
   });
 
   useEffect(() => {
     fetchSchedules();
+    fetchApplications();
   }, []);
 
   const fetchSchedules = async () => {
@@ -47,6 +51,15 @@ export default function EmployerPlanningScreen({ navigation }: any) {
     }
   };
 
+  const fetchApplications = async () => {
+    try {
+      const res = await apiService.getApplications(undefined); // Fetch all apps for the employer
+      if (res.success) {
+        setApplications(res.data);
+      }
+    } catch (e) { console.error("Error fetching apps", e); }
+  };
+
   const handleAddSchedule = async () => {
     if (!form.title || !form.startAt || !form.endAt) {
       return Alert.alert('Attention', 'Veuillez remplir le titre et les horaires.');
@@ -57,14 +70,19 @@ export default function EmployerPlanningScreen({ navigation }: any) {
       if (res.success) {
         Alert.alert('Succès', 'Événement planifié.');
         setShowAddModal(false);
-        setForm({ title: '', description: '', startAt: '', endAt: '', type: 'interview', candidateName: '', location: '' });
+        setForm({ title: '', description: '', startAt: '', endAt: '', type: 'interview', candidateName: '', candidateId: '', location: '' });
         fetchSchedules();
       }
-    } catch (e) {
-      Alert.alert('Erreur', 'Échec de la création.');
+    } catch (e: any) {
+      Alert.alert('Erreur', e.error || 'Échec de la création.');
     } finally {
       setLoading(false);
     }
+  };
+
+  const selectCandidate = (app: any) => {
+    setForm({ ...form, candidateName: app.applicant_name, candidateId: app.applicant_id });
+    setShowCandidatePicker(false);
   };
 
   const handleDeleteSchedule = (id: string) => {
@@ -182,8 +200,16 @@ export default function EmployerPlanningScreen({ navigation }: any) {
               <Text style={styles.label}>Titre / Objet</Text>
               <TextInput placeholder="Ex: Entretien Développeur Junior" style={[styles.input, { borderColor: colors.border, color: colors.text.primary }]} value={form.title} onChangeText={v => setForm({...form, title: v})} />
 
-              <Text style={styles.label}>Candidat (Nom)</Text>
-              <TextInput placeholder="Ex: Jean Mukendi" style={[styles.input, { borderColor: colors.border, color: colors.text.primary }]} value={form.candidateName} onChangeText={v => setForm({...form, candidateName: v})} />
+              <Text style={styles.label}>Candidat (Sélectionner)</Text>
+              <TouchableOpacity
+                onPress={() => setShowCandidatePicker(true)}
+                style={[styles.input, { borderColor: colors.border, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}
+              >
+                <Text style={{ color: form.candidateName ? colors.text.primary : colors.text.disabled }}>
+                  {form.candidateName || "Choisir parmi les postulants..."}
+                </Text>
+                <ChevronRight size={18} color={colors.text.disabled} />
+              </TouchableOpacity>
 
               <Text style={styles.label}>Localisation / Lien</Text>
               <TextInput placeholder="Ex: Bureau Gombe ou Google Meet" style={[styles.input, { borderColor: colors.border, color: colors.text.primary }]} value={form.location} onChangeText={v => setForm({...form, location: v})} />
@@ -207,6 +233,37 @@ export default function EmployerPlanningScreen({ navigation }: any) {
               </TouchableOpacity>
               <View style={{ height: 30 }} />
             </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal Sélection Candidat */}
+      <Modal visible={showCandidatePicker} transparent animationType="fade">
+        <View style={[styles.modalOverlay, { justifyContent: 'center', padding: 20 }]}>
+          <View style={[styles.modalContent, { backgroundColor: colors.background, borderRadius: 30, maxHeight: '70%' }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.text.primary }]}>Postulants</Text>
+              <TouchableOpacity onPress={() => setShowCandidatePicker(false)}><X size={24} color={colors.text.secondary} /></TouchableOpacity>
+            </View>
+            <FlatList
+              data={applications}
+              keyExtractor={item => item.id}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  onPress={() => selectCandidate(item)}
+                  style={{ padding: 15, borderBottomWidth: 0.5, borderBottomColor: colors.border, flexDirection: 'row', alignItems: 'center' }}
+                >
+                  <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: colors.primary + '20', justifyContent: 'center', alignItems: 'center', marginRight: 12 }}>
+                    <User size={20} color={colors.primary} />
+                  </View>
+                  <View>
+                    <Text style={{ fontWeight: 'bold', color: colors.text.primary }}>{item.applicant_name}</Text>
+                    <Text style={{ fontSize: 12, color: colors.text.secondary }}>{item.job_title}</Text>
+                  </View>
+                </TouchableOpacity>
+              )}
+              ListEmptyComponent={<Text style={{ textAlign: 'center', padding: 30, color: colors.text.disabled }}>Aucune candidature reçue.</Text>}
+            />
           </View>
         </View>
       </Modal>

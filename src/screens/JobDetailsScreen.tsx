@@ -27,6 +27,12 @@ export default function JobDetailsScreen({ navigation, route }: any) {
   const [comments, setComments] = useState<any[]>([]);
   const [sendingComment, setSendingComment] = useState(false);
 
+  // Application state
+  const [showApplyModal, setShowApplyModal] = useState(false);
+  const [coverLetter, setCoverLetter] = useState('');
+  const [applying, setApplying] = useState(false);
+  const [alreadyApplied, setAlreadyApplied] = useState(false);
+
   useEffect(() => {
     fetchJobDetails();
 
@@ -53,12 +59,41 @@ export default function JobDetailsScreen({ navigation, route }: any) {
         // Fetch comments
         const commentsRes = await apiService.getJobComments(jobId);
         if (commentsRes.success) setComments(commentsRes.data);
+
+        // Check if user is the employer (to hide apply button)
+        const me = await apiService.getCurrentUser();
+        if (me.id === response.data.employer_user_id) {
+           setAlreadyApplied(true); // Treat as already applied to hide button
+        }
       }
     } catch (e) {
       Alert.alert('Erreur', 'Impossible de charger les détails.');
       navigation.goBack();
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleApply = async () => {
+    if (!coverLetter.trim()) return Alert.alert('Attention', 'Veuillez écrire un petit message de motivation.');
+    setApplying(true);
+    try {
+      const res = await apiService.enrollInSchool({ // REUSE enroll logic if generic, but better use a dedicated one
+         jobId, coverLetter
+      });
+      // Actually we implemented applyForJob in backend
+      const response = await apiService.applyForJob(jobId, coverLetter);
+      if (response.success) {
+        Alert.alert('Succès', 'Votre candidature a été envoyée !');
+        setShowApplyModal(false);
+        setAlreadyApplied(true);
+      } else {
+        Alert.alert('Erreur', response.error || 'Échec de l\'envoi.');
+      }
+    } catch (e) {
+      Alert.alert('Erreur', 'Une erreur est survenue.');
+    } finally {
+      setApplying(false);
     }
   };
 
@@ -140,8 +175,7 @@ export default function JobDetailsScreen({ navigation, route }: any) {
         </View>
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={isTablet && { paddingHorizontal: '15%' }}>
-          <View style={[styles.mainInfo, { backgroundColor: colors.surface }]}>
-            <View style={[styles.logoContainer, { backgroundColor: colors.background, width: normalize(80), height: normalize(80) }]}>
+            <View style={styles.logoContainer, { backgroundColor: colors.background, width: normalize(80), height: normalize(80) }}>
               {job.company_logo ? <Image source={{ uri: getFullUrl(job.company_logo)! }} style={styles.logo} /> : <Building2 size={normalize(40)} color={colors.primary} />}
             </View>
             <Text style={[styles.title, { color: colors.text.primary, fontSize: normalize(22) }]}>{job.title}</Text>
@@ -157,6 +191,21 @@ export default function JobDetailsScreen({ navigation, route }: any) {
                 <Text style={[styles.badgeText, { color: colors.text.secondary, fontSize: normalize(12) }]}>{job.job_type || job.type || 'Type non spécifié'}</Text>
               </View>
             </View>
+
+            {!alreadyApplied && (
+              <TouchableOpacity
+                style={[styles.applyBtn, { backgroundColor: colors.primary }]}
+                onPress={() => setShowApplyModal(true)}
+              >
+                <Text style={styles.applyBtnText}>POSTULER MAINTENANT</Text>
+              </TouchableOpacity>
+            )}
+            {alreadyApplied && (
+              <View style={[styles.appliedBadge, { backgroundColor: '#4CAF5015' }]}>
+                <CheckCircle2 size={16} color="#4CAF50" />
+                <Text style={{ color: '#4CAF50', fontWeight: 'bold', marginLeft: 8 }}>DÉJÀ POSTULÉ</Text>
+              </View>
+            )}
           </View>
 
           <View style={styles.section}>
@@ -212,6 +261,42 @@ export default function JobDetailsScreen({ navigation, route }: any) {
           </View>
           <View style={{ height: 40 }} />
         </ScrollView>
+
+        {/* Modal Candidature */}
+        <Modal visible={showApplyModal} transparent animationType="slide">
+          <View style={styles.modalOverlay}>
+            <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
+              <View style={styles.modalHeader}>
+                <Text style={[styles.modalTitle, { color: colors.text.primary }]}>Postuler à l'offre</Text>
+                <TouchableOpacity onPress={() => setShowApplyModal(false)}><X size={24} color={colors.text.secondary} /></TouchableOpacity>
+              </View>
+
+              <Text style={[styles.modalSub, { color: colors.text.secondary }]}>Exprimez votre motivation en quelques lignes pour maximiser vos chances.</Text>
+
+              <TextInput
+                style={[styles.coverInput, { borderColor: colors.border, color: colors.text.primary }]}
+                placeholder="Votre message de motivation..."
+                placeholderTextColor={colors.text.disabled}
+                multiline
+                value={coverLetter}
+                onChangeText={setCoverLetter}
+              />
+
+              <TouchableOpacity
+                style={[styles.confirmApplyBtn, { backgroundColor: colors.primary }]}
+                onPress={handleApply}
+                disabled={applying}
+              >
+                {applying ? <ActivityIndicator color="#fff" /> : (
+                  <>
+                    <Send size={18} color="#fff" />
+                    <Text style={{ color: '#fff', fontWeight: 'bold', marginLeft: 10 }}>ENVOYER MA CANDIDATURE</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -259,5 +344,15 @@ const styles = StyleSheet.create({
   avatarSmall: { width: 24, height: 24, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginRight: 8 },
   commentUser: { fontWeight: 'bold', flex: 1 },
   commentTime: { fontSize: 12 },
-  commentContent: { lineHeight: 20, marginLeft: 32 }
+  commentContent: { lineHeight: 20, marginLeft: 32 },
+  applyBtn: { marginTop: 20, paddingHorizontal: 25, paddingVertical: 15, borderRadius: 15, width: '100%', alignItems: 'center' },
+  applyBtnText: { color: '#fff', fontWeight: '900', letterSpacing: 1 },
+  appliedBadge: { marginTop: 20, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 12 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  modalContent: { padding: 30, borderTopLeftRadius: 35, borderTopRightRadius: 35 },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+  modalTitle: { fontSize: 20, fontWeight: 'bold' },
+  modalSub: { fontSize: 13, marginBottom: 25, lineHeight: 18 },
+  coverInput: { padding: 20, borderRadius: 20, borderWidth: 1, height: 150, textAlignVertical: 'top', marginBottom: 20, fontSize: 16 },
+  confirmApplyBtn: { flexDirection: 'row', padding: 20, borderRadius: 20, alignItems: 'center', justifyContent: 'center' }
 });

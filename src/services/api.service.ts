@@ -868,6 +868,34 @@ class ApiService {
     } catch (e: any) { return this.handleError(e); }
   }
 
+  async applyForJob(jobId: string, coverLetter: string, resumeUrl?: string): Promise<ApiResponse> {
+    try {
+      const res = await this.api.post(`/employer/jobs/${jobId}/apply`, { coverLetter, resumeUrl });
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async getApplications(jobId?: string): Promise<ApiResponse> {
+    try {
+      const res = await this.api.get('/employer/applications', { params: { jobId } });
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async updateApplicationStatus(id: string, status: string): Promise<ApiResponse> {
+    try {
+      const res = await this.api.put(`/employer/applications/${id}/status`, { status });
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async getEmployerRecentChats(): Promise<ApiResponse> {
+    try {
+      const res = await this.api.get('/employer/recent-chats');
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
   // Admin
   async getPendingSchools(): Promise<ApiResponse> {
     try {
