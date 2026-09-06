@@ -16,7 +16,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { SOCKET_URL } from '../utils/constants';
 
 export default function JobDetailsScreen({ navigation, route }: any) {
-  const { jobId } = route.params;
+  const { jobId } = route.params || {};
   const { colors, normalize, isDark } = useTheme();
   const { width: windowWidth } = useWindowDimensions();
   const isTablet = windowWidth > 768;
@@ -62,7 +62,7 @@ export default function JobDetailsScreen({ navigation, route }: any) {
 
         // Check if user is the employer (to hide apply button)
         const me = await apiService.getCurrentUser();
-        if (me.id === response.data.employer_user_id) {
+        if (me && me.id === response.data.employer_user_id) {
            setAlreadyApplied(true); // Treat as already applied to hide button
         }
       }
@@ -150,6 +150,17 @@ export default function JobDetailsScreen({ navigation, route }: any) {
     return (
       <View style={[styles.centered, { backgroundColor: colors.background }]}>
         <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
+
+  if (!job) {
+    return (
+      <View style={[styles.centered, { backgroundColor: colors.background }]}>
+        <Text style={{ color: colors.text.secondary }}>Offre non trouvée.</Text>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginTop: 20 }}>
+          <Text style={{ color: colors.primary, fontWeight: 'bold' }}>RETOUR</Text>
+        </TouchableOpacity>
       </View>
     );
   }

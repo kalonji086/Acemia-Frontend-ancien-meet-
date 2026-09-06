@@ -53,17 +53,27 @@ export default function EmployerPlanningScreen({ navigation }: any) {
 
   const fetchApplications = async () => {
     try {
-      const res = await apiService.getApplications(undefined); // Fetch all apps for the employer
-      if (res.success) {
+      const res = await apiService.getApplications(undefined);
+      if (res.success && Array.isArray(res.data)) {
         setApplications(res.data);
+      } else {
+        setApplications([]);
       }
-    } catch (e) { console.error("Error fetching apps", e); }
+    } catch (e) {
+      console.error("Error fetching apps", e);
+      setApplications([]);
+    }
   };
 
   const handleAddSchedule = async () => {
     if (!form.title || !form.startAt || !form.endAt) {
       return Alert.alert('Attention', 'Veuillez remplir le titre et les horaires.');
     }
+    // Simple validation for date format
+    if (isNaN(Date.parse(form.startAt)) || isNaN(Date.parse(form.endAt))) {
+      return Alert.alert('Format invalide', 'Utilisez le format AAAA-MM-JJ HH:MM');
+    }
+
     try {
       setLoading(true);
       const res = await apiService.createEmployerSchedule(form);
@@ -81,6 +91,7 @@ export default function EmployerPlanningScreen({ navigation }: any) {
   };
 
   const selectCandidate = (app: any) => {
+    if (!app) return;
     setForm({ ...form, candidateName: app.applicant_name, candidateId: app.applicant_id });
     setShowCandidatePicker(false);
   };
@@ -98,7 +109,15 @@ export default function EmployerPlanningScreen({ navigation }: any) {
   };
 
   const renderScheduleItem = ({ item }: any) => {
+    if (!item) return null;
     const typeInfo = EVENT_TYPES.find(t => t.id === item.type) || EVENT_TYPES[0];
+
+    // Safely format dates
+    const startDate = item.start_at ? new Date(item.start_at) : null;
+    const endDate = item.end_at ? new Date(item.end_at) : null;
+    const dateStr = startDate && !isNaN(startDate.getTime()) ? startDate.toLocaleString() : "Date inconnue";
+    const timeStr = endDate && !isNaN(endDate.getTime()) ? endDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "";
+
     return (
       <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         <View style={[styles.typeBadge, { backgroundColor: typeInfo.color + '20' }]}>
@@ -106,7 +125,7 @@ export default function EmployerPlanningScreen({ navigation }: any) {
         </View>
 
         <View style={styles.cardHeader}>
-          <Text style={[styles.cardTitle, { color: colors.text.primary }]}>{item.title}</Text>
+          <Text style={[styles.cardTitle, { color: colors.text.primary }]}>{item.title || "Sans titre"}</Text>
           <TouchableOpacity onPress={() => handleDeleteSchedule(item.id)}>
             <Trash2 size={18} color={colors.danger} />
           </TouchableOpacity>
@@ -115,7 +134,7 @@ export default function EmployerPlanningScreen({ navigation }: any) {
         <View style={styles.infoRow}>
           <Clock size={14} color={colors.text.secondary} />
           <Text style={[styles.infoText, { color: colors.text.secondary }]}>
-            {new Date(item.start_at).toLocaleString()} - {new Date(item.end_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            {dateStr} {timeStr ? `- ${timeStr}` : ""}
           </Text>
         </View>
 

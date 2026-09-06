@@ -58,50 +58,53 @@ export default function JobDiscoveryScreen({ navigation }: any) {
   const filteredJobs = jobs; // Filter is now handled by API
 
 
-  const renderJobItem = ({ item }: { item: any }) => (
-    <TouchableOpacity
-      style={[
-        styles.jobCard,
-        { backgroundColor: colors.surface, borderColor: colors.border },
-        isTablet && { width: (windowWidth - normalize(60)) / 2, marginHorizontal: 5 }
-      ]}
-      onPress={() => navigation.navigate('JobDetails', { jobId: item.id })}
-    >
-      <View style={styles.cardHeader}>
-        <View style={[styles.companyLogo, { backgroundColor: colors.background }]}>
-          {item.company_logo ? (
-            <Image source={{ uri: getFullUrl(item.company_logo)! }} style={styles.logoImage} />
-          ) : (
-            <Briefcase size={normalize(24)} color={colors.primary} />
-          )}
+  const renderJobItem = ({ item }: { item: any }) => {
+    if (!item) return null;
+    return (
+      <TouchableOpacity
+        style={[
+          styles.jobCard,
+          { backgroundColor: colors.surface, borderColor: colors.border },
+          isTablet && { width: (windowWidth - normalize(60)) / 2, marginHorizontal: 5 }
+        ]}
+        onPress={() => navigation.navigate('JobDetails', { jobId: item.id })}
+      >
+        <View style={styles.cardHeader}>
+          <View style={[styles.companyLogo, { backgroundColor: colors.background }]}>
+            {item.company_logo ? (
+              <Image source={{ uri: getFullUrl(item.company_logo)! }} style={styles.logoImage} />
+            ) : (
+              <Briefcase size={normalize(24)} color={colors.primary} />
+            )}
+          </View>
+          <View style={styles.jobMainInfo}>
+            <Text style={[styles.jobTitle, { color: colors.text.primary, fontSize: normalize(17) }]} numberOfLines={1}>{item.title || "Offre sans titre"}</Text>
+            <Text style={[styles.companyName, { color: colors.primary, fontSize: normalize(14) }]} numberOfLines={1}>{item.company_name || item.company || 'Entreprise'}</Text>
+          </View>
         </View>
-        <View style={styles.jobMainInfo}>
-          <Text style={[styles.jobTitle, { color: colors.text.primary, fontSize: normalize(17) }]} numberOfLines={1}>{item.title}</Text>
-          <Text style={[styles.companyName, { color: colors.primary, fontSize: normalize(14) }]} numberOfLines={1}>{item.company_name || item.company || 'Entreprise'}</Text>
-        </View>
-      </View>
 
-      <View style={styles.tagsRow}>
-        <View style={[styles.tag, { backgroundColor: colors.background }]}>
-          <MapPin size={12} color={colors.text.secondary} />
-          <Text style={[styles.tagText, { color: colors.text.secondary, fontSize: normalize(11) }]}>{item.location}</Text>
+        <View style={styles.tagsRow}>
+          <View style={[styles.tag, { backgroundColor: colors.background }]}>
+            <MapPin size={12} color={colors.text.secondary} />
+            <Text style={[styles.tagText, { color: colors.text.secondary, fontSize: normalize(11) }]}>{item.location || "N/C"}</Text>
+          </View>
+          <View style={[styles.tag, { backgroundColor: colors.background }]}>
+            <Clock size={12} color={colors.text.secondary} />
+            <Text style={[styles.tagText, { color: colors.text.secondary, fontSize: normalize(11) }]}>{item.job_type || item.type || 'N/C'}</Text>
+          </View>
         </View>
-        <View style={[styles.tag, { backgroundColor: colors.background }]}>
-          <Clock size={12} color={colors.text.secondary} />
-          <Text style={[styles.tagText, { color: colors.text.secondary, fontSize: normalize(11) }]}>{item.job_type || item.type || 'Type non spécifié'}</Text>
+
+        <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+        <View style={styles.cardFooter}>
+          <Text style={[styles.timePosted, { color: colors.text.disabled, fontSize: normalize(12) }]}>
+            {item.salary_range || 'Salaire non spécifié'}
+          </Text>
+          <ChevronRight size={20} color={colors.primary} />
         </View>
-      </View>
-
-      <View style={[styles.divider, { backgroundColor: colors.border }]} />
-
-      <View style={styles.cardFooter}>
-        <Text style={[styles.timePosted, { color: colors.text.disabled, fontSize: normalize(12) }]}>
-          {item.salary_range || 'Salaire non spécifié'}
-        </Text>
-        <ChevronRight size={20} color={colors.primary} />
-      </View>
-    </TouchableOpacity>
-  );
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>

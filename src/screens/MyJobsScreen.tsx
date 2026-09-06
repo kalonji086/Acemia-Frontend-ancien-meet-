@@ -42,52 +42,55 @@ export default function MyJobsScreen({ navigation }: any) {
     return `${SOCKET_URL}${url.startsWith('/') ? '' : '/'}${url}`;
   };
 
-  const renderJobItem = ({ item }: { item: any }) => (
-    <TouchableOpacity
-      style={[
-        styles.jobCard,
-        { backgroundColor: colors.surface, borderColor: colors.border },
-        isTablet && { width: (windowWidth - normalize(60)) / 2, marginHorizontal: 5 }
-      ]}
-      onPress={() => navigation.navigate('JobDetails', { jobId: item.id })}
-    >
-      <View style={styles.cardHeader}>
-        <View style={[styles.companyLogo, { backgroundColor: colors.background }]}>
-          {item.company_logo ? (
-            <Image source={{ uri: getFullUrl(item.company_logo)! }} style={styles.logoImage} />
-          ) : (
-            <Briefcase size={normalize(24)} color={colors.primary} />
-          )}
+  const renderJobItem = ({ item }: { item: any }) => {
+    if (!item) return null;
+    return (
+      <TouchableOpacity
+        style={[
+          styles.jobCard,
+          { backgroundColor: colors.surface, borderColor: colors.border },
+          isTablet && { width: (windowWidth - normalize(60)) / 2, marginHorizontal: 5 }
+        ]}
+        onPress={() => navigation.navigate('JobDetails', { jobId: item.id })}
+      >
+        <View style={styles.cardHeader}>
+          <View style={[styles.companyLogo, { backgroundColor: colors.background }]}>
+            {item.company_logo ? (
+              <Image source={{ uri: getFullUrl(item.company_logo)! }} style={styles.logoImage} />
+            ) : (
+              <Briefcase size={normalize(24)} color={colors.primary} />
+            )}
+          </View>
+          <View style={styles.jobMainInfo}>
+            <Text style={[styles.jobTitle, { color: colors.text.primary, fontSize: normalize(17) }]} numberOfLines={1}>{item.title || "Offre sans titre"}</Text>
+            <Text style={[styles.jobStatus, { color: (item.status === 'active' || !item.status) ? '#4CAF50' : '#FF9800', fontSize: normalize(12) }]}>
+              ● {(item.status === 'active' || !item.status) ? 'En ligne' : item.status.toUpperCase()}
+            </Text>
+          </View>
         </View>
-        <View style={styles.jobMainInfo}>
-          <Text style={[styles.jobTitle, { color: colors.text.primary, fontSize: normalize(17) }]} numberOfLines={1}>{item.title}</Text>
-          <Text style={[styles.jobStatus, { color: item.status === 'active' ? '#4CAF50' : '#FF9800', fontSize: normalize(12) }]}>
-            ● {item.status === 'active' ? 'En ligne' : item.status.toUpperCase()}
+
+        <View style={styles.tagsRow}>
+          <View style={[styles.tag, { backgroundColor: colors.background }]}>
+            <MapPin size={12} color={colors.text.secondary} />
+            <Text style={[styles.tagText, { color: colors.text.secondary, fontSize: normalize(11) }]}>{item.location || "N/C"}</Text>
+          </View>
+          <View style={[styles.tag, { backgroundColor: colors.background }]}>
+            <Clock size={12} color={colors.text.secondary} />
+            <Text style={[styles.tagText, { color: colors.text.secondary, fontSize: normalize(11) }]}>{item.job_type || "N/C"}</Text>
+          </View>
+        </View>
+
+        <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+        <View style={styles.cardFooter}>
+          <Text style={[styles.timePosted, { color: colors.text.disabled, fontSize: normalize(12) }]}>
+             Publié le {item.created_at ? new Date(item.created_at).toLocaleDateString() : "--/--/----"}
           </Text>
+          <ChevronRight size={20} color={colors.primary} />
         </View>
-      </View>
-
-      <View style={styles.tagsRow}>
-        <View style={[styles.tag, { backgroundColor: colors.background }]}>
-          <MapPin size={12} color={colors.text.secondary} />
-          <Text style={[styles.tagText, { color: colors.text.secondary, fontSize: normalize(11) }]}>{item.location}</Text>
-        </View>
-        <View style={[styles.tag, { backgroundColor: colors.background }]}>
-          <Clock size={12} color={colors.text.secondary} />
-          <Text style={[styles.tagText, { color: colors.text.secondary, fontSize: normalize(11) }]}>{item.job_type}</Text>
-        </View>
-      </View>
-
-      <View style={[styles.divider, { backgroundColor: colors.border }]} />
-
-      <View style={styles.cardFooter}>
-        <Text style={[styles.timePosted, { color: colors.text.disabled, fontSize: normalize(12) }]}>
-           Publié le {new Date(item.created_at).toLocaleDateString()}
-        </Text>
-        <ChevronRight size={20} color={colors.primary} />
-      </View>
-    </TouchableOpacity>
-  );
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>

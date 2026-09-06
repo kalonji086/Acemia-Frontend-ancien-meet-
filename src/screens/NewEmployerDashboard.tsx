@@ -111,8 +111,10 @@ export default function NewEmployerDashboard({ navigation }: any) {
 
       // 4. Récupérer les candidatures
       const appRes = await apiService.getApplications();
-      if (appRes.success) {
+      if (appRes.success && Array.isArray(appRes.data)) {
         setApplications(appRes.data.slice(0, 5));
+      } else {
+        setApplications([]);
       }
 
       // 5. Récupérer les discussions récentes
@@ -147,8 +149,15 @@ export default function NewEmployerDashboard({ navigation }: any) {
   const fetchRecentChats = async () => {
     try {
       const res = await apiService.getEmployerRecentChats();
-      if (res.success) setRecentChats(res.data);
-    } catch (e) { console.error("Error fetching chats", e); }
+      if (res.success && Array.isArray(res.data)) {
+        setRecentChats(res.data);
+      } else {
+        setRecentChats([]);
+      }
+    } catch (e) {
+      console.error("Error fetching chats", e);
+      setRecentChats([]);
+    }
   };
 
   const handleExportData = async () => {
@@ -427,17 +436,20 @@ export default function NewEmployerDashboard({ navigation }: any) {
               <Text style={{ color: colors.text.disabled, fontStyle: 'italic' }}>Aucune candidature pour le moment.</Text>
             ) : (
               <View style={styles.jobsList}>
-                {applications.map((app) => (
-                  <View key={app.id} style={[styles.jobCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                    <View style={styles.jobInfo}>
-                      <Text style={[styles.jobTitle, { color: colors.text.primary }]}>{app.applicant_name}</Text>
-                      <Text style={[styles.jobMeta, { color: colors.text.secondary }]}>Postulant pour: {app.job_title}</Text>
+                {applications.map((app) => {
+                  if (!app) return null;
+                  return (
+                    <View key={app.id} style={[styles.jobCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                      <View style={styles.jobInfo}>
+                        <Text style={[styles.jobTitle, { color: colors.text.primary }]}>{app.applicant_name || "Candidat"}</Text>
+                        <Text style={[styles.jobMeta, { color: colors.text.secondary }]}>Postulant pour: {app.job_title || "Offre"}</Text>
+                      </View>
+                      <View style={[styles.changeBadge, { backgroundColor: colors.primary + '20' }]}>
+                        <Text style={{ color: colors.primary, fontSize: 10, fontWeight: 'bold' }}>{(app.status || 'pending').toUpperCase()}</Text>
+                      </View>
                     </View>
-                    <View style={[styles.changeBadge, { backgroundColor: colors.primary + '20' }]}>
-                       <Text style={{ color: colors.primary, fontSize: 10, fontWeight: 'bold' }}>{app.status.toUpperCase()}</Text>
-                    </View>
-                  </View>
-                ))}
+                  );
+                })}
               </View>
             )}
           </View>
@@ -454,26 +466,29 @@ export default function NewEmployerDashboard({ navigation }: any) {
               <Text style={{ color: colors.text.disabled, fontStyle: 'italic' }}>Aucune discussion active.</Text>
             ) : (
               <View style={styles.jobsList}>
-                {recentChats.map((chat) => (
-                  <TouchableOpacity
-                    key={chat.id}
-                    style={[styles.jobCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
-                    onPress={() => navigation.navigate('Chat', {
-                      chatId: chat.id,
-                      name: chat.peer_name,
-                      peerUserId: chat.peer_id
-                    })}
-                  >
-                    <View style={[styles.menuAvatar, { backgroundColor: colors.primary, width: 36, height: 36, borderRadius: 18, marginRight: 12 }]}>
-                       {chat.peer_avatar ? <Image source={{ uri: getFullUrl(chat.peer_avatar)! }} style={{ width: '100%', height: '100%', borderRadius: 18 }} /> : <Text style={{ color: '#fff', fontSize: 14 }}>{chat.peer_name[0]}</Text>}
-                    </View>
-                    <View style={styles.jobInfo}>
-                      <Text style={[styles.jobTitle, { color: colors.text.primary }]}>{chat.peer_name}</Text>
-                      <Text style={[styles.jobMeta, { color: colors.text.secondary }]} numberOfLines={1}>{chat.last_message || "Démarrer la discussion"}</Text>
-                    </View>
-                    <Text style={{ color: colors.text.disabled, fontSize: 10 }}>{chat.last_message_at ? new Date(chat.last_message_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</Text>
-                  </TouchableOpacity>
-                ))}
+                {recentChats.map((chat) => {
+                  if (!chat) return null;
+                  return (
+                    <TouchableOpacity
+                      key={chat.id}
+                      style={[styles.jobCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                      onPress={() => navigation.navigate('Chat', {
+                        chatId: chat.id,
+                        name: chat.peer_name || "Discussion",
+                        peerUserId: chat.peer_id
+                      })}
+                    >
+                      <View style={[styles.menuAvatar, { backgroundColor: colors.primary, width: 36, height: 36, borderRadius: 18, marginRight: 12 }]}>
+                        {chat.peer_avatar ? <Image source={{ uri: getFullUrl(chat.peer_avatar)! }} style={{ width: '100%', height: '100%', borderRadius: 18 }} /> : <Text style={{ color: '#fff', fontSize: 14 }}>{(chat.peer_name || "?")[0]}</Text>}
+                      </View>
+                      <View style={styles.jobInfo}>
+                        <Text style={[styles.jobTitle, { color: colors.text.primary }]}>{chat.peer_name || "Utilisateur"}</Text>
+                        <Text style={[styles.jobMeta, { color: colors.text.secondary }]} numberOfLines={1}>{chat.last_message || "Démarrer la discussion"}</Text>
+                      </View>
+                      <Text style={{ color: colors.text.disabled, fontSize: 10 }}>{chat.last_message_at ? new Date(chat.last_message_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
             )}
           </View>
