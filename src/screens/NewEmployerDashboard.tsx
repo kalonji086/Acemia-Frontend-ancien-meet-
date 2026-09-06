@@ -7,10 +7,10 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
-  Animated,
   Dimensions,
   useWindowDimensions,
-  Alert
+  Alert,
+  Modal
 } from 'react-native';
 import {
   Menu,
@@ -34,6 +34,7 @@ import apiService from '../services/api.service';
 import socketService from '../services/socket.service';
 import SimpleChart from '../components/SimpleChart';
 import PieChart from '../components/PieChart';
+import SideMenu from '../components/SideMenu';
 import { SOCKET_URL } from '../utils/constants';
 import { Image } from 'react-native';
 
@@ -64,8 +65,6 @@ export default function NewEmployerDashboard({ navigation }: any) {
       { label: 'Aucune donnée', value: 1, color: '#ccc' }
     ]
   });
-
-  const menuAnimation = useRef(new Animated.Value(-280)).current;
 
   useEffect(() => {
     fetchDashboardData();
@@ -241,110 +240,25 @@ export default function NewEmployerDashboard({ navigation }: any) {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Menu latéral */}
-      <Animated.View style={[
-        styles.menuOverlay,
-        { 
-          opacity: menuAnimation.interpolate({
-            inputRange: [-280, 0],
-            outputRange: [0, 0.5]
-          }),
-          display: showMenu ? 'flex' : 'none'
-        }
-      ]}>
-        <TouchableOpacity 
-          style={StyleSheet.absoluteFill}
-          onPress={() => setShowMenu(false)}
-        />
-      </Animated.View>
-
-      <Animated.View style={[
-        styles.sideMenu,
-        {
-          transform: [{ translateX: menuAnimation }],
-          backgroundColor: colors.surface
-        }
-      ]}>
-        {/* Contenu du menu latéral */}
-        <View style={styles.menuHeader}>
-          <View style={styles.menuUserInfo}>
-            <View style={[styles.menuAvatar, { backgroundColor: colors.primary }]}>
-              <Text style={styles.menuAvatarText}>
-                {userName.charAt(0).toUpperCase()}
-              </Text>
-            </View>
-            <View>
-              <Text style={[styles.menuUserName, { color: colors.text.primary }]}>
-                {userName}
-              </Text>
-              <Text style={[styles.menuCompanyName, { color: colors.text.secondary }]}>
-                {companyName || 'Entreprise'}
-              </Text>
-            </View>
+      {/* Menu latéral via Modal */}
+      <Modal visible={showMenu} transparent animationType="slide">
+        <View style={{ flex: 1, flexDirection: 'row' }}>
+          <TouchableOpacity
+            style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' }}
+            onPress={() => setShowMenu(false)}
+            activeOpacity={1}
+          />
+          <View style={{ width: 280 }}>
+            <SideMenu
+              navigation={navigation}
+              activeRoute="EmployerDashboard"
+              userName={userName}
+              companyName={companyName}
+              onClose={() => setShowMenu(false)}
+            />
           </View>
-          <TouchableOpacity onPress={() => setShowMenu(false)}>
-            <Text style={{ color: colors.primary, fontSize: 24 }}>×</Text>
-          </TouchableOpacity>
         </View>
-
-        <ScrollView style={styles.menuContent}>
-          <TouchableOpacity style={styles.menuItem}>
-            <Briefcase size={20} color={colors.text.primary} />
-            <Text style={[styles.menuItemText, { color: colors.text.primary }]}>Tableau de bord</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('MyJobs')}>
-            <Briefcase size={20} color={colors.text.secondary} />
-            <Text style={[styles.menuItemText, { color: colors.text.secondary }]}>Mes offres</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('CreateJobPosting')}>
-            <Plus size={20} color={colors.text.secondary} />
-            <Text style={[styles.menuItemText, { color: colors.text.secondary }]}>Publier une offre</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('TalentSearch')}>
-            <Users size={20} color={colors.text.secondary} />
-            <Text style={[styles.menuItemText, { color: colors.text.secondary }]}>Recherche talents</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.menuItem} onPress={handleAnalytics}>
-            <TrendingUp size={20} color={colors.text.secondary} />
-            <Text style={[styles.menuItemText, { color: colors.text.secondary }]}>Analytiques</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.menuItem}>
-            <Bell size={20} color={colors.text.secondary} />
-            <Text style={[styles.menuItemText, { color: colors.text.secondary }]}>Notifications</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.menuItem} onPress={handleSettings}>
-            <Filter size={20} color={colors.text.secondary} />
-            <Text style={[styles.menuItemText, { color: colors.text.secondary }]}>Paramètres</Text>
-          </TouchableOpacity>
-
-          <View style={[styles.menuDivider, { backgroundColor: colors.border }]} />
-
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={async () => {
-              await apiService.logout();
-              navigation.reset({
-                index: 0,
-                routes: [{ name: 'Login' }],
-              });
-            }}
-          >
-            <LogOut size={20} color={colors.danger} />
-            <Text style={[styles.menuItemText, { color: colors.danger }]}>Déconnexion</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() => navigation.reset({
-              index: 0,
-              routes: [{ name: 'ChatList' }],
-            })}
-          >
-            <Home size={20} color={colors.primary} />
-            <Text style={[styles.menuItemText, { color: colors.primary, fontWeight: 'bold' }]}>Retour</Text>
-          </TouchableOpacity>
-        </ScrollView>
-      </Animated.View>
+      </Modal>
 
       {/* Contenu principal */}
       <SafeAreaView style={{ flex: 1 }}>
@@ -606,81 +520,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center'
   },
-  menuOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: '#000',
-    zIndex: 999
-  },
-  sideMenu: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    bottom: 0,
-    width: 280,
-    zIndex: 1000,
-    elevation: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 2, height: 0 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8
-  },
-  menuHeader: {
-    padding: 20,
-    paddingTop: 60,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee'
-  },
-  menuUserInfo: {
-    flexDirection: 'row',
-    alignItems: 'center'
-  },
-  menuAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12
-  },
-  menuAvatarText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold'
-  },
-  menuUserName: {
-    fontSize: 16,
-    fontWeight: 'bold'
-  },
-  menuCompanyName: {
-    fontSize: 12,
-    marginTop: 2
-  },
-  menuContent: {
-    flex: 1,
-    padding: 20
-  },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 8
-  },
-  menuItemText: {
-    fontSize: 15,
-    marginLeft: 12
-  },
-  menuDivider: {
-    height: 1,
-    marginVertical: 15,
-    marginHorizontal: 8
-  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -849,5 +688,13 @@ const styles = StyleSheet.create({
   },
   jobDate: {
     fontSize: 11
+  },
+  menuAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12
   }
 });
