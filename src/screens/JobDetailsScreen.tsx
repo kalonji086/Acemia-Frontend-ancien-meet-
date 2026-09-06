@@ -170,8 +170,9 @@ export default function JobDetailsScreen({ navigation, route }: any) {
           </TouchableOpacity>
         </View>
 
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={isTablet && { paddingHorizontal: '15%' }}>
-            <View style={styles.logoContainer, { backgroundColor: colors.background, width: normalize(80), height: normalize(80) }}>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={isTablet ? { paddingHorizontal: '15%' } : undefined}>
+          <View style={[styles.mainInfo, { backgroundColor: colors.surface }]}>
+            <View style={[styles.logoContainer, { backgroundColor: colors.background, width: normalize(80), height: normalize(80) }]}>
               {job.company_logo ? <Image source={{ uri: getFullUrl(job.company_logo)! }} style={styles.logo} /> : <Building2 size={normalize(40)} color={colors.primary} />}
             </View>
             <Text style={[styles.title, { color: colors.text.primary, fontSize: normalize(22) }]}>{job.title}</Text>
@@ -258,7 +259,6 @@ export default function JobDetailsScreen({ navigation, route }: any) {
           <View style={{ height: 40 }} />
         </ScrollView>
 
-        {/* Modal Candidature */}
         <Modal visible={showApplyModal} transparent animationType="slide">
           <View style={styles.modalOverlay}>
             <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
