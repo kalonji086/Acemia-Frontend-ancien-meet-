@@ -70,7 +70,7 @@ const LegalAcceptanceScreen = () => {
         if (d.type === 'privacy') updates.accepted_privacy_version = d.version;
       });
 
-      const latestVersion = updates.accepted_tos_version || updates.accepted_privacy_version || '50.0.0';
+      const latestVersion = updates.accepted_tos_version || updates.accepted_privacy_version || '93.0.0';
 
       const { isGuest } = route.params as any;
       if (isGuest) {
