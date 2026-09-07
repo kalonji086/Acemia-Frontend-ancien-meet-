@@ -30,7 +30,6 @@
     },
     "android": {
       "package": "com.deve",
-      "versionCode": 93,
       "adaptiveIcon": {
         "foregroundImage": "./assets/Logo.png",
         "backgroundColor": "#ffffff"
