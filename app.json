@@ -2,7 +2,7 @@
   "expo": {
     "name": "Meet Me",
     "slug": "meet-me",
-    "version": "95.0.0",
+    "version": "92.0.0",
     "orientation": "portrait",
     "icon": "./assets/Logo.png",
     "userInterfaceStyle": "light",
@@ -30,7 +30,7 @@
     },
     "android": {
       "package": "com.deve",
-      "versionCode": 95,
+      "versionCode": 92,
       "adaptiveIcon": {
         "foregroundImage": "./assets/Logo.png",
         "backgroundColor": "#ffffff"
