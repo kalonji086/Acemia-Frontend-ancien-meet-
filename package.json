@@ -1,6 +1,6 @@
 {
   "name": "meet-me",
-  "version": "93.0.0",
+  "version": "95.0.0",
   "main": "index.ts",
   "scripts": {
     "start": "node scripts/start.js",
