@@ -26,6 +26,11 @@ export default function SchoolScreen({ navigation, route }: any) {
   const [showEnrollChildModal, setShowEnrollChildModal] = useState(false);
   const [enrollChildForm, setEnrollChildForm] = useState({ firstName: '', lastName: '', age: '', gradeLevel: '' });
   const [showSideMenu, setShowSideMenu] = useState(false);
+  const [showGradeModal, setShowGradeModal] = useState(false);
+  const [showMessageModal, setShowMessageModal] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState<any>(null);
+  const [gradeForm, setGradeForm] = useState({ subject: '', score: '', maxScore: '20', comment: '' });
+  const [messageText, setMessageText] = useState('');
 
   const loadData = async (silent = false) => {
     if (!silent) setLoading(true);
@@ -62,7 +67,7 @@ export default function SchoolScreen({ navigation, route }: any) {
 
     const onNewGrade = (data: any) => {
       Alert.alert('Nouvelle Note !', `Vous avez reçu une note en ${data.subject}: ${data.score}/20`);
-      if (overview?.mySchool) fetchDashboard(overview.mySchool.id);
+      loadData(true);
     };
 
     const onSchoolApproved = (data: any) => {
@@ -150,9 +155,9 @@ export default function SchoolScreen({ navigation, route }: any) {
       </Text>
       <TouchableOpacity
         style={[styles.actionBtn, { backgroundColor: colors.primary, marginTop: 30, width: '80%' }]}
-        onPress={() => setActiveTab('Répertoire')}
+        onPress={() => loadData()}
       >
-        <Text style={{ color: '#fff', fontWeight: 'bold' }}>RETOUR AU RÉPERTOIRE</Text>
+        <Text style={{ color: '#fff', fontWeight: 'bold' }}>ACTUALISER LE STATUT</Text>
       </TouchableOpacity>
     </View>
   );
@@ -198,6 +203,40 @@ export default function SchoolScreen({ navigation, route }: any) {
     } finally {
       setSendingStaff(false);
     }
+  };
+
+  const handleCreateGrade = async () => {
+    if (!selectedStudent || !gradeForm.subject || !gradeForm.score) {
+      Alert.alert('Attention', 'La matière et la note sont obligatoires.');
+      return;
+    }
+    const res = await apiService.createSchoolGrade({
+      schoolId: overview?.mySchool?.id,
+      studentId: selectedStudent.id,
+      classId: selectedStudent.class_id,
+      subject: gradeForm.subject,
+      score: parseFloat(gradeForm.score),
+      maxScore: parseFloat(gradeForm.maxScore) || 20,
+      comment: gradeForm.comment
+    });
+    if (res.success) {
+      Alert.alert('Succès', 'Note enregistrée.');
+      setShowGradeModal(false);
+      setGradeForm({ subject: '', score: '', maxScore: '20', comment: '' });
+    } else Alert.alert('Erreur', res.error || 'Impossible d’enregistrer la note.');
+  };
+
+  const handleSendStudentMessage = async () => {
+    if (!selectedStudent?.user_id || !messageText.trim()) {
+      Alert.alert('Attention', 'Cet élève ne possède pas encore de compte ou le message est vide.');
+      return;
+    }
+    const res = await apiService.sendSchoolMessage({ schoolId: overview?.mySchool?.id, recipientId: selectedStudent.user_id, message: messageText.trim() });
+    if (res.success) {
+      Alert.alert('Succès', 'Message envoyé.');
+      setShowMessageModal(false);
+      setMessageText('');
+    } else Alert.alert('Erreur', res.error || 'Impossible d’envoyer le message.');
   };
 
   const getFullUrl = (url: string) => {
@@ -329,7 +368,7 @@ export default function SchoolScreen({ navigation, route }: any) {
           </View>
           <TouchableOpacity
             style={[styles.smallActionBtn, { backgroundColor: colors.primary }]}
-            onPress={() => Alert.alert('Travail', 'Interface de soumission de travail à venir.')}
+            onPress={() => navigation.navigate('SchoolAssignments', { schoolId: overview?.mySchool?.id, userRole: 'student' })}
           >
             <Text style={styles.smallActionText}>RÉPONDRE</Text>
           </TouchableOpacity>
@@ -391,13 +430,13 @@ export default function SchoolScreen({ navigation, route }: any) {
             </View>
           </View>
           <View style={{ flexDirection: 'row', gap: 10 }}>
-            <TouchableOpacity onPress={() => Alert.alert('Note', 'Attribuer une note à ' + s.first_name)}><Star size={20} color={colors.text.disabled} /></TouchableOpacity>
-            <TouchableOpacity onPress={() => Alert.alert('Message', 'Écrire à ' + s.first_name)}><MessageSquare size={20} color={colors.primary} /></TouchableOpacity>
+            <TouchableOpacity onPress={() => { setSelectedStudent(s); setShowGradeModal(true); }}><Star size={20} color={colors.text.disabled} /></TouchableOpacity>
+            <TouchableOpacity onPress={() => { setSelectedStudent(s); setShowMessageModal(true); }}><MessageSquare size={20} color={colors.primary} /></TouchableOpacity>
           </View>
         </View>
       ))}
 
-      <TouchableOpacity style={[styles.actionBtn, { backgroundColor: colors.primary, marginTop: 20 }]}>
+      <TouchableOpacity style={[styles.actionBtn, { backgroundColor: colors.primary, marginTop: 20 }]} onPress={() => navigation.navigate('SchoolAssignments', { schoolId: overview?.mySchool?.id, userRole: overview?.role })}>
         <Plus size={20} color="#fff" />
         <Text style={styles.actionBtnText}>Envoyer un devoir à la classe</Text>
       </TouchableOpacity>
@@ -445,8 +484,8 @@ export default function SchoolScreen({ navigation, route }: any) {
             colors={colors}
           />
           <AdminActionItem icon={<Users />} label="Demander compte Staff" onPress={() => setShowStaffModal(true)} colors={colors} />
-          <AdminActionItem icon={<GraduationCap />} label="Gérer Classes" colors={colors} />
-          <AdminActionItem icon={<MessageSquare />} label="Annonces École" colors={colors} />
+          <AdminActionItem icon={<GraduationCap />} label="Gérer Classes" onPress={() => navigation.navigate('SchoolClasses', { schoolId: overview.mySchool.id, userRole: overview.role })} colors={colors} />
+          <AdminActionItem icon={<MessageSquare />} label="Annonces École" onPress={() => navigation.navigate('SchoolAnnouncements', { schoolId: overview.mySchool.id, userRole: overview.role })} colors={colors} />
        </View>
     </ScrollView>
   );
@@ -459,6 +498,10 @@ export default function SchoolScreen({ navigation, route }: any) {
            <Text style={{ marginTop: 20, color: colors.text.secondary, fontWeight: 'bold' }}>Synchronisation Meet School...</Text>
          </View>
        );
+    }
+
+    if (overview?.role === 'promoter' && overview?.mySchool?.status === 'pending') {
+      return renderPendingUI();
     }
 
     if (activeTab === 'Répertoire') {
@@ -487,11 +530,6 @@ export default function SchoolScreen({ navigation, route }: any) {
            <TouchableOpacity onPress={() => setActiveTab('Répertoire')} style={{ marginTop: 20 }}><Text style={{ color: colors.primary, fontWeight: 'bold' }}>RETOUR</Text></TouchableOpacity>
         </View>
       );
-
-      // Si c'est un promoteur et que son école est en attente
-      if (overview.role === 'promoter' && overview.mySchool.status === 'pending') {
-        return renderPendingUI();
-      }
 
       switch (overview.role) {
         case 'student': return renderStudentDashboard();
@@ -531,6 +569,7 @@ export default function SchoolScreen({ navigation, route }: any) {
               currentScreen="School"
               schoolName={overview?.mySchool?.name}
               userRole={overview?.role}
+              schoolId={overview?.mySchool?.id}
               onClose={() => setShowSideMenu(false)}
             />
           </View>
@@ -594,6 +633,29 @@ export default function SchoolScreen({ navigation, route }: any) {
               <Send size={18} color="#fff" />
               <Text style={{ color: '#fff', fontWeight: 'bold', marginLeft: 10 }}>ENVOYER LA DEMANDE</Text>
             </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={showGradeModal} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
+            <View style={styles.modalHeader}><Text style={[styles.modalTitle, { color: colors.text.primary }]}>Note de {selectedStudent?.first_name}</Text><TouchableOpacity onPress={() => setShowGradeModal(false)}><X size={24} color={colors.text.secondary} /></TouchableOpacity></View>
+            <TextInput placeholder="Matière" value={gradeForm.subject} onChangeText={v => setGradeForm({ ...gradeForm, subject: v })} style={[styles.input, { borderColor: colors.border, color: colors.text.primary }]} placeholderTextColor={colors.text.disabled} />
+            <TextInput placeholder="Note" value={gradeForm.score} onChangeText={v => setGradeForm({ ...gradeForm, score: v })} keyboardType="numeric" style={[styles.input, { borderColor: colors.border, color: colors.text.primary }]} placeholderTextColor={colors.text.disabled} />
+            <TextInput placeholder="Note maximale (20)" value={gradeForm.maxScore} onChangeText={v => setGradeForm({ ...gradeForm, maxScore: v })} keyboardType="numeric" style={[styles.input, { borderColor: colors.border, color: colors.text.primary }]} placeholderTextColor={colors.text.disabled} />
+            <TextInput placeholder="Commentaire" value={gradeForm.comment} onChangeText={v => setGradeForm({ ...gradeForm, comment: v })} style={[styles.input, { borderColor: colors.border, color: colors.text.primary }]} placeholderTextColor={colors.text.disabled} />
+            <TouchableOpacity onPress={handleCreateGrade} style={[styles.confirmBtn, { backgroundColor: colors.primary }]}><Text style={{ color: '#fff', fontWeight: 'bold' }}>ENREGISTRER</Text></TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={showMessageModal} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
+            <View style={styles.modalHeader}><Text style={[styles.modalTitle, { color: colors.text.primary }]}>Message à {selectedStudent?.first_name}</Text><TouchableOpacity onPress={() => setShowMessageModal(false)}><X size={24} color={colors.text.secondary} /></TouchableOpacity></View>
+            <TextInput placeholder="Votre message" value={messageText} onChangeText={setMessageText} multiline style={[styles.input, { borderColor: colors.border, color: colors.text.primary, height: 120, textAlignVertical: 'top' }]} placeholderTextColor={colors.text.disabled} />
+            <TouchableOpacity onPress={handleSendStudentMessage} style={[styles.confirmBtn, { backgroundColor: colors.primary }]}><Text style={{ color: '#fff', fontWeight: 'bold' }}>ENVOYER</Text></TouchableOpacity>
           </View>
         </View>
       </Modal>

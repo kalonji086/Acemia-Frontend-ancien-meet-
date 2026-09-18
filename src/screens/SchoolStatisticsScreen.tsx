@@ -18,6 +18,10 @@ export default function SchoolStatisticsScreen({ navigation, route }: any) {
   }, [schoolId]);
 
   const fetchStats = async () => {
+    if (!schoolId) {
+      setLoading(false);
+      return;
+    }
     try {
       const res = await apiService.getSchoolStats(schoolId);
       if (res.success) {
@@ -52,6 +56,17 @@ export default function SchoolStatisticsScreen({ navigation, route }: any) {
     );
   }
 
+  if (!stats) {
+    return (
+      <View style={styles.centered}>
+        <Text style={{ color: colors.text.secondary }}>Statistiques indisponibles.</Text>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginTop: 20 }}>
+          <Text style={{ color: colors.primary, fontWeight: 'bold' }}>RETOUR</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { backgroundColor: colors.surface }]}>
@@ -64,7 +79,7 @@ export default function SchoolStatisticsScreen({ navigation, route }: any) {
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.grid}>
-          {renderStatCard('Élèves inscrits', stats.totalStudents, <Users />, '#2196F3', '+2 cette semaine')}
+          {renderStatCard('Élèves inscrits', stats.totalStudents, <Users />, '#2196F3')}
           {renderStatCard('Corps enseignant', stats.totalTeachers, <GraduationCap />, '#9C27B0')}
           {renderStatCard('Classes actives', stats.totalClasses, <BookOpen />, '#FF9800')}
           {renderStatCard('Revenus Totaux', stats.revenue + '$', <CreditCard />, '#4CAF50', `${stats.payments.paid} paiements reçus`)}
@@ -79,7 +94,7 @@ export default function SchoolStatisticsScreen({ navigation, route }: any) {
                    <Text style={{ color: '#4CAF50', fontWeight: 'bold' }}>{stats.payments.paid}</Text>
                 </View>
                 <View style={[styles.progressBar, { backgroundColor: colors.border }]}>
-                   <View style={[styles.progressFill, { width: stats.payments.paid + stats.payments.pending > 0 ? (stats.payments.paid / (stats.payments.paid + stats.payments.pending)) * 100 + '%' : '0%', backgroundColor: '#4CAF50' }]} />
+                   <View style={[styles.progressFill, { width: (stats.payments.paid + stats.payments.pending > 0 ? `${(stats.payments.paid / (stats.payments.paid + stats.payments.pending)) * 100}%` : '0%') as `${number}%`, backgroundColor: '#4CAF50' }]} />
                 </View>
              </View>
           </View>
@@ -90,15 +105,24 @@ export default function SchoolStatisticsScreen({ navigation, route }: any) {
                    <Text style={{ color: '#FF9800', fontWeight: 'bold' }}>{stats.payments.pending}</Text>
                 </View>
                 <View style={[styles.progressBar, { backgroundColor: colors.border }]}>
-                   <View style={[styles.progressFill, { width: stats.payments.paid + stats.payments.pending > 0 ? (stats.payments.pending / (stats.payments.paid + stats.payments.pending)) * 100 + '%' : '0%', backgroundColor: '#FF9800' }]} />
+                   <View style={[styles.progressFill, { width: (stats.payments.paid + stats.payments.pending > 0 ? `${(stats.payments.pending / (stats.payments.paid + stats.payments.pending)) * 100}%` : '0%') as `${number}%`, backgroundColor: '#FF9800' }]} />
                 </View>
              </View>
           </View>
         </View>
 
-        <View style={styles.summaryPlaceholder}>
-           <BarChart3 size={80} color={colors.text.disabled} />
-           <Text style={{ color: colors.text.secondary, marginTop: 20, textAlign: 'center' }}>Graphiques d'évolution mensuelle en cours de traitement.</Text>
+        <View style={[styles.chartSection, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+           <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>Inscriptions des six derniers mois</Text>
+           {(stats.monthlyEnrollments || []).length === 0 ? (
+             <Text style={{ color: colors.text.secondary }}>Aucune inscription sur cette période.</Text>
+           ) : (
+             <View style={styles.chartRow}>
+               {stats.monthlyEnrollments.map((item: any) => {
+                 const max = Math.max(...stats.monthlyEnrollments.map((entry: any) => entry.total), 1);
+                 return <View key={item.month} style={styles.barItem}><Text style={{ color: colors.text.secondary, fontSize: 11 }}>{item.total}</Text><View style={[styles.bar, { height: Math.max(8, (item.total / max) * 120), backgroundColor: colors.primary }]} /><Text style={{ color: colors.text.disabled, fontSize: 10 }}>{item.month.slice(5)}</Text></View>;
+               })}
+             </View>
+           )}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -124,6 +148,9 @@ const styles = StyleSheet.create({
   labelRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
   progressBar: { height: 8, borderRadius: 4, overflow: 'hidden' },
   progressFill: { height: '100%' },
-  summaryPlaceholder: { alignItems: 'center', marginTop: 50, padding: 40 },
+  chartSection: { padding: 20, borderRadius: 24, borderWidth: 1, marginTop: 15 },
+  chartRow: { height: 160, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-around' },
+  barItem: { alignItems: 'center', justifyContent: 'flex-end', height: 150, minWidth: 34 },
+  bar: { width: 22, borderRadius: 5, marginVertical: 5 },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 });

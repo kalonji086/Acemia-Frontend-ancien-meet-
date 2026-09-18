@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, SafeAreaView, FlatList,
+  View, Text, StyleSheet, SafeAreaView, FlatList, ScrollView,
   TouchableOpacity, ActivityIndicator, Alert, Modal, TextInput
 } from 'react-native';
 import { ArrowLeft, BookOpen, Plus, X, Send, Clock, FileText } from 'lucide-react-native';
@@ -15,6 +15,9 @@ export default function SchoolAssignmentsScreen({ navigation, route }: any) {
   const [showAddModal, setShowAddModal] = useState(false);
   const [form, setForm] = useState({ title: '', description: '', dueDate: '', classId: '' });
   const [classes, setClasses] = useState<any[]>([]);
+  const [selectedAssignment, setSelectedAssignment] = useState<any>(null);
+  const [submissionContent, setSubmissionContent] = useState('');
+  const [showSubmitModal, setShowSubmitModal] = useState(false);
 
   useEffect(() => {
     fetchAssignments();
@@ -24,6 +27,10 @@ export default function SchoolAssignmentsScreen({ navigation, route }: any) {
   }, [schoolId]);
 
   const fetchAssignments = async () => {
+    if (!schoolId) {
+      setLoading(false);
+      return;
+    }
     try {
       const res = await apiService.getSchoolDashboard(schoolId);
       if (res.success) setAssignments(res.data.assignments || []);
@@ -35,6 +42,7 @@ export default function SchoolAssignmentsScreen({ navigation, route }: any) {
   };
 
   const fetchClasses = async () => {
+    if (!schoolId) return;
     const res = await apiService.getSchoolClasses(schoolId);
     if (res.success) setClasses(res.data);
   };
@@ -60,6 +68,29 @@ export default function SchoolAssignmentsScreen({ navigation, route }: any) {
     }
   };
 
+  const handleSubmitAssignment = async () => {
+    if (!selectedAssignment || !submissionContent.trim()) {
+      Alert.alert('Attention', 'Écrivez votre réponse avant de l’envoyer.');
+      return;
+    }
+    try {
+      const res = await apiService.submitAssignment({
+        assignmentId: selectedAssignment.id,
+        content: submissionContent.trim()
+      });
+      if (res.success) {
+        Alert.alert('Succès', 'Votre devoir a été envoyé.');
+        setShowSubmitModal(false);
+        setSelectedAssignment(null);
+        setSubmissionContent('');
+      } else {
+        Alert.alert('Erreur', res.error || 'Impossible d’envoyer le devoir.');
+      }
+    } catch (e) {
+      Alert.alert('Erreur', 'Impossible d’envoyer le devoir.');
+    }
+  };
+
   const renderAssignmentItem = ({ item }: any) => (
     <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
       <View style={[styles.iconBox, { backgroundColor: colors.primary + '15' }]}>
@@ -74,7 +105,17 @@ export default function SchoolAssignmentsScreen({ navigation, route }: any) {
         </View>
       </View>
       {(userRole === 'student' || userRole === 'parent') && (
-        <TouchableOpacity style={[styles.smallBtn, { backgroundColor: colors.primary }]}>
+        <TouchableOpacity
+          style={[styles.smallBtn, { backgroundColor: colors.primary }]}
+          onPress={() => {
+            if (userRole === 'parent') {
+              Alert.alert('Information', 'Sélectionnez le compte de votre enfant pour répondre à ce devoir.');
+              return;
+            }
+            setSelectedAssignment(item);
+            setShowSubmitModal(true);
+          }}
+        >
           <Text style={styles.smallBtnText}>OUVRIR</Text>
         </TouchableOpacity>
       )}
@@ -146,6 +187,29 @@ export default function SchoolAssignmentsScreen({ navigation, route }: any) {
           </View>
         </View>
       </Modal>
+
+      <Modal visible={showSubmitModal} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.text.primary }]}>Répondre au devoir</Text>
+              <TouchableOpacity onPress={() => setShowSubmitModal(false)}><X size={24} color={colors.text.secondary} /></TouchableOpacity>
+            </View>
+            <Text style={{ color: colors.text.secondary, marginBottom: 12 }}>{selectedAssignment?.title}</Text>
+            <TextInput
+              placeholder="Votre réponse..."
+              multiline
+              value={submissionContent}
+              onChangeText={setSubmissionContent}
+              style={[styles.input, styles.submissionInput, { borderColor: colors.border, color: colors.text.primary }]}
+              placeholderTextColor={colors.text.disabled}
+            />
+            <TouchableOpacity onPress={handleSubmitAssignment} style={[styles.confirmBtn, { backgroundColor: colors.primary }]}>
+              <Text style={{ color: '#fff', fontWeight: 'bold' }}>ENVOYER LA RÉPONSE</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -173,6 +237,7 @@ const styles = StyleSheet.create({
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
   modalTitle: { fontSize: 20, fontWeight: 'bold' },
   input: { padding: 15, borderRadius: 15, borderWidth: 1, marginBottom: 15 },
+  submissionInput: { height: 140, textAlignVertical: 'top' },
   confirmBtn: { padding: 18, borderRadius: 15, alignItems: 'center' },
   pickerContainer: { marginBottom: 15 },
   classChip: { paddingHorizontal: 15, paddingVertical: 8, borderRadius: 10, borderWidth: 1, marginRight: 8 }

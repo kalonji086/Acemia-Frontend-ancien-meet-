@@ -14,7 +14,7 @@ import apiService from '../services/api.service';
 import { SOCKET_URL } from '../utils/constants';
 
 export default function SchoolProfileScreen({ navigation, route }: any) {
-  const { schoolId } = route.params;
+  const { schoolId } = route?.params || {};
   const { colors, normalize } = useTheme();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<any>(null);
@@ -26,6 +26,10 @@ export default function SchoolProfileScreen({ navigation, route }: any) {
   }, [schoolId]);
 
   const fetchProfile = async () => {
+    if (!schoolId) {
+      setLoading(false);
+      return;
+    }
     try {
       const res = await apiService.getSchoolProfile(schoolId);
       if (res.success) setData(res.data);
@@ -58,13 +62,26 @@ export default function SchoolProfileScreen({ navigation, route }: any) {
 
   if (loading) return <View style={styles.centered}><ActivityIndicator size="large" color={colors.primary} /></View>;
 
+  if (!data?.school) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={styles.centered}>
+          <Text style={{ color: colors.text.secondary }}>Profil de l'école indisponible.</Text>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginTop: 20 }}>
+            <Text style={{ color: colors.primary, fontWeight: 'bold' }}>RETOUR</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   const getFullUrl = (url: string) => {
     if (!url || url === 'null') return null;
     if (url.startsWith('http')) return url;
     return `${SOCKET_URL}${url.startsWith('/') ? '' : '/'}${url}`;
   };
 
-  const { school, announcements } = data;
+  const { school, announcements = [] } = data;
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>

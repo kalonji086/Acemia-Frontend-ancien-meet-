@@ -12,23 +12,43 @@ export default function SchoolFeesScreen({ navigation, route }: any) {
   const { colors, normalize } = useTheme();
   const [loading, setLoading] = useState(true);
   const [fees, setFees] = useState<any[]>([]);
+  const [payments, setPayments] = useState<any[]>([]);
   const [showPayModal, setShowPayModal] = useState(false);
+  const [showFeeModal, setShowFeeModal] = useState(false);
   const [selectedFee, setSelectedFee] = useState<any>(null);
   const [paymentForm, setPaymentForm] = useState({ amount: '', reference: '' });
+  const [feeForm, setFeeForm] = useState({ feeName: '', amount: '', dueDate: '' });
 
   useEffect(() => {
     fetchFees();
   }, [schoolId]);
 
   const fetchFees = async () => {
+    if (!schoolId) {
+      setLoading(false);
+      return;
+    }
     try {
-      // Pour l'instant on utilise le dashboard pour avoir les frais ou une route spécifique
-      const res = await apiService.getSchoolDashboard(schoolId);
-      if (res.success) setFees(res.data.fees || []);
+      const [feesRes, paymentsRes] = await Promise.all([apiService.getSchoolFees(schoolId), apiService.getSchoolPayments(schoolId)]);
+      if (feesRes.success) setFees(feesRes.data || []);
+      if (paymentsRes.success) setPayments(paymentsRes.data || []);
     } catch (e) {
       Alert.alert('Erreur', 'Impossible de charger les frais scolaires.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCreateFee = async () => {
+    if (!feeForm.feeName || !feeForm.amount) return Alert.alert('Attention', 'Le nom et le montant sont obligatoires.');
+    const res = await apiService.createSchoolFee({ schoolId, ...feeForm, amount: parseFloat(feeForm.amount) });
+    if (res.success) {
+      Alert.alert('Succès', 'Frais scolaires ajoutés.');
+      setShowFeeModal(false);
+      setFeeForm({ feeName: '', amount: '', dueDate: '' });
+      fetchFees();
+    } else {
+      Alert.alert('Erreur', res.error || 'Impossible de créer les frais.');
     }
   };
 
@@ -78,7 +98,11 @@ export default function SchoolFeesScreen({ navigation, route }: any) {
           <ArrowLeft size={24} color={colors.text.primary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text.primary }]}>Frais Scolaires</Text>
-        <View style={{ width: 40 }} />
+        {userRole === 'promoter' || userRole === 'director' ? (
+          <TouchableOpacity onPress={() => setShowFeeModal(true)} style={styles.backBtn}>
+            <Plus size={24} color={colors.primary} />
+          </TouchableOpacity>
+        ) : <View style={{ width: 40 }} />}
       </View>
 
       {loading ? (
@@ -93,6 +117,17 @@ export default function SchoolFeesScreen({ navigation, route }: any) {
             <View style={styles.emptyState}>
               <CreditCard size={60} color={colors.text.disabled} />
               <Text style={{ marginTop: 20, color: colors.text.secondary }}>Aucun frais configuré pour cet établissement.</Text>
+            </View>
+          }
+          ListFooterComponent={
+            <View style={styles.historySection}>
+              <Text style={[styles.historyTitle, { color: colors.text.primary }]}>Historique des paiements</Text>
+              {payments.length === 0 ? <Text style={{ color: colors.text.secondary }}>Aucun paiement enregistré.</Text> : payments.map(payment => (
+                <View key={payment.id} style={[styles.historyRow, { borderBottomColor: colors.border }]}>
+                  <View style={{ flex: 1 }}><Text style={{ color: colors.text.primary, fontWeight: 'bold' }}>{payment.first_name ? `${payment.first_name} ${payment.last_name}` : 'Paiement scolaire'}</Text><Text style={{ color: colors.text.disabled, fontSize: 11 }}>{new Date(payment.created_at).toLocaleDateString()}</Text></View>
+                  <Text style={{ color: payment.status === 'completed' ? '#4CAF50' : '#FF9800', fontWeight: 'bold' }}>{payment.amount}$ · {payment.status}</Text>
+                </View>
+              ))}
             </View>
           }
         />
@@ -115,6 +150,21 @@ export default function SchoolFeesScreen({ navigation, route }: any) {
                <TextInput placeholder="Référence Transaction (ex: M-Pesa / Bank ID)" style={[styles.input, { color: colors.text.primary, marginLeft: 0 }]} value={paymentForm.reference} onChangeText={v => setPaymentForm({...paymentForm, reference: v})} />
             </View>
             <TouchableOpacity onPress={handlePayment} style={[styles.confirmBtn, { backgroundColor: colors.primary, marginTop: 20 }]}><Text style={{ color: '#fff', fontWeight: 'bold' }}>VALIDER LE PAIEMENT</Text></TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={showFeeModal} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.text.primary }]}>Nouveaux frais</Text>
+              <TouchableOpacity onPress={() => setShowFeeModal(false)}><X size={24} color={colors.text.secondary} /></TouchableOpacity>
+            </View>
+            <TextInput placeholder="Nom des frais" value={feeForm.feeName} onChangeText={v => setFeeForm({ ...feeForm, feeName: v })} style={[styles.input, { borderColor: colors.border, color: colors.text.primary }]} placeholderTextColor={colors.text.disabled} />
+            <TextInput placeholder="Montant" value={feeForm.amount} onChangeText={v => setFeeForm({ ...feeForm, amount: v })} keyboardType="numeric" style={[styles.input, { borderColor: colors.border, color: colors.text.primary }]} placeholderTextColor={colors.text.disabled} />
+            <TextInput placeholder="Date limite (AAAA-MM-JJ)" value={feeForm.dueDate} onChangeText={v => setFeeForm({ ...feeForm, dueDate: v })} style={[styles.input, { borderColor: colors.border, color: colors.text.primary }]} placeholderTextColor={colors.text.disabled} />
+            <TouchableOpacity onPress={handleCreateFee} style={[styles.confirmBtn, { backgroundColor: colors.primary }]}><Text style={{ color: '#fff', fontWeight: 'bold' }}>AJOUTER</Text></TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -144,4 +194,7 @@ const styles = StyleSheet.create({
   inputWrapper: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 12, paddingHorizontal: 15, height: 50 },
   input: { flex: 1, marginLeft: 10 },
   confirmBtn: { padding: 18, borderRadius: 15, alignItems: 'center' }
+  ,historySection: { marginTop: 25, paddingBottom: 20 },
+  historyTitle: { fontSize: 17, fontWeight: 'bold', marginBottom: 12 },
+  historyRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1 }
 });

@@ -5,7 +5,7 @@ import { useTheme } from '../context/ThemeContext';
 import { 
   GraduationCap, Home, Building2, Users, BookOpen, 
   CreditCard, Settings, HelpCircle, LogOut, ChevronRight,
-  Bell, MessageSquare, FileText, Calendar, BarChart3
+  Bell, MessageSquare, FileText, Calendar, BarChart3, Megaphone
 } from 'lucide-react-native';
 
 export default function SchoolSideMenu({ 
@@ -13,6 +13,7 @@ export default function SchoolSideMenu({
   currentScreen, 
   schoolName, 
   userRole,
+  schoolId,
   onClose 
 }: any) {
   const { colors, normalize } = useTheme();
@@ -20,12 +21,14 @@ export default function SchoolSideMenu({
   const menuItems = [
     { id: 'dashboard', icon: Home, label: 'Dashboard', screen: 'School', params: { tab: 'Mon Dashboard' } },
     { id: 'directory', icon: Building2, label: 'Répertoire', screen: 'School', params: { tab: 'Répertoire' } },
-    { id: 'enrollment', icon: Users, label: 'Inscriptions', screen: 'SchoolEnrollmentRequests', roles: ['promoter', 'director'] },
-    { id: 'classes', icon: BookOpen, label: 'Gestion Classes', screen: 'SchoolClasses', roles: ['promoter', 'director', 'teacher'] },
-    { id: 'fees', icon: CreditCard, label: 'Frais Scolaires', screen: 'SchoolFees', roles: ['promoter', 'director', 'parent'] },
-    { id: 'assignments', icon: FileText, label: 'Devoirs', screen: 'SchoolAssignments', roles: ['teacher', 'student', 'parent'] },
-    { id: 'calendar', icon: Calendar, label: 'Calendrier', screen: 'SchoolCalendar', roles: ['teacher', 'student', 'parent', 'promoter', 'director'] },
-    { id: 'statistics', icon: BarChart3, label: 'Statistiques', screen: 'SchoolStatistics', roles: ['promoter', 'director'] },
+    { id: 'enrollment', icon: Users, label: 'Inscriptions', screen: 'SchoolEnrollmentRequests', params: { schoolId, userRole }, roles: ['promoter', 'director'] },
+    { id: 'classes', icon: BookOpen, label: 'Gestion Classes', screen: 'SchoolClasses', params: { schoolId, userRole }, roles: ['promoter', 'director', 'teacher'] },
+    { id: 'fees', icon: CreditCard, label: 'Frais Scolaires', screen: 'SchoolFees', params: { schoolId, userRole }, roles: ['promoter', 'director', 'parent'] },
+    { id: 'assignments', icon: FileText, label: 'Devoirs', screen: 'SchoolAssignments', params: { schoolId, userRole }, roles: ['teacher', 'student', 'parent'] },
+    { id: 'calendar', icon: Calendar, label: 'Calendrier', screen: 'SchoolCalendar', params: { schoolId, userRole }, roles: ['teacher', 'student', 'parent', 'promoter', 'director'] },
+    { id: 'statistics', icon: BarChart3, label: 'Statistiques', screen: 'SchoolStatistics', params: { schoolId, userRole }, roles: ['promoter', 'director'] },
+    { id: 'announcements', icon: Megaphone, label: 'Annonces', screen: 'SchoolAnnouncements', params: { schoolId, userRole }, roles: ['promoter', 'director', 'teacher', 'parent', 'student'] },
+    { id: 'teachers', icon: Users, label: 'Enseignants', screen: 'SchoolTeachers', params: { schoolId, userRole }, roles: ['promoter', 'director'] },
   ];
 
   const bottomItems = [

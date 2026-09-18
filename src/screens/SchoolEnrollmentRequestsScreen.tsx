@@ -8,7 +8,7 @@ import { useTheme } from '../context/ThemeContext';
 import apiService from '../services/api.service';
 
 export default function SchoolEnrollmentRequestsScreen({ navigation, route }: any) {
-  const { schoolId } = route.params;
+  const { schoolId } = route?.params || {};
   const { colors, normalize } = useTheme();
   const [loading, setLoading] = useState(true);
   const [requests, setRequests] = useState<any[]>([]);
@@ -23,6 +23,10 @@ export default function SchoolEnrollmentRequestsScreen({ navigation, route }: an
   }, []);
 
   const fetchData = async () => {
+    if (!schoolId) {
+      setLoading(false);
+      return;
+    }
     try {
       const [reqRes, classesRes] = await Promise.all([
         apiService.getEnrollmentRequests(schoolId),

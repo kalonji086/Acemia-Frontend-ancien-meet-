@@ -47,6 +47,8 @@ import SchoolStatisticsScreen from '../screens/SchoolStatisticsScreen';
 import SchoolClassesScreen from '../screens/SchoolClassesScreen';
 import SchoolFeesScreen from '../screens/SchoolFeesScreen';
 import SchoolAssignmentsScreen from '../screens/SchoolAssignmentsScreen';
+import SchoolAnnouncementsScreen from '../screens/SchoolAnnouncementsScreen';
+import SchoolTeachersScreen from '../screens/SchoolTeachersScreen';
 import EmployerPlanningScreen from '../screens/EmployerPlanningScreen';
 import { useTheme } from '../context/ThemeContext';
 import { DefaultTheme, DarkTheme } from '@react-navigation/native';
@@ -345,6 +347,16 @@ export default function AppNavigator() {
         <Stack.Screen
           name="SchoolAssignments"
           component={SchoolAssignmentsScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="SchoolAnnouncements"
+          component={SchoolAnnouncementsScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="SchoolTeachers"
+          component={SchoolTeachersScreen}
           options={{ headerShown: false }}
         />
         <Stack.Screen

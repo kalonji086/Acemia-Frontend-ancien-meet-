@@ -3,7 +3,7 @@ import {
   View, Text, StyleSheet, SafeAreaView, FlatList,
   TouchableOpacity, ActivityIndicator, Alert, Modal, TextInput
 } from 'react-native';
-import { ArrowLeft, Plus, GraduationCap, Users, X, Send } from 'lucide-react-native';
+import { ArrowLeft, Plus, GraduationCap, Users, X, Send, Pencil, Trash2 } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
 import apiService from '../services/api.service';
 
@@ -14,12 +14,17 @@ export default function SchoolClassesScreen({ navigation, route }: any) {
   const [classes, setClasses] = useState<any[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [form, setForm] = useState({ name: '', level: '', capacity: '30' });
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchClasses();
   }, [schoolId]);
 
   const fetchClasses = async () => {
+    if (!schoolId) {
+      setLoading(false);
+      return;
+    }
     try {
       const res = await apiService.getSchoolClasses(schoolId);
       if (res.success) setClasses(res.data);
@@ -33,21 +38,27 @@ export default function SchoolClassesScreen({ navigation, route }: any) {
   const handleAddClass = async () => {
     if (!form.name) return Alert.alert('Attention', 'Le nom de la classe est requis.');
     try {
-      const res = await apiService.createSchoolClass({
+      const payload = {
         schoolId,
         name: form.name,
         level: form.level,
         capacity: parseInt(form.capacity) || 30
-      });
+      };
+      const res = editingId ? await apiService.updateSchoolClass(editingId, payload) : await apiService.createSchoolClass(payload);
       if (res.success) {
-        Alert.alert('Succès', 'Classe créée avec succès.');
+        Alert.alert('Succès', editingId ? 'Classe modifiée avec succès.' : 'Classe créée avec succès.');
         setShowAddModal(false);
+        setEditingId(null);
         setForm({ name: '', level: '', capacity: '30' });
         fetchClasses();
       }
     } catch (e) {
       Alert.alert('Erreur', 'Impossible de créer la classe.');
     }
+  };
+
+  const removeClass = async (id: string) => {
+    Alert.alert('Supprimer', 'Supprimer cette classe ?', [{ text: 'Annuler', style: 'cancel' }, { text: 'Supprimer', style: 'destructive', onPress: async () => { const res = await apiService.deleteSchoolClass(id); if (res.success) fetchClasses(); else Alert.alert('Erreur', res.error || 'Suppression impossible.'); } }]);
   };
 
   const renderClassItem = ({ item }: any) => (
@@ -63,6 +74,8 @@ export default function SchoolClassesScreen({ navigation, route }: any) {
         <Users size={14} color={colors.text.disabled} />
         <Text style={[styles.capacityText, { color: colors.text.secondary }]}>{item.capacity}</Text>
       </View>
+      <TouchableOpacity onPress={() => { setEditingId(item.id); setForm({ name: item.name, level: item.level || '', capacity: String(item.capacity || 30) }); setShowAddModal(true); }} style={styles.actionIcon}><Pencil size={17} color={colors.primary} /></TouchableOpacity>
+      <TouchableOpacity onPress={() => removeClass(item.id)} style={styles.actionIcon}><Trash2 size={17} color="#E53935" /></TouchableOpacity>
     </View>
   );
 
@@ -73,7 +86,7 @@ export default function SchoolClassesScreen({ navigation, route }: any) {
           <ArrowLeft size={24} color={colors.text.primary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text.primary }]}>Gestion des Classes</Text>
-        <TouchableOpacity onPress={() => setShowAddModal(true)} style={styles.addBtn}>
+        <TouchableOpacity onPress={() => { setEditingId(null); setForm({ name: '', level: '', capacity: '30' }); setShowAddModal(true); }} style={styles.addBtn}>
           <Plus size={24} color={colors.primary} />
         </TouchableOpacity>
       </View>
@@ -128,6 +141,7 @@ const styles = StyleSheet.create({
   classLevel: { fontSize: 12, marginTop: 2 },
   capacityBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#f5f5f5', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8 },
   capacityText: { fontWeight: 'bold', fontSize: 12 },
+  actionIcon: { padding: 6, marginLeft: 4 },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   emptyState: { alignItems: 'center', marginTop: 100 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 },

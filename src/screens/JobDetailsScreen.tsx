@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, SafeAreaView, ScrollView,
+  View, Text, StyleSheet, SafeAreaView, ScrollView, Modal,
   TouchableOpacity, Image, ActivityIndicator, Alert,
   TextInput, KeyboardAvoidingView, Platform, FlatList,
   useWindowDimensions
 } from 'react-native';
 import {
   ArrowLeft, MapPin, Briefcase, DollarSign, Clock,
-  Send, MessageCircle, Building2, CheckCircle2, User
+  Send, MessageCircle, Building2, CheckCircle2, User, X
 } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
 import apiService from '../services/api.service';
