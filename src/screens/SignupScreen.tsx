@@ -129,7 +129,6 @@ export default function SignupScreen({ navigation }: any) {
   const [callingCode, setCallingCode] = useState('243');
 
   const [profileImage, setProfileImage] = useState<string | null>(null);
-  const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [acceptedPrivacy, setAcceptedPrivacy] = useState(false);
@@ -231,19 +230,6 @@ export default function SignupScreen({ navigation }: any) {
     });
     if (!result.canceled) {
       setProfileImage(result.assets[0].uri);
-      setLoading(true);
-      try {
-        const response = await apiService.uploadFile({
-          uri: result.assets[0].uri,
-          type: 'image/jpeg',
-          name: 'profile.jpg'
-        }, 'image');
-        if (response.success) setUploadedImageUrl(response.data.fileUrl);
-      } catch (e) {
-        Alert.alert('Erreur', 'Téléchargement échoué');
-      } finally {
-        setLoading(false);
-      }
     }
   };
 
@@ -357,17 +343,28 @@ export default function SignupScreen({ navigation }: any) {
       console.log('Signup: Registration success, setting user context...');
 
       // Mettre à jour le contexte utilisateur
-      if (response.data && response.data.user) {
-        await setUser(response.data.user);
-      }
+      if (response.data && response.data.user) await setUser(response.data.user);
 
-      if (uploadedImageUrl) {
+      if (profileImage) {
         try {
-          await apiService.updateProfile({ avatar_url: uploadedImageUrl });
+          const uploadRes = await apiService.uploadFile({
+            uri: profileImage,
+            type: 'image/jpeg',
+            name: 'profile.jpg'
+          }, 'image');
+          if (uploadRes.success && uploadRes.data?.fileUrl) {
+            const profileRes = await apiService.updateProfile({ avatar_url: uploadRes.data.fileUrl });
+            if (profileRes.success && profileRes.data) await setUser(profileRes.data);
+          } else {
+            console.error('Signup: Avatar upload failed', uploadRes.error);
+          }
         } catch (updateErr) {
           console.error('Signup: Avatar update failed but account created', updateErr);
         }
       }
+
+      const profileRes = await apiService.getMe();
+      if (profileRes.success && profileRes.data) await setUser(profileRes.data);
 
       // Enregistrer le premier temps d'ouverture pour la logique des 2 jours
       try {
