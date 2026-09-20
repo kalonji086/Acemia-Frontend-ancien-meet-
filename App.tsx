@@ -12,6 +12,7 @@ import ErrorBoundary from './src/components/ErrorBoundary';
 import ErrorScreen from './src/screens/ErrorScreen';
 
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import WebResponsiveWrapper from './src/components/WebResponsiveWrapper';
 
 export default function App() {
   useEffect(() => {
@@ -55,8 +56,10 @@ export default function App() {
                   />
                 )}
               >
-                <StatusBar style="auto" />
-                <AppNavigator />
+                <WebResponsiveWrapper>
+                  <StatusBar style="auto" />
+                  <AppNavigator />
+                </WebResponsiveWrapper>
               </ErrorBoundary>
             </SafeAreaProvider>
           </ThemeProvider>

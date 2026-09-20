@@ -171,8 +171,36 @@ export default function AppNavigator() {
     };
   }, []);
 
+  // Configuration du Linking pour le Web (URLs propres)
+  const linking = {
+    prefixes: ['https://meetme.cd', 'meetme://'],
+    config: {
+      screens: {
+        Splash: '',
+        Login: 'login',
+        Signup: 'signup',
+        ForgotPassword: 'forgot-password',
+        ChatList: 'chats',
+        Chat: 'chat/:chatId',
+        Settings: 'settings',
+        Contacts: 'contacts',
+        CreateStatus: 'status/create',
+        ViewStatus: 'status/view/:statusId',
+        AddContact: 'contacts/add',
+        EditProfile: 'profile/edit',
+        PrivacyPolicy: 'privacy-policy',
+        TermsOfService: 'terms-of-service',
+        CreateGroup: 'groups/create',
+        BusinessDashboard: 'business',
+        School: 'school',
+        EmploiMain: 'emploi',
+        EmployerDashboard: 'employer-dashboard',
+      },
+    },
+  };
+
   return (
-    <NavigationContainer ref={navRef} theme={navigationTheme}>
+    <NavigationContainer ref={navRef} theme={navigationTheme} linking={Platform.OS === 'web' ? linking : undefined}>
       <Stack.Navigator initialRouteName="Splash">
         <Stack.Screen
           name="Splash"
