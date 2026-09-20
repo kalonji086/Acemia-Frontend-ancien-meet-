@@ -36,13 +36,34 @@ class ApiService {
     return ApiService.instance;
   }
 
-  private async getAuthToken() { return await SecureStore.getItemAsync('auth_token'); }
-  private async setAuthToken(t: string) { await SecureStore.setItemAsync('auth_token', t); }
-  private async getRefreshToken() { return await SecureStore.getItemAsync('refresh_token'); }
-  private async setRefreshToken(t: string) { await SecureStore.setItemAsync('refresh_token', t); }
+  private async getAuthToken() {
+    if (Platform.OS === 'web') return await AsyncStorage.getItem('auth_token');
+    return await SecureStore.getItemAsync('auth_token');
+  }
+
+  private async setAuthToken(t: string) {
+    if (Platform.OS === 'web') await AsyncStorage.setItem('auth_token', t);
+    else await SecureStore.setItemAsync('auth_token', t);
+  }
+
+  private async getRefreshToken() {
+    if (Platform.OS === 'web') return await AsyncStorage.getItem('refresh_token');
+    return await SecureStore.getItemAsync('refresh_token');
+  }
+
+  private async setRefreshToken(t: string) {
+    if (Platform.OS === 'web') await AsyncStorage.setItem('refresh_token', t);
+    else await SecureStore.setItemAsync('refresh_token', t);
+  }
+
   private async clearTokens() {
-    await SecureStore.deleteItemAsync('auth_token');
-    await SecureStore.deleteItemAsync('refresh_token');
+    if (Platform.OS === 'web') {
+      await AsyncStorage.removeItem('auth_token');
+      await AsyncStorage.removeItem('refresh_token');
+    } else {
+      await SecureStore.deleteItemAsync('auth_token');
+      await SecureStore.deleteItemAsync('refresh_token');
+    }
     await AsyncStorage.removeItem('user');
   }
 

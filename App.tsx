@@ -47,17 +47,9 @@ export default function App() {
         <UserProvider>
           <ThemeProvider>
             <SafeAreaProvider>
-              <ErrorBoundary
-                onError={handleError}
-                fallback={(
-                  <ErrorScreen
-                    error={new Error('Application error')}
-                    showDetails={__DEV__}
-                  />
-                )}
-              >
+              <ErrorBoundary onError={handleError}>
                 <WebResponsiveWrapper>
-                  <StatusBar style="auto" />
+                  {Platform.OS !== 'web' && <StatusBar style="auto" />}
                   <AppNavigator />
                 </WebResponsiveWrapper>
               </ErrorBoundary>

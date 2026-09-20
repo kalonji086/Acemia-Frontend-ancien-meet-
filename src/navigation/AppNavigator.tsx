@@ -52,6 +52,7 @@ import SchoolTeachersScreen from '../screens/SchoolTeachersScreen';
 import EmployerPlanningScreen from '../screens/EmployerPlanningScreen';
 import { useTheme } from '../context/ThemeContext';
 import { DefaultTheme, DarkTheme } from '@react-navigation/native';
+import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import socketService from '../services/socket.service';
 
