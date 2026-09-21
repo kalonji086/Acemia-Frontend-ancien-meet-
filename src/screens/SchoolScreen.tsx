@@ -147,8 +147,8 @@ export default function SchoolScreen({ navigation, route }: any) {
   }, [route?.params?.tab, route?.params?.refresh]);
 
   const handleRoleSelection = (role: 'promoter' | 'parent' | 'student') => {
-    // Si l'utilisateur a déjà une école (en attente ou approuvée), on l'envoie vers son dashboard
-    if (overview?.mySchool || (role === 'promoter' && schools.find(s => s.created_by === overview?.userId))) {
+    const userSchool = overview?.mySchool || overview?.mySchools?.[0] || schools.find(s => s.created_by === overview?.userId);
+    if (userSchool || (role === 'promoter' && schools.find(s => s.created_by === overview?.userId))) {
       setActiveTab('Mon Dashboard');
       return;
     }
@@ -160,22 +160,25 @@ export default function SchoolScreen({ navigation, route }: any) {
     }
   };
 
-  const renderPendingUI = () => (
-    <View style={styles.centered}>
-      <Clock size={normalize(80)} color={colors.primary} />
-      <Text style={[styles.dashTitle, { color: colors.text.primary, marginTop: 20, textAlign: 'center' }]}>Examen en cours</Text>
-      <Text style={[styles.subtitle, { color: colors.text.secondary, marginTop: 10, textAlign: 'center', paddingHorizontal: 30 }]}>
-        Votre demande pour l'établissement "{overview.mySchool.name}" est en cours d'examen par notre équipe.
-        Dès qu'elle sera approuvée, vous pourrez gérer tout votre établissement ici.
-      </Text>
-      <TouchableOpacity
-        style={[styles.actionBtn, { backgroundColor: colors.primary, marginTop: 30, width: '80%' }]}
-        onPress={() => loadData()}
-      >
-        <Text style={{ color: '#fff', fontWeight: 'bold' }}>ACTUALISER LE STATUT</Text>
-      </TouchableOpacity>
-    </View>
-  );
+  const renderPendingUI = () => {
+    const userSchool = overview?.mySchool || overview?.mySchools?.[0] || schools.find(s => s.created_by === overview?.userId);
+    return (
+      <View style={styles.centered}>
+        <Clock size={normalize(80)} color={colors.primary} />
+        <Text style={[styles.dashTitle, { color: colors.text.primary, marginTop: 20, textAlign: 'center' }]}>Examen en cours</Text>
+        <Text style={[styles.subtitle, { color: colors.text.secondary, marginTop: 10, textAlign: 'center', paddingHorizontal: 30 }]}>
+          Votre demande pour l'établissement "{userSchool?.name || 'votre établissement'}" est en cours d'examen par notre équipe.
+          Dès qu'elle sera approuvée, vous pourrez gérer tout votre établissement ici.
+        </Text>
+        <TouchableOpacity
+          style={[styles.actionBtn, { backgroundColor: colors.primary, marginTop: 30, width: '80%' }]}
+          onPress={() => loadData()}
+        >
+          <Text style={{ color: '#fff', fontWeight: 'bold' }}>ACTUALISER LE STATUT</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  };
 
   const handleEnrollChild = async () => {
     if (!enrollChildForm.firstName || !enrollChildForm.lastName) return Alert.alert('Erreur', 'Le prénom et le nom sont obligatoires.');
@@ -301,8 +304,10 @@ export default function SchoolScreen({ navigation, route }: any) {
     </TouchableOpacity>
   );
 
-  const renderWelcome = () => (
-    <View style={styles.welcomeContainer}>
+  const renderWelcome = () => {
+    const userSchool = overview?.mySchool || overview?.mySchools?.[0] || schools.find(s => s.created_by === overview?.userId);
+    return (
+      <View style={styles.welcomeContainer}>
         <View style={styles.welcomeHeader}>
           <View style={[styles.iconBadge, { backgroundColor: colors.primary + '15', width: normalize(80), height: normalize(80), borderRadius: normalize(40) }]}>
             <GraduationCap size={normalize(40)} color={colors.primary} />
@@ -318,29 +323,30 @@ export default function SchoolScreen({ navigation, route }: any) {
 
           <View style={styles.roleGrid}>
             <RoleCard
-              title={overview?.mySchool ? (overview.mySchool.status === 'approved' ? "Mon Dashboard" : "Demande en cours") : "Parent / Élève"}
-              desc={overview?.mySchool ? (overview.mySchool.status === 'approved' ? "Suivi académique" : "Attente de validation") : "Suivi académique et paiements"}
+              title={userSchool ? (userSchool.status === 'approved' ? "Mon Dashboard" : "Demande en cours") : "Parent / Élève"}
+              desc={userSchool ? (userSchool.status === 'approved' ? "Suivi académique" : "Attente de validation") : "Suivi académique et paiements"}
               icon={<Users size={24} color="#4CAF50" />}
               onPress={() => handleRoleSelection('parent')}
               colors={colors}
               normalize={normalize}
-              status={overview?.mySchool?.status}
+              status={userSchool?.status}
             />
             <RoleCard
-              title={overview?.mySchool ? (overview.mySchool.status === 'approved' ? "Gestion École" : "Établissement créé") : "Promoteur"}
-              desc={overview?.mySchool ? (overview.mySchool.status === 'approved' ? "Pilotage & Statistiques" : "Examen en cours...") : "Gérer votre établissement"}
+              title={userSchool ? (userSchool.status === 'approved' ? "Gestion École" : "Établissement créé") : "Promoteur"}
+              desc={userSchool ? (userSchool.status === 'approved' ? "Pilotage & Statistiques" : "Examen en cours...") : "Gérer votre établissement"}
               icon={<Building2 size={24} color={colors.primary} />}
               onPress={() => handleRoleSelection('promoter')}
               colors={colors}
               normalize={normalize}
-              status={overview?.mySchool?.status}
+              status={userSchool?.status}
             />
           </View>
         </View>
 
         <Text style={[styles.sectionHeader, { color: colors.text.primary, marginTop: 30, marginBottom: 15 }]}>Découvrir des écoles</Text>
-    </View>
-  );
+      </View>
+    );
+  };
 
   const renderStudentDashboard = () => (
     <ScrollView style={styles.dashContainer}>
@@ -555,11 +561,12 @@ export default function SchoolScreen({ navigation, route }: any) {
     }
 
     if (activeTab === 'Mon Dashboard') {
-      if (overview?.role === 'promoter' && overview?.mySchool?.status === 'pending') {
+      const userSchool = overview?.mySchool || overview?.mySchools?.[0] || schools.find(s => s.created_by === overview?.userId);
+      if (userSchool?.status === 'pending') {
         return renderPendingUI();
       }
 
-      if (!overview?.mySchool) return (
+      if (!overview?.mySchool && !userSchool) return (
         <View style={styles.centered}>
            <GraduationCap size={60} color={colors.text.disabled} />
            <Text style={{ color: colors.text.secondary, marginTop: 20, textAlign: 'center' }}>Vous n'êtes membre d'aucune école.</Text>
@@ -573,7 +580,9 @@ export default function SchoolScreen({ navigation, route }: any) {
         </View>
       );
 
-      switch (overview.role) {
+      const currentRole = overview?.role && overview.role !== 'none' ? overview.role : (userSchool?.created_by === overview?.userId ? 'promoter' : 'student');
+
+      switch (currentRole) {
         case 'student': return renderStudentDashboard();
         case 'parent': return renderParentDashboard();
         case 'teacher': return renderTeacherDashboard();
