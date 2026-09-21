@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, Platform, useWindowDimensions } from 'react-native';
+import { View, StyleSheet, Platform, useWindowDimensions, Image } from 'react-native';
 
 interface WebResponsiveWrapperProps {
   children: React.ReactNode;

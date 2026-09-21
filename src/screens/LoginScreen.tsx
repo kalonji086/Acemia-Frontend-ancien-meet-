@@ -12,6 +12,7 @@ import {
   ActivityIndicator,
   StatusBar,
   Dimensions,
+  Image,
 } from 'react-native';
 import {
   ShieldAlert, X, Mail, Megaphone, MessageSquare,
