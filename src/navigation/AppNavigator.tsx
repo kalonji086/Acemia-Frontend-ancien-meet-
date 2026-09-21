@@ -29,10 +29,6 @@ import UserProfileScreen from '../screens/UserProfileScreen';
 import BusinessRegistrationScreen from '../screens/BusinessRegistrationScreen';
 import BusinessDashboardScreen from '../screens/BusinessDashboardScreen';
 import BusinessPublicProfileScreen from '../screens/BusinessPublicProfileScreen';
-import SchoolScreen from '../screens/SchoolScreen';
-import SchoolRegistrationScreen from '../screens/SchoolRegistrationScreen';
-import SchoolProfileScreen from '../screens/SchoolProfileScreen';
-import SchoolEnrollmentRequestsScreen from '../screens/SchoolEnrollmentRequestsScreen';
 import EmploiMainScreen from '../screens/EmploiMainScreen';
 import EmployerRequestScreen from '../screens/EmployerRequestScreen';
 import EmployerDashboardScreen from '../screens/EmployerDashboardScreen';
@@ -42,13 +38,6 @@ import JobDiscoveryScreen from '../screens/JobDiscoveryScreen';
 import JobDetailsScreen from '../screens/JobDetailsScreen';
 import CreateJobPostingScreen from '../screens/CreateJobPostingScreen';
 import MyJobsScreen from '../screens/MyJobsScreen';
-import SchoolCalendarScreen from '../screens/SchoolCalendarScreen';
-import SchoolStatisticsScreen from '../screens/SchoolStatisticsScreen';
-import SchoolClassesScreen from '../screens/SchoolClassesScreen';
-import SchoolFeesScreen from '../screens/SchoolFeesScreen';
-import SchoolAssignmentsScreen from '../screens/SchoolAssignmentsScreen';
-import SchoolAnnouncementsScreen from '../screens/SchoolAnnouncementsScreen';
-import SchoolTeachersScreen from '../screens/SchoolTeachersScreen';
 import EmployerPlanningScreen from '../screens/EmployerPlanningScreen';
 import { useTheme } from '../context/ThemeContext';
 import { DefaultTheme, DarkTheme } from '@react-navigation/native';
@@ -193,7 +182,6 @@ export default function AppNavigator() {
         TermsOfService: 'terms-of-service',
         CreateGroup: 'groups/create',
         BusinessDashboard: 'business',
-        School: 'school',
         EmploiMain: 'emploi',
         EmployerDashboard: 'employer-dashboard',
       },
@@ -331,61 +319,6 @@ export default function AppNavigator() {
         <Stack.Screen
           name="BusinessPublicProfile"
           component={BusinessPublicProfileScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="School"
-          component={SchoolScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="SchoolRegistration"
-          component={SchoolRegistrationScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="SchoolProfile"
-          component={SchoolProfileScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="SchoolEnrollmentRequests"
-          component={SchoolEnrollmentRequestsScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="SchoolCalendar"
-          component={SchoolCalendarScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="SchoolStatistics"
-          component={SchoolStatisticsScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="SchoolClasses"
-          component={SchoolClassesScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="SchoolFees"
-          component={SchoolFeesScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="SchoolAssignments"
-          component={SchoolAssignmentsScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="SchoolAnnouncements"
-          component={SchoolAnnouncementsScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="SchoolTeachers"
-          component={SchoolTeachersScreen}
           options={{ headerShown: false }}
         />
         <Stack.Screen

@@ -11,7 +11,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import ChatListScreen from './ChatListScreen';
 import StatusScreen from './StatusScreen';
 import MarketScreen from './MarketScreen';
-import SchoolScreen from './SchoolScreen';
 import ChatScreen from './ChatScreen';
 import EmploiMainScreen from './EmploiMainScreen';
 import { useLanguage } from '../context/LanguageContext';
@@ -242,7 +241,6 @@ export default function MainScreen({ navigation, route }: any) {
         case 'status': return <StatusScreen />;
         case 'emploi': return <EmploiMainScreen navigation={navigation} />;
         case 'market': return <MarketScreen />;
-        case 'school': return <SchoolScreen navigation={navigation} route={route} />;
         default: return <ChatListScreen navigation={navigation} route={route} />;
       }
     } catch (err) {
@@ -306,14 +304,6 @@ export default function MainScreen({ navigation, route }: any) {
               icon={<ShoppingCart size={24} />}
               label={t('market')}
               onPress={() => handleTabPress('market')}
-              colors={colors}
-              styles={styles}
-            />
-            <SidebarItem
-              active={activeTab === 'school'}
-              icon={<GraduationCap size={24} />}
-              label="School"
-              onPress={() => handleTabPress('school')}
               colors={colors}
               styles={styles}
             />
@@ -399,18 +389,6 @@ export default function MainScreen({ navigation, route }: any) {
             icon={<ShoppingCart size={22} />}
             label={t('market')}
             onPress={() => handleTabPress('market')}
-            activeColor={colors.primary}
-            inactiveColor={colors.text.secondary}
-            activeBg={isDark ? colors.primary + '20' : '#F3E5F5'}
-            badge={0}
-            styles={styles}
-            normalize={normalize}
-          />
-          <TabItem
-            active={activeTab === 'school'}
-            icon={<GraduationCap size={22} />}
-            label={t('school') || 'School'}
-            onPress={() => handleTabPress('school')}
             activeColor={colors.primary}
             inactiveColor={colors.text.secondary}
             activeBg={isDark ? colors.primary + '20' : '#F3E5F5'}
