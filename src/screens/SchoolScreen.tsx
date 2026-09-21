@@ -500,10 +500,6 @@ export default function SchoolScreen({ navigation, route }: any) {
        );
     }
 
-    if (overview?.role === 'promoter' && overview?.mySchool?.status === 'pending') {
-      return renderPendingUI();
-    }
-
     if (activeTab === 'Répertoire') {
       return (
         <FlatList
@@ -523,6 +519,10 @@ export default function SchoolScreen({ navigation, route }: any) {
     }
 
     if (activeTab === 'Mon Dashboard') {
+      if (overview?.role === 'promoter' && overview?.mySchool?.status === 'pending') {
+        return renderPendingUI();
+      }
+
       if (!overview?.mySchool) return (
         <View style={styles.centered}>
            <GraduationCap size={60} color={colors.text.disabled} />
