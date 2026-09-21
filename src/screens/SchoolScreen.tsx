@@ -37,8 +37,19 @@ export default function SchoolScreen({ navigation, route }: any) {
     try {
       const res = await apiService.getSchoolOverview();
       if (res.success) {
+        console.log('School data loaded:', res.data);
         setOverview(res.data);
-        setSchools(res.data.worldSchools || []);
+
+        // On fusionne worldSchools et mySchools pour être sûr de tout voir
+        const allSchools = [...(res.data.worldSchools || [])];
+        if (Array.isArray(res.data.mySchools)) {
+          res.data.mySchools.forEach((ms: any) => {
+            if (!allSchools.find(s => s.id === ms.id)) {
+              allSchools.push(ms);
+            }
+          });
+        }
+        setSchools(allSchools);
 
         if (res.data.mySchool) {
           // Si membre, on va directement sur le dashboard sauf si un autre onglet est demandé
