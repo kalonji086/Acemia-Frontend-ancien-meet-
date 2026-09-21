@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text, Dimensions, ActivityIndicator, Image, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   MessageSquare, Aperture, Phone, ShoppingCart, AlertCircle,
-  MessagesSquare, Briefcase, GraduationCap
+  MessagesSquare, Briefcase
 } from 'lucide-react-native';
 import apiService from '../services/api.service';
 import socketService from '../services/socket.service';
@@ -20,16 +20,106 @@ import { useUser } from '../context/UserContext';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export default function MainScreen({ navigation, route }: any) {
+  // --- 1. HOOKS (MUST ALWAYS RUN IN THE SAME ORDER) ---
   const { colors, isDark, normalize } = useTheme();
   const { user: currentUser, setUser, loading: userLoading } = useUser();
   const { t } = useLanguage();
   const insets = useSafeAreaInsets();
+
   const [activeTab, setActiveTab] = useState('chats');
   const [selectedChat, setSelectedChat] = useState<any>(null);
   const [screenWidth, setScreenWidth] = useState(SCREEN_WIDTH);
   const [unreadTotal, setUnreadTotal] = useState(0);
 
-  // Attendre que l'utilisateur soit chargé
+  useEffect(() => {
+    const fetchUnreadCount = async () => {
+      try {
+        const res = await apiService.getChats(1, 100);
+        if (res.success) {
+          const total = res.data.reduce((acc: number, chat: any) => acc + parseInt(chat.unread_count || 0), 0);
+          setUnreadTotal(total);
+        }
+      } catch (e) {}
+    };
+
+    fetchUnreadCount();
+    const handleMsg = () => fetchUnreadCount();
+    socketService.on('new_message', handleMsg);
+    socketService.on('message_read', handleMsg);
+
+    return () => {
+      socketService.off('new_message', handleMsg);
+      socketService.off('message_read', handleMsg);
+    };
+  }, []);
+
+  useEffect(() => {
+    const sub = Dimensions.addEventListener('change', ({ window }) => {
+      setScreenWidth(window.width);
+    });
+    return () => sub.remove();
+  }, []);
+
+  useEffect(() => {
+    if (route.params?.screen && route.params.screen !== activeTab) {
+      setActiveTab(route.params.screen);
+    }
+  }, [route.params?.screen]);
+
+  useEffect(() => {
+    const startSocket = async () => {
+      try {
+        await socketService.initialize();
+        await socketService.connect();
+        await socketService.authenticate();
+
+        socketService.on('profile_updated', async () => {
+          const res = await apiService.getMe();
+          if (res.success) setUser(res.data);
+        });
+
+        // Legal updates check
+        const legalRes = await apiService.getLegalDocs();
+        if (legalRes?.success) {
+          const docs = legalRes.data || [];
+          const userRes = await apiService.getMe();
+          if (userRes.success) {
+            const user = userRes.data;
+            await AsyncStorage.setItem('user', JSON.stringify(user));
+            const mustAccept = docs.some((doc: any) => {
+              if (!doc.force_acceptance) return false;
+              if (doc.type === 'tos') return doc.version !== user?.accepted_tos_version;
+              if (doc.type === 'privacy') return doc.version !== user?.accepted_privacy_version;
+              return doc.version !== user?.accepted_legal_version;
+            });
+            if (mustAccept) {
+              navigation.reset({ index: 0, routes: [{ name: 'LegalAcceptance', params: { documents: docs } }] });
+            }
+          }
+        }
+
+        socketService.on('legal_update', (data) => {
+          if (data.force_acceptance === true || data.force_acceptance === 'true') {
+             navigation.reset({
+                index: 0,
+                routes: [{
+                  name: 'LegalAcceptance',
+                  params: { documents: [{ ...data, force_acceptance: true }], isRealTime: true }
+                }]
+             });
+          }
+        });
+      } catch (err) {}
+    };
+
+    startSocket();
+    return () => {
+      socketService.off('profile_updated');
+      socketService.off('legal_update');
+    };
+  }, []);
+
+  // --- 2. EARLY RETURN (AFTER ALL HOOKS) ---
   if (userLoading || !currentUser || !colors) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: isDark ? '#1a1a1a' : '#fff' }}>
@@ -38,165 +128,13 @@ export default function MainScreen({ navigation, route }: any) {
     );
   }
 
-  const fetchUnreadCount = async () => {
-    try {
-      const res = await apiService.getChats(1, 100);
-      if (res.success) {
-        const total = res.data.reduce((acc: number, chat: any) => acc + parseInt(chat.unread_count || 0), 0);
-        setUnreadTotal(total);
-      }
-    } catch (e) {}
-  };
-
-  React.useEffect(() => {
-    fetchUnreadCount();
-
-    // Refresh unread count on socket events
-    const handleNewMessage = () => fetchUnreadCount();
-    socketService.on('new_message', handleNewMessage);
-    socketService.on('message_read', handleNewMessage);
-
-    return () => {
-      socketService.off('new_message', handleNewMessage);
-      socketService.off('message_read', handleNewMessage);
-    };
-  }, []);
-
-  React.useEffect(() => {
-    const subscription = Dimensions.addEventListener('change', ({ window }) => {
-      setScreenWidth(window.width);
-    });
-    return () => subscription.remove();
-  }, []);
-
+  // --- 3. LOGIC & RENDER ---
   const isTablet = screenWidth > 768;
-
-  React.useEffect(() => {
-    if (route.params?.screen && route.params.screen !== activeTab) {
-      setActiveTab(route.params.screen);
-    }
-  }, [route.params?.screen]);
-
-  const handleTabPress = (tab: string) => {
-    setActiveTab(tab);
-    if (Platform.OS === 'web') {
-      // Sur le web, on met à jour l'URL sans recharger tout l'écran si possible
-      // ou on utilise la navigation pour que le linking fasse son travail
-      navigation.setParams({ screen: tab });
-    }
-  };
-
-  React.useEffect(() => {
-    // Activation du Socket pour le suivi en temps réel (Statut "En ligne")
-    const startSocket = async () => {
-      try {
-        await socketService.initialize();
-        await socketService.connect();
-        await socketService.authenticate();
-
-        // Écouter les mises à jour de profil (badge, etc.) en temps réel
-        socketService.on('profile_updated', async () => {
-          const res = await apiService.getMe();
-          if (res.success) {
-            setUser(res.data);
-          }
-        });
-
-        // Écouter si un autre utilisateur est vérifié pour mettre à jour les icônes badge
-        socketService.on('admin:user_verified', () => {
-          // On peut émettre un événement local ou simplement laisser le polling/refresh faire
-          // Mais pour le temps réel pur, on pourrait déclencher un refresh global
-        });
-
-        // Vérification immédiate des mises à jour légales après connexion/re-connexion
-        checkLegalUpdates();
-
-        // Écouter les mises à jour légales en temps réel
-        socketService.on('legal_update', (data) => {
-          console.log('MainScreen: Received real-time legal_update', data);
-          if (data.force_acceptance === true || data.force_acceptance === 'true') {
-             navigation.reset({
-                index: 0,
-                routes: [{
-                  name: 'LegalAcceptance',
-                  params: {
-                    documents: [{
-                      type: data.type,
-                      content: data.content,
-                      version: data.version,
-                      force_acceptance: true
-                    }],
-                    isRealTime: true
-                  }
-                }]
-             });
-          }
-        });
-      } catch (err) {
-        console.error('MainScreen: Socket start error', err);
-      }
-    };
-
-    startSocket();
-
-    return () => {
-      socketService.off('profile_updated');
-      socketService.off('admin:user_verified');
-      socketService.off('legal_update');
-    };
-  }, []);
-
-  const checkLegalUpdates = async () => {
-    try {
-      const legalRes = await apiService.getLegalDocs();
-      if (legalRes && legalRes.success) {
-        const docs = legalRes.data || [];
-
-        // On récupère les données de l'utilisateur les plus fraîches du SERVEUR
-        // pour être sûr que le profil n'est pas déjà à jour
-        const userRes = await apiService.getMe();
-        if (!userRes.success) return;
-        const user = userRes.data;
-
-        // On met aussi à jour le cache local pour éviter les répétitions au prochain démarrage
-        await AsyncStorage.setItem('user', JSON.stringify(user));
-
-        const mustAccept = docs.some((doc: any) => {
-          if (!doc.force_acceptance) return false;
-
-          // On ne déclenche QUE si le contenu est différent des versions acceptées
-          if (doc.type === 'tos') return doc.version !== user?.accepted_tos_version;
-          if (doc.type === 'privacy') return doc.version !== user?.accepted_privacy_version;
-          return doc.version !== user?.accepted_legal_version;
-        });
-
-        if (mustAccept) {
-          console.log('MainScreen: Mandatory legal acceptance required.');
-          navigation.reset({
-            index: 0,
-            routes: [{ name: 'LegalAcceptance', params: { documents: docs } }]
-          });
-        }
-      }
-    } catch (e) {
-      console.log('MainScreen: Periodic legal check failed', e);
-    }
-  };
-
-  /*
-  const fetchBadges = async () => {
-    try {
-      const res = await apiService.getBadges();
-      if (res.success) {
-        setBadges(res.data);
-      }
-    } catch (e) { console.error(e); }
-  };
-  */
+  const isWeb = Platform.OS === 'web';
+  const showSidebar = isWeb && screenWidth > 1024;
+  const styles = createStyles(colors, normalize, isDark);
 
   const renderContent = () => {
-    if (!colors) return <ActivityIndicator color="#673AB7" style={{ marginTop: 50 }} />;
-
     try {
       switch (activeTab) {
         case 'chats':
@@ -213,18 +151,16 @@ export default function MainScreen({ navigation, route }: any) {
                 </View>
                 <View style={styles.detailPane}>
                   {selectedChat ? (
-                    <View style={{ flex: 1, overflow: 'visible' }}>
-                      <ChatScreen
-                        navigation={navigation}
-                        route={{ params: {
-                          chatId: selectedChat.id,
-                          name: selectedChat.name,
-                          avatar: selectedChat.avatar,
-                          peerUserId: selectedChat.otherUserId,
-                          isSplitView: true
-                        } }}
-                      />
-                    </View>
+                    <ChatScreen
+                      navigation={navigation}
+                      route={{ params: {
+                        chatId: selectedChat.id,
+                        name: selectedChat.name,
+                        avatar: selectedChat.avatar,
+                        peerUserId: selectedChat.otherUserId,
+                        isSplitView: true
+                      } }}
+                    />
                   ) : (
                     <View style={styles.emptyDetail}>
                       <MessagesSquare size={80} color={colors.text.disabled} />
@@ -244,23 +180,14 @@ export default function MainScreen({ navigation, route }: any) {
         default: return <ChatListScreen navigation={navigation} route={route} />;
       }
     } catch (err) {
-      console.error('MainScreen render content error:', err);
       return (
         <View style={styles.emptyDetail}>
           <AlertCircle size={60} color={colors.danger} />
-          <Text style={{ marginTop: 10, color: colors.text.primary }}>Une erreur d'affichage est survenue.</Text>
-          <TouchableOpacity onPress={() => setActiveTab('chats')} style={{ marginTop: 20, padding: 10, backgroundColor: colors.primary, borderRadius: 10 }}>
-            <Text style={{ color: '#fff' }}>Retour aux discussions</Text>
-          </TouchableOpacity>
+          <Text style={{ marginTop: 10, color: colors.text.primary }}>Erreur.</Text>
         </View>
       );
     }
   };
-
-  const styles = createStyles(colors, normalize, isDark);
-
-  const isWeb = Platform.OS === 'web';
-  const showSidebar = isWeb && screenWidth > 1024;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background, flexDirection: showSidebar ? 'row' : 'column' }]}>
@@ -274,307 +201,89 @@ export default function MainScreen({ navigation, route }: any) {
           </View>
 
           <View style={styles.sidebarMenu}>
-            <SidebarItem
-              active={activeTab === 'chats'}
-              icon={<MessagesSquare size={24} />}
-              label={t('chats')}
-              onPress={() => handleTabPress('chats')}
-              colors={colors}
-              styles={styles}
-              badge={unreadTotal}
-            />
-            <SidebarItem
-              active={activeTab === 'status'}
-              icon={<Aperture size={24} />}
-              label={t('status')}
-              onPress={() => handleTabPress('status')}
-              colors={colors}
-              styles={styles}
-            />
-            <SidebarItem
-              active={activeTab === 'emploi'}
-              icon={<Briefcase size={24} />}
-              label="Emploi"
-              onPress={() => handleTabPress('emploi')}
-              colors={colors}
-              styles={styles}
-            />
-            <SidebarItem
-              active={activeTab === 'market'}
-              icon={<ShoppingCart size={24} />}
-              label={t('market')}
-              onPress={() => handleTabPress('market')}
-              colors={colors}
-              styles={styles}
-            />
+            <SidebarItem active={activeTab === 'chats'} icon={<MessagesSquare size={24} />} label={t('chats')} onPress={() => setActiveTab('chats')} colors={colors} badge={unreadTotal} />
+            <SidebarItem active={activeTab === 'status'} icon={<Aperture size={24} />} label={t('status')} onPress={() => setActiveTab('status')} colors={colors} />
+            <SidebarItem active={activeTab === 'emploi'} icon={<Briefcase size={24} />} label="Emploi" onPress={() => setActiveTab('emploi')} colors={colors} />
+            <SidebarItem active={activeTab === 'market'} icon={<ShoppingCart size={24} />} label={t('market')} onPress={() => setActiveTab('market')} colors={colors} />
           </View>
 
           <View style={styles.sidebarFooter}>
-            <TouchableOpacity
-              style={styles.sidebarProfile}
-              onPress={() => navigation.navigate('Settings')}
-            >
-              <View style={styles.sidebarAvatarContainer}>
-                <Image
-                  source={{ uri: currentUser.avatar_url || `https://ui-avatars.com/api/?name=${currentUser.full_name}` }}
-                  style={styles.sidebarAvatar}
-                />
-                <View style={styles.onlineIndicator} />
-              </View>
+            <TouchableOpacity style={styles.sidebarProfile} onPress={() => navigation.navigate('Settings')}>
+              <Image source={{ uri: currentUser.avatar_url || `https://ui-avatars.com/api/?name=${currentUser.full_name}` }} style={styles.sidebarAvatar} />
               <View style={styles.sidebarProfileInfo}>
-                <Text style={[styles.sidebarName, { color: colors.text.primary }]} numberOfLines={1}>
-                  {currentUser.full_name}
-                </Text>
-                <Text style={[styles.sidebarStatus, { color: colors.text.secondary }]}>
-                  En ligne
-                </Text>
+                <Text style={[styles.sidebarName, { color: colors.text.primary }]} numberOfLines={1}>{currentUser.full_name}</Text>
+                <Text style={[styles.sidebarStatus, { color: colors.text.secondary }]}>En ligne</Text>
               </View>
             </TouchableOpacity>
           </View>
         </View>
       )}
 
-      <View style={styles.content}>
-        {renderContent()}
-      </View>
+      <View style={styles.content}>{renderContent()}</View>
 
       {!showSidebar && (
-        <View style={[
-          styles.bottomBar,
-          {
-            paddingBottom: Math.max(insets.bottom, 10),
-            height: normalize(70) + insets.bottom,
-            backgroundColor: colors.surface,
-            borderTopColor: colors.border
-          }
-        ]}>
-          <TabItem
-            active={activeTab === 'chats'}
-            icon={<MessagesSquare size={22} />}
-            label={t('chats')}
-            onPress={() => handleTabPress('chats')}
-            activeColor={colors.primary}
-            inactiveColor={colors.text.secondary}
-            activeBg={isDark ? colors.primary + '20' : '#F3E5F5'}
-            badge={unreadTotal}
-            styles={styles}
-            normalize={normalize}
-          />
-          <TabItem
-            active={activeTab === 'status'}
-            icon={<Aperture size={22} />}
-            label={t('status')}
-            onPress={() => handleTabPress('status')}
-            activeColor={colors.primary}
-            inactiveColor={colors.text.secondary}
-            activeBg={isDark ? colors.primary + '20' : '#F3E5F5'}
-            badge={0}
-            styles={styles}
-            normalize={normalize}
-          />
-          <TabItem
-            active={activeTab === 'emploi'}
-            icon={<Briefcase size={22} />}
-            label={t('emploi') || 'Emploi'}
-            onPress={() => handleTabPress('emploi')}
-            activeColor={colors.primary}
-            inactiveColor={colors.text.secondary}
-            activeBg={isDark ? colors.primary + '20' : '#F3E5F5'}
-            badge={0}
-            styles={styles}
-            normalize={normalize}
-          />
-          <TabItem
-            active={activeTab === 'market'}
-            icon={<ShoppingCart size={22} />}
-            label={t('market')}
-            onPress={() => handleTabPress('market')}
-            activeColor={colors.primary}
-            inactiveColor={colors.text.secondary}
-            activeBg={isDark ? colors.primary + '20' : '#F3E5F5'}
-            badge={0}
-            styles={styles}
-            normalize={normalize}
-          />
+        <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 10), height: normalize(70) + insets.bottom, backgroundColor: colors.surface, borderTopColor: colors.border }]}>
+          <TabItem active={activeTab === 'chats'} icon={<MessagesSquare size={22} />} label={t('chats')} onPress={() => setActiveTab('chats')} activeColor={colors.primary} inactiveColor={colors.text.secondary} activeBg={isDark ? colors.primary + '20' : '#F3E5F5'} badge={unreadTotal} normalize={normalize} />
+          <TabItem active={activeTab === 'status'} icon={<Aperture size={22} />} label={t('status')} onPress={() => setActiveTab('status')} activeColor={colors.primary} inactiveColor={colors.text.secondary} activeBg={isDark ? colors.primary + '20' : '#F3E5F5'} normalize={normalize} />
+          <TabItem active={activeTab === 'emploi'} icon={<Briefcase size={22} />} label={t('emploi') || 'Emploi'} onPress={() => setActiveTab('emploi')} activeColor={colors.primary} inactiveColor={colors.text.secondary} activeBg={isDark ? colors.primary + '20' : '#F3E5F5'} normalize={normalize} />
+          <TabItem active={activeTab === 'market'} icon={<ShoppingCart size={22} />} label={t('market')} onPress={() => setActiveTab('market')} activeColor={colors.primary} inactiveColor={colors.text.secondary} activeBg={isDark ? colors.primary + '20' : '#F3E5F5'} normalize={normalize} />
         </View>
       )}
     </View>
   );
 }
 
-const SidebarItem = ({ active, icon, label, onPress, colors, badge, styles }: any) => (
-  <TouchableOpacity
-    style={[
-      styles.sidebarItem,
-      active && { backgroundColor: colors.primary + '15', borderColor: colors.primary }
-    ]}
-    onPress={onPress}
-  >
+const SidebarItem = ({ active, icon, label, onPress, colors, badge }: any) => (
+  <TouchableOpacity style={[styles.sidebarItem, active && { backgroundColor: colors.primary + '15', borderColor: colors.primary }]} onPress={onPress}>
     <View style={styles.sidebarIconContainer}>
       {React.cloneElement(icon, { color: active ? colors.primary : colors.text.secondary })}
-      {badge > 0 && (
-        <View style={[styles.sidebarBadge, { backgroundColor: colors.danger }]}>
-          <Text style={styles.sidebarBadgeText}>{badge > 99 ? '9+' : badge}</Text>
-        </View>
-      )}
+      {badge > 0 && <View style={[styles.sidebarBadge, { backgroundColor: colors.danger }]}><Text style={styles.sidebarBadgeText}>{badge > 99 ? '9+' : badge}</Text></View>}
     </View>
-    <Text style={[styles.sidebarLabel, { color: active ? colors.primary : colors.text.primary, fontWeight: active ? 'bold' : '500' }]}>
-      {label}
-    </Text>
+    <Text style={[styles.sidebarLabel, { color: active ? colors.primary : colors.text.primary, fontWeight: active ? 'bold' : '500' }]}>{label}</Text>
   </TouchableOpacity>
 );
 
-const TabItem = ({ active, icon, label, onPress, activeColor, inactiveColor, activeBg, badge, styles, normalize }: any) => (
+const TabItem = ({ active, icon, label, onPress, activeColor, inactiveColor, activeBg, badge, normalize }: any) => (
   <TouchableOpacity style={styles.tabItem} onPress={onPress} activeOpacity={0.7}>
     <View style={[styles.iconContainer, active && { backgroundColor: activeBg }]}>
       {React.cloneElement(icon, { color: active ? activeColor : inactiveColor })}
-      {badge > 0 && (
-        <View style={styles.badgeContainer}>
-          <Text style={styles.badgeText} numberOfLines={1}>{badge > 99 ? '9+' : badge}</Text>
-        </View>
-      )}
+      {badge > 0 && <View style={styles.badgeContainer}><Text style={styles.badgeText} numberOfLines={1}>{badge > 99 ? '9+' : badge}</Text></View>}
     </View>
-    <Text
-      style={[styles.tabLabel, { color: active ? activeColor : inactiveColor }, active && styles.activeLabel]}
-      numberOfLines={1}
-      ellipsizeMode="tail"
-      adjustsFontSizeToFit
-      minimumFontScale={0.8}
-    >
-      {label}
-    </Text>
+    <Text style={[styles.tabLabel, { color: active ? activeColor : inactiveColor }, active && styles.activeLabel]} numberOfLines={1}>{label}</Text>
   </TouchableOpacity>
 );
 
 const createStyles = (colors: any, normalize: any, isDark: boolean) => StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
+  container: { flex: 1 },
   content: { flex: 1 },
   splitView: { flex: 1, flexDirection: 'row' },
-  masterPane: { width: 350, borderRightWidth: 1, borderRightColor: colors.border },
-  detailPane: { flex: 1, backgroundColor: colors.background },
+  masterPane: { width: 350, borderRightWidth: 1, borderRightColor: colors?.border || '#eee' },
+  detailPane: { flex: 1 },
   emptyDetail: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 },
   emptyDetailText: { marginTop: 20, fontSize: normalize(16), textAlign: 'center' },
-
-  // Sidebar Styles
-  sidebar: {
-    width: 280,
-    borderRightWidth: 1,
-    padding: 20,
-    display: 'flex',
-    flexDirection: 'column',
-    // Effet Glassmorphism pour le Web
-    backgroundColor: isDark ? 'rgba(26,26,26,0.8)' : 'rgba(255,255,255,0.8)',
-    ...Platform.select({
-      web: {
-        backdropFilter: 'blur(20px)',
-        WebkitBackdropFilter: 'blur(20px)',
-      } as any
-    })
-  },
+  sidebar: { width: 280, borderRightWidth: 1, padding: 20, display: 'flex', flexDirection: 'column', backgroundColor: isDark ? 'rgba(26,26,26,0.8)' : 'rgba(255,255,255,0.8)' },
   sidebarHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 40, marginTop: 10 },
-  sidebarLogo: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 15,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5
-  },
+  sidebarLogo: { width: 44, height: 44, borderRadius: 14, justifyContent: 'center', alignItems: 'center', marginRight: 15 },
   sidebarTitle: { fontSize: 22, fontWeight: '900', letterSpacing: -1 },
   sidebarMenu: { flex: 1 },
-  sidebarItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 14,
-    borderRadius: 16,
-    marginBottom: 10,
-    borderLeftWidth: 4,
-    borderColor: 'transparent',
-    transition: 'all 0.2s ease-in-out',
-  },
+  sidebarItem: { flexDirection: 'row', alignItems: 'center', padding: 14, borderRadius: 16, marginBottom: 10, borderLeftWidth: 4, borderColor: 'transparent' },
   sidebarIconContainer: { marginRight: 15, position: 'relative' },
   sidebarLabel: { fontSize: 16, letterSpacing: 0.5 },
-  sidebarBadge: {
-    position: 'absolute',
-    top: -8,
-    right: -8,
-    minWidth: 20,
-    height: 20,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 5,
-    borderWidth: 2,
-    borderColor: colors.surface
-  },
+  sidebarBadge: { position: 'absolute', top: -8, right: -8, minWidth: 20, height: 20, borderRadius: 10, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 5, borderWidth: 2, borderColor: colors?.surface || '#fff' },
   sidebarBadgeText: { color: '#fff', fontSize: 10, fontWeight: '900' },
-  sidebarFooter: { marginTop: 'auto', borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 20 },
-  sidebarProfile: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    borderRadius: 16,
-    backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
-  },
-  sidebarAvatarContainer: { position: 'relative', marginRight: 15 },
-  sidebarAvatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.border },
-  onlineIndicator: {
-    position: 'absolute',
-    bottom: 2,
-    right: 2,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#4CAF50',
-    borderWidth: 2,
-    borderColor: colors.surface
-  },
-  sidebarProfileInfo: { flex: 1 },
+  sidebarFooter: { marginTop: 'auto', borderTopWidth: 1, borderTopColor: colors?.border || '#eee', paddingTop: 20 },
+  sidebarProfile: { flexDirection: 'row', alignItems: 'center', padding: 12, borderRadius: 16, backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)' },
+  sidebarAvatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors?.border || '#eee' },
+  sidebarProfileInfo: { flex: 1, marginLeft: 10 },
   sidebarName: { fontSize: 15, fontWeight: '800' },
   sidebarStatus: { fontSize: 12, fontWeight: '500', opacity: 0.7 },
-
-  bottomBar: {
-    flexDirection: 'row',
-    backgroundColor: colors.surface,
-    borderTopWidth: 1,
-    paddingTop: 8,
-    width: '100%',
-    justifyContent: 'space-between',
-    paddingHorizontal: normalize(10),
-  },
+  bottomBar: { flexDirection: 'row', borderTopWidth: 1, paddingTop: 8, width: '100%', justifyContent: 'space-between' },
   tabItem: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  iconContainer: {
-    width: normalize(48),
-    height: normalize(28),
-    borderRadius: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 2,
-  },
+  iconContainer: { width: normalize(48), height: normalize(28), borderRadius: 14, justifyContent: 'center', alignItems: 'center', marginBottom: 2 },
   tabLabel: { fontSize: normalize(10), fontWeight: '500', textAlign: 'center' },
   activeLabel: { fontWeight: 'bold' },
-  badgeContainer: {
-    position: 'absolute',
-    top: -5,
-    right: -5,
-    backgroundColor: colors.danger,
-    borderRadius: 10,
-    minWidth: 18,
-    height: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 4,
-    borderWidth: 2,
-    borderColor: isDark ? colors.surface : '#fff',
-  },
-  badgeText: {
-    color: '#fff',
-    fontSize: 10,
-    fontWeight: 'bold',
-  },
+  badgeContainer: { position: 'absolute', top: -5, right: -5, backgroundColor: colors?.danger || '#F44336', borderRadius: 10, minWidth: 18, height: 18, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 4, borderWidth: 2, borderColor: isDark ? (colors?.surface || '#000') : '#fff' },
+  badgeText: { color: '#fff', fontSize: 10, fontWeight: 'bold' },
 });
+
+const styles = StyleSheet.create({}); // For TS
