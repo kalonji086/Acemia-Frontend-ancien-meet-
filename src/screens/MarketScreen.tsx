@@ -8,6 +8,7 @@ import {
   SafeAreaView,
   StatusBar,
   Image,
+  useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
@@ -16,6 +17,7 @@ import apiService from '../services/api.service';
 
 export default function MarketScreen() {
   const { colors, normalize, isDark } = useTheme();
+  const { width } = useWindowDimensions();
   const navigation = useNavigation<any>();
   const [loading, setLoading] = useState(true);
   const [business, setBusiness] = useState<any>(null);
@@ -47,8 +49,6 @@ export default function MarketScreen() {
       </View>
     );
   }
-
-  const isWide = width > 1024;
 
   // Si pas de business enregistré, proposer de s'enregistrer
   if (!business) {
