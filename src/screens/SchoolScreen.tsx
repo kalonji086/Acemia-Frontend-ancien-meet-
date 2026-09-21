@@ -32,6 +32,10 @@ export default function SchoolScreen({ navigation, route }: any) {
   const [gradeForm, setGradeForm] = useState({ subject: '', score: '', maxScore: '20', comment: '' });
   const [messageText, setMessageText] = useState('');
 
+  const [showLinkStudentModal, setShowLinkStudentModal] = useState(false);
+  const [linkStudentForm, setLinkStudentForm] = useState({ schoolId: '', firstName: '', lastName: '' });
+  const [linkingStudent, setLinkingStudent] = useState(false);
+
   const loadData = async (silent = false) => {
     if (!silent) setLoading(true);
     try {
@@ -213,6 +217,27 @@ export default function SchoolScreen({ navigation, route }: any) {
       Alert.alert('Erreur', 'Impossible d’envoyer la demande.');
     } finally {
       setSendingStaff(false);
+    }
+  };
+
+  const handleLinkStudent = async () => {
+    if (!linkStudentForm.schoolId || !linkStudentForm.firstName || !linkStudentForm.lastName) {
+      return Alert.alert('Attention', 'Tous les champs sont obligatoires.');
+    }
+    setLinkingStudent(true);
+    try {
+      const res = await apiService.linkSchoolStudent(linkStudentForm);
+      if (res.success) {
+        Alert.alert('Succès', 'Votre compte a été lié avec succès au profil élève !', [
+          { text: 'OK', onPress: () => { setShowLinkStudentModal(false); loadData(); } }
+        ]);
+      } else {
+        Alert.alert('Attention', res.error || 'Impossible de lier le compte.');
+      }
+    } catch (e) {
+      Alert.alert('Erreur', 'Une erreur s’est produite lors de la liaison.');
+    } finally {
+      setLinkingStudent(false);
     }
   };
 
@@ -539,6 +564,12 @@ export default function SchoolScreen({ navigation, route }: any) {
            <GraduationCap size={60} color={colors.text.disabled} />
            <Text style={{ color: colors.text.secondary, marginTop: 20, textAlign: 'center' }}>Vous n'êtes membre d'aucune école.</Text>
            <TouchableOpacity onPress={() => setActiveTab('Répertoire')} style={{ marginTop: 20 }}><Text style={{ color: colors.primary, fontWeight: 'bold' }}>RETOUR</Text></TouchableOpacity>
+           <TouchableOpacity
+             onPress={() => setShowLinkStudentModal(true)}
+             style={{ marginTop: 20, backgroundColor: colors.primary, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 10 }}
+           >
+             <Text style={{ color: '#fff', fontWeight: 'bold' }}>LIER UN COMPTE ÉLÈVE</Text>
+           </TouchableOpacity>
         </View>
       );
 
@@ -667,6 +698,49 @@ export default function SchoolScreen({ navigation, route }: any) {
             <View style={styles.modalHeader}><Text style={[styles.modalTitle, { color: colors.text.primary }]}>Message à {selectedStudent?.first_name}</Text><TouchableOpacity onPress={() => setShowMessageModal(false)}><X size={24} color={colors.text.secondary} /></TouchableOpacity></View>
             <TextInput placeholder="Votre message" value={messageText} onChangeText={setMessageText} multiline style={[styles.input, { borderColor: colors.border, color: colors.text.primary, height: 120, textAlignVertical: 'top' }]} placeholderTextColor={colors.text.disabled} />
             <TouchableOpacity onPress={handleSendStudentMessage} style={[styles.confirmBtn, { backgroundColor: colors.primary }]}><Text style={{ color: '#fff', fontWeight: 'bold' }}>ENVOYER</Text></TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal Liaison Compte Élève */}
+      <Modal visible={showLinkStudentModal} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.text.primary }]}>Lier mon compte élève</Text>
+              <TouchableOpacity onPress={() => setShowLinkStudentModal(false)}><X size={24} color={colors.text.secondary} /></TouchableOpacity>
+            </View>
+            <Text style={[styles.modalSub, { color: colors.text.secondary }]}>
+              Entrez l'identifiant (UUID) de l'école et le prénom/nom exact configuré par l'établissement.
+            </Text>
+            <TextInput
+              placeholder="ID Unique de l'école"
+              style={[styles.input, { borderColor: colors.border, color: colors.text.primary }]}
+              value={linkStudentForm.schoolId}
+              onChangeText={v => setLinkStudentForm({...linkStudentForm, schoolId: v})}
+              placeholderTextColor={colors.text.disabled}
+            />
+            <TextInput
+              placeholder="Votre Prénom"
+              style={[styles.input, { borderColor: colors.border, color: colors.text.primary }]}
+              value={linkStudentForm.firstName}
+              onChangeText={v => setLinkStudentForm({...linkStudentForm, firstName: v})}
+              placeholderTextColor={colors.text.disabled}
+            />
+            <TextInput
+              placeholder="Votre Nom"
+              style={[styles.input, { borderColor: colors.border, color: colors.text.primary }]}
+              value={linkStudentForm.lastName}
+              onChangeText={v => setLinkStudentForm({...linkStudentForm, lastName: v})}
+              placeholderTextColor={colors.text.disabled}
+            />
+            <TouchableOpacity
+              onPress={handleLinkStudent}
+              disabled={linkingStudent}
+              style={[styles.confirmBtn, { backgroundColor: colors.primary, marginTop: 10 }]}
+            >
+              {linkingStudent ? <ActivityIndicator color="#fff" /> : <Text style={{ color: '#fff', fontWeight: 'bold' }}>LIER LE PROFIL</Text>}
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>

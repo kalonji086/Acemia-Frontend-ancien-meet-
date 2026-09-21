@@ -85,6 +85,9 @@ export default function SchoolTeachersScreen({ navigation, route }: any) {
       <Modal visible={showModal} transparent animationType="slide">
         <View style={styles.overlay}><View style={[styles.modal, { backgroundColor: colors.background }]}>
           <View style={styles.modalHeader}><Text style={[styles.modalTitle, { color: colors.text.primary }]}>Ajouter un enseignant</Text><TouchableOpacity onPress={() => setShowModal(false)}><X size={24} color={colors.text.secondary} /></TouchableOpacity></View>
+          <Text style={{ color: colors.text.secondary, fontSize: 12, marginBottom: 15 }}>
+            Astuce : Si l'enseignant possède un compte Meet Me avec cet email, il sera lié automatiquement à son dashboard.
+          </Text>
           <TextInput placeholder="Nom complet" value={form.fullName} onChangeText={fullName => setForm({ ...form, fullName })} placeholderTextColor={colors.text.disabled} style={[styles.input, { color: colors.text.primary, borderColor: colors.border }]} />
           <TextInput placeholder="Email" value={form.email} onChangeText={email => setForm({ ...form, email })} keyboardType="email-address" placeholderTextColor={colors.text.disabled} style={[styles.input, { color: colors.text.primary, borderColor: colors.border }]} />
           <TextInput placeholder="Matière" value={form.subject} onChangeText={subject => setForm({ ...form, subject })} placeholderTextColor={colors.text.disabled} style={[styles.input, { color: colors.text.primary, borderColor: colors.border }]} />

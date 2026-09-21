@@ -657,6 +657,13 @@ class ApiService {
     } catch (e: any) { return this.handleError(e); }
   }
 
+  async linkSchoolStudent(data: { schoolId: string; firstName: string; lastName: string }): Promise<ApiResponse> {
+    try {
+      const res = await this.api.post('/school/link-student', data);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
   async getSchoolWorld(country?: string, city?: string, type?: string): Promise<ApiResponse> {
     try {
       const res = await this.api.get('/school/world', { params: { country, city, type } });
