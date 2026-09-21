@@ -18,12 +18,17 @@ const WebResponsiveWrapper: React.FC<WebResponsiveWrapperProps> = ({ children })
   // Sinon plein écran
   const maxContainerWidth = width > 1024 ? 1024 : width > 768 ? 768 : '100%';
 
-  if (!isWeb) {
-    return <>{children}</>;
-  }
-
   return (
     <View style={styles.outerContainer}>
+      {/* Fond Cyber-Design animé pour le Web */}
+      <View style={StyleSheet.absoluteFill}>
+        <Image
+          source={{ uri: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1924&auto=format&fit=crop' }}
+          style={{ width: '100%', height: '100%', opacity: 0.15 }}
+          blurRadius={5}
+        />
+        {/* Vous pourriez ajouter une vidéo ici plus tard si nécessaire */}
+      </View>
       <View style={[styles.innerContainer, { maxWidth: maxContainerWidth as any }]}>
         {children}
       </View>
@@ -34,7 +39,7 @@ const WebResponsiveWrapper: React.FC<WebResponsiveWrapperProps> = ({ children })
 const styles = StyleSheet.create({
   outerContainer: {
     flex: 1,
-    backgroundColor: '#000', // Fond sombre autour du site sur grand écran
+    backgroundColor: '#0a0a0c', // Fond sombre profond (Cyber-Design)
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -43,14 +48,14 @@ const styles = StyleSheet.create({
     width: '100%',
     backgroundColor: '#fff',
     // Ombre portée pour l'effet "carte" sur Desktop
-    shadowColor: "#000",
+    shadowColor: "#8b5cf6", // Ombre violette néon
     shadowOffset: {
       width: 0,
-      height: 4,
+      height: 0,
     },
-    shadowOpacity: 0.30,
-    shadowRadius: 4.65,
-    elevation: 8,
+    shadowOpacity: 0.5,
+    shadowRadius: 20,
+    elevation: 20,
   },
 });
 

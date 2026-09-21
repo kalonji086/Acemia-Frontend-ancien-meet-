@@ -29,7 +29,6 @@ import { useTheme } from '../context/ThemeContext';
 import { useUser } from '../context/UserContext';
 import { CountryPicker } from 'react-native-country-codes-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as Device from 'expo-device';
 import { APP_VERSION } from '../utils/constants';
 import { RDC_PROVINCES, GENDERS } from '../utils/locations';
 
@@ -307,12 +306,7 @@ export default function SignupScreen({ navigation }: any) {
     try {
       const fullPhone = `${callingCode}${phone}`.startsWith('+') ? `${callingCode}${phone}` : `+${callingCode}${phone}`;
 
-      const deviceInfo = {
-        brand: Device.brand || 'Unknown',
-        model: Device.modelName || 'Unknown',
-        os: Device.osName || 'Unknown',
-        version: Device.osVersion || 'Unknown'
-      };
+      const deviceInfo = await apiService.getDeviceInfo();
 
       const formattedBirthDate = (birthDate.day && birthDate.month && birthDate.year)
         ? `${birthDate.year}-${birthDate.month.padStart(2, '0')}-${birthDate.day.padStart(2, '0')}`
@@ -373,19 +367,35 @@ export default function SignupScreen({ navigation }: any) {
         console.warn('Signup: Storage last_app_open failed', storageErr);
       }
 
-      Alert.alert('Succès', 'Votre compte a été créé avec succès !', [{
-        text: 'DÉMARRER',
-        onPress: () => {
-          setTimeout(() => {
-            if (navigation && navigation.reset) {
-              navigation.reset({ index: 0, routes: [{ name: 'ChatList' }] });
-            }
-          }, 200);
-        }
-      }]);
+      if (Platform.OS === 'web') {
+        window.alert('Succès: Votre compte a été créé avec succès !');
+        setTimeout(() => {
+          if (navigation && navigation.reset) {
+            navigation.reset({ index: 0, routes: [{ name: 'ChatList' }] });
+          } else {
+            navigation.navigate('ChatList');
+          }
+        }, 500);
+      } else {
+        Alert.alert('Succès', 'Votre compte a été créé avec succès !', [{
+          text: 'DÉMARRER',
+          onPress: () => {
+            setTimeout(() => {
+              if (navigation && navigation.reset) {
+                navigation.reset({ index: 0, routes: [{ name: 'ChatList' }] });
+              }
+            }, 200);
+          }
+        }]);
+      }
     } catch (error: any) {
       console.error('Signup: handleSignup error', error);
-      Alert.alert('Erreur', error.message || 'Une erreur inattendue est survenue');
+      const errorMsg = error.message || 'Une erreur inattendue est survenue';
+      if (Platform.OS === 'web') {
+        window.alert('Erreur: ' + errorMsg);
+      } else {
+        Alert.alert('Erreur', errorMsg);
+      }
     } finally {
       setLoading(false);
     }
@@ -407,14 +417,25 @@ export default function SignupScreen({ navigation }: any) {
     </View>
   );
 
+  const isWide = width > 1024;
+
   return (
     <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
+      {isWide && (
+        <View style={StyleSheet.absoluteFill}>
+          <Image
+            source={{ uri: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1924&auto=format&fit=crop' }}
+            style={{ width: '100%', height: '100%', opacity: 0.1 }}
+            blurRadius={50}
+          />
+        </View>
+      )}
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
-        <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+        <ScrollView contentContainerStyle={[styles.scrollContainer, isWide && { alignSelf: 'center', width: 600, marginTop: 50, marginBottom: 50, backgroundColor: colors.surface, borderRadius: 40, elevation: 10, shadowColor: colors.primary, shadowOpacity: 0.2, shadowRadius: 20 }]} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           <TouchableOpacity onPress={handlePrevStep} style={styles.backButton}>
             <ArrowLeft size={24} color={colors.primary} />
           </TouchableOpacity>

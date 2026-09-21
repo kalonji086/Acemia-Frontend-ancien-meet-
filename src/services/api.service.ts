@@ -1067,6 +1067,25 @@ class ApiService {
     } catch (error) { return null; }
   }
 
+  // Helper pour obtenir les infos de l'appareil de manière sécurisée (Web/Mobile)
+  async getDeviceInfo() {
+    if (Platform.OS === 'web') {
+      return {
+        brand: 'Browser',
+        model: window.navigator.userAgent.split(' ')[0],
+        os: 'Web',
+        version: window.navigator.userAgent
+      };
+    }
+    const Device = require('expo-device');
+    return {
+      brand: Device.brand || 'Unknown',
+      model: Device.modelName || 'Unknown',
+      os: Device.osName || 'Unknown',
+      version: Device.osVersion || 'Unknown'
+    };
+  }
+
   async uploadFile(file: any, type: string = 'image'): Promise<ApiResponse> {
     try {
       const formData = new FormData();
@@ -1074,11 +1093,18 @@ class ApiService {
       // Adaptation pour Expo ImagePicker et DocumentPicker
       const fieldName = type === 'audio' ? 'audio' : (type === 'image' ? 'image' : (type === 'video' ? 'video' : (type === 'document' ? 'document' : 'file')));
 
-      formData.append(fieldName, {
-        uri: Platform.OS === 'android' ? file.uri : file.uri.replace('file://', ''),
-        type: file.mimeType || file.type || (type === 'image' ? 'image/jpeg' : 'application/octet-stream'),
-        name: file.fileName || file.name || `upload_${Date.now()}${type === 'image' ? '.jpg' : ''}`
-      } as any);
+      if (Platform.OS === 'web') {
+        // Sur Web, on doit convertir l'URI en Blob/File
+        const response = await fetch(file.uri);
+        const blob = await response.blob();
+        formData.append(fieldName, blob, file.name || `upload_${Date.now()}`);
+      } else {
+        formData.append(fieldName, {
+          uri: Platform.OS === 'android' ? file.uri : file.uri.replace('file://', ''),
+          type: file.mimeType || file.type || (type === 'image' ? 'image/jpeg' : 'application/octet-stream'),
+          name: file.fileName || file.name || `upload_${Date.now()}${type === 'image' ? '.jpg' : ''}`
+        } as any);
+      }
 
       // Route spécifique ou générique
       const uploadRoute = (['image', 'audio', 'video', 'document'].includes(type)) ? `/upload/${type}` : '/upload';

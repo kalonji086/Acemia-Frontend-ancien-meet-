@@ -239,7 +239,7 @@ const MessageItem = React.memo(({
 export default function ChatScreen({ navigation, route }: any) {
   const { isDark, colors: themeColors, normalize, fontSizeFactor } = useTheme();
   const { t, language, autoTranslate } = useLanguage();
-  const { chatId, name = 'Inconnu', avatar, isVerified: initialIsVerified, peerUserId, type } = route.params || {};
+  const { chatId, name = 'Inconnu', avatar, isVerified: initialIsVerified, peerUserId, type, isSplitView } = route.params || {};
   const isGroup = type === 'group' || !peerUserId;
 
   const [messages, setMessages] = useState<any[]>([]);
@@ -817,17 +817,19 @@ export default function ChatScreen({ navigation, route }: any) {
       <View style={{ height: insets.top, backgroundColor: themeColors.primary }} />
       <StatusBar barStyle="light-content" backgroundColor={themeColors.primary} translucent />
       <View style={[styles.header, { backgroundColor: themeColors.primary }]}>
-        <TouchableOpacity onPress={() => {
-          // Vérifier si on doit retourner vers les détails de l'offre
-          const returnTo = route.params?.returnTo;
-          const returnParams = route.params?.returnParams;
-          
-          if (returnTo && returnParams) {
-            navigation.navigate(returnTo, returnParams);
-          } else {
-            navigation.goBack();
-          }
-        }} style={styles.backButton}><ArrowLeft size={24} color="#fff" /></TouchableOpacity>
+        {!isSplitView && (
+          <TouchableOpacity onPress={() => {
+            // Vérifier si on doit retourner vers les détails de l'offre
+            const returnTo = route.params?.returnTo;
+            const returnParams = route.params?.returnParams;
+
+            if (returnTo && returnParams) {
+              navigation.navigate(returnTo, returnParams);
+            } else {
+              navigation.goBack();
+            }
+          }} style={styles.backButton}><ArrowLeft size={24} color="#fff" /></TouchableOpacity>
+        )}
         <TouchableOpacity style={styles.headerUserInfo} onPress={() => isGroup ? navigation.navigate('GroupInfo', { chatId }) : navigation.navigate('UserProfile', { userId: peerUserId, name: peerName, avatar: peerAvatar })}>
           <Image
             source={{ uri: onProfileRetouch((getFullUrl(peerAvatar || '') || `https://ui-avatars.com/api/?name=${peerName}`)) || undefined }}

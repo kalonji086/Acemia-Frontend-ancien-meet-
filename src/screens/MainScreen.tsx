@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, Text, Dimensions, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Text, Dimensions, ActivityIndicator, Image, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   MessageSquare, Aperture, Phone, ShoppingCart, AlertCircle,
@@ -73,10 +73,19 @@ export default function MainScreen({ navigation, route }: any) {
   const isTablet = screenWidth > 768;
 
   React.useEffect(() => {
-    if (route.params?.screen) {
+    if (route.params?.screen && route.params.screen !== activeTab) {
       setActiveTab(route.params.screen);
     }
   }, [route.params?.screen]);
+
+  const handleTabPress = (tab: string) => {
+    setActiveTab(tab);
+    if (Platform.OS === 'web') {
+      // Sur le web, on met à jour l'URL sans recharger tout l'écran si possible
+      // ou on utilise la navigation pour que le linking fasse son travail
+      navigation.setParams({ screen: tab });
+    }
+  };
 
   React.useEffect(() => {
     // Activation du Socket pour le suivi en temps réel (Statut "En ligne")
@@ -212,7 +221,8 @@ export default function MainScreen({ navigation, route }: any) {
                           chatId: selectedChat.id,
                           name: selectedChat.name,
                           avatar: selectedChat.avatar,
-                          peerUserId: selectedChat.otherUserId
+                          peerUserId: selectedChat.otherUserId,
+                          isSplitView: true
                         } }}
                       />
                     </View>
@@ -251,85 +261,185 @@ export default function MainScreen({ navigation, route }: any) {
 
   const styles = createStyles(colors, normalize, isDark);
 
+  const isWeb = Platform.OS === 'web';
+  const showSidebar = isWeb && screenWidth > 1024;
+
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={[styles.container, { backgroundColor: colors.background, flexDirection: showSidebar ? 'row' : 'column' }]}>
+      {showSidebar && (
+        <View style={[styles.sidebar, { backgroundColor: colors.surface, borderRightColor: colors.border }]}>
+          <View style={styles.sidebarHeader}>
+            <View style={[styles.sidebarLogo, { backgroundColor: colors.primary }]}>
+              <MessageSquare size={24} color="#fff" />
+            </View>
+            <Text style={[styles.sidebarTitle, { color: colors.text.primary }]}>Meet Me</Text>
+          </View>
+
+          <View style={styles.sidebarMenu}>
+            <SidebarItem
+              active={activeTab === 'chats'}
+              icon={<MessagesSquare size={24} />}
+              label={t('chats')}
+              onPress={() => handleTabPress('chats')}
+              colors={colors}
+              badge={unreadTotal}
+            />
+            <SidebarItem
+              active={activeTab === 'status'}
+              icon={<Aperture size={24} />}
+              label={t('status')}
+              onPress={() => handleTabPress('status')}
+              colors={colors}
+            />
+            <SidebarItem
+              active={activeTab === 'emploi'}
+              icon={<Briefcase size={24} />}
+              label="Emploi"
+              onPress={() => handleTabPress('emploi')}
+              colors={colors}
+            />
+            <SidebarItem
+              active={activeTab === 'market'}
+              icon={<ShoppingCart size={24} />}
+              label={t('market')}
+              onPress={() => handleTabPress('market')}
+              colors={colors}
+            />
+            <SidebarItem
+              active={activeTab === 'school'}
+              icon={<GraduationCap size={24} />}
+              label="School"
+              onPress={() => handleTabPress('school')}
+              colors={colors}
+            />
+          </View>
+
+          <View style={styles.sidebarFooter}>
+            <TouchableOpacity
+              style={styles.sidebarProfile}
+              onPress={() => navigation.navigate('Settings')}
+            >
+              <View style={styles.sidebarAvatarContainer}>
+                <Image
+                  source={{ uri: currentUser.avatar_url || `https://ui-avatars.com/api/?name=${currentUser.full_name}` }}
+                  style={styles.sidebarAvatar}
+                />
+                <View style={styles.onlineIndicator} />
+              </View>
+              <View style={styles.sidebarProfileInfo}>
+                <Text style={[styles.sidebarName, { color: colors.text.primary }]} numberOfLines={1}>
+                  {currentUser.full_name}
+                </Text>
+                <Text style={[styles.sidebarStatus, { color: colors.text.secondary }]}>
+                  En ligne
+                </Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
       <View style={styles.content}>
         {renderContent()}
       </View>
 
-      <View style={[
-        styles.bottomBar,
-        {
-          paddingBottom: Math.max(insets.bottom, 10),
-          height: normalize(70) + insets.bottom,
-          backgroundColor: colors.surface,
-          borderTopColor: colors.border
-        }
-      ]}>
-        <TabItem
-          active={activeTab === 'chats'}
-          icon={<MessagesSquare size={22} />}
-          label={t('chats')}
-          onPress={() => setActiveTab('chats')}
-          activeColor={colors.primary}
-          inactiveColor={colors.text.secondary}
-          activeBg={isDark ? colors.primary + '20' : '#F3E5F5'}
-          badge={unreadTotal}
-          styles={styles}
-          normalize={normalize}
-        />
-        <TabItem
-          active={activeTab === 'status'}
-          icon={<Aperture size={22} />}
-          label={t('status')}
-          onPress={() => setActiveTab('status')}
-          activeColor={colors.primary}
-          inactiveColor={colors.text.secondary}
-          activeBg={isDark ? colors.primary + '20' : '#F3E5F5'}
-          badge={0}
-          styles={styles}
-          normalize={normalize}
-        />
-        <TabItem
-          active={activeTab === 'emploi'}
-          icon={<Briefcase size={22} />}
-          label={t('emploi') || 'Emploi'}
-          onPress={() => setActiveTab('emploi')}
-          activeColor={colors.primary}
-          inactiveColor={colors.text.secondary}
-          activeBg={isDark ? colors.primary + '20' : '#F3E5F5'}
-          badge={0}
-          styles={styles}
-          normalize={normalize}
-        />
-        <TabItem
-          active={activeTab === 'market'}
-          icon={<ShoppingCart size={22} />}
-          label={t('market')}
-          onPress={() => setActiveTab('market')}
-          activeColor={colors.primary}
-          inactiveColor={colors.text.secondary}
-          activeBg={isDark ? colors.primary + '20' : '#F3E5F5'}
-          badge={0}
-          styles={styles}
-          normalize={normalize}
-        />
-        <TabItem
-          active={activeTab === 'school'}
-          icon={<GraduationCap size={22} />}
-          label={t('school') || 'School'}
-          onPress={() => setActiveTab('school')}
-          activeColor={colors.primary}
-          inactiveColor={colors.text.secondary}
-          activeBg={isDark ? colors.primary + '20' : '#F3E5F5'}
-          badge={0}
-          styles={styles}
-          normalize={normalize}
-        />
-      </View>
+      {!showSidebar && (
+        <View style={[
+          styles.bottomBar,
+          {
+            paddingBottom: Math.max(insets.bottom, 10),
+            height: normalize(70) + insets.bottom,
+            backgroundColor: colors.surface,
+            borderTopColor: colors.border
+          }
+        ]}>
+          <TabItem
+            active={activeTab === 'chats'}
+            icon={<MessagesSquare size={22} />}
+            label={t('chats')}
+            onPress={() => handleTabPress('chats')}
+            activeColor={colors.primary}
+            inactiveColor={colors.text.secondary}
+            activeBg={isDark ? colors.primary + '20' : '#F3E5F5'}
+            badge={unreadTotal}
+            styles={styles}
+            normalize={normalize}
+          />
+          <TabItem
+            active={activeTab === 'status'}
+            icon={<Aperture size={22} />}
+            label={t('status')}
+            onPress={() => handleTabPress('status')}
+            activeColor={colors.primary}
+            inactiveColor={colors.text.secondary}
+            activeBg={isDark ? colors.primary + '20' : '#F3E5F5'}
+            badge={0}
+            styles={styles}
+            normalize={normalize}
+          />
+          <TabItem
+            active={activeTab === 'emploi'}
+            icon={<Briefcase size={22} />}
+            label={t('emploi') || 'Emploi'}
+            onPress={() => handleTabPress('emploi')}
+            activeColor={colors.primary}
+            inactiveColor={colors.text.secondary}
+            activeBg={isDark ? colors.primary + '20' : '#F3E5F5'}
+            badge={0}
+            styles={styles}
+            normalize={normalize}
+          />
+          <TabItem
+            active={activeTab === 'market'}
+            icon={<ShoppingCart size={22} />}
+            label={t('market')}
+            onPress={() => handleTabPress('market')}
+            activeColor={colors.primary}
+            inactiveColor={colors.text.secondary}
+            activeBg={isDark ? colors.primary + '20' : '#F3E5F5'}
+            badge={0}
+            styles={styles}
+            normalize={normalize}
+          />
+          <TabItem
+            active={activeTab === 'school'}
+            icon={<GraduationCap size={22} />}
+            label={t('school') || 'School'}
+            onPress={() => handleTabPress('school')}
+            activeColor={colors.primary}
+            inactiveColor={colors.text.secondary}
+            activeBg={isDark ? colors.primary + '20' : '#F3E5F5'}
+            badge={0}
+            styles={styles}
+            normalize={normalize}
+          />
+        </View>
+      )}
     </View>
   );
 }
+
+const SidebarItem = ({ active, icon, label, onPress, colors, badge }: any) => (
+  <TouchableOpacity
+    style={[
+      styles.sidebarItem,
+      active && { backgroundColor: colors.primary + '15', borderColor: colors.primary }
+    ]}
+    onPress={onPress}
+  >
+    <View style={styles.sidebarIconContainer}>
+      {React.cloneElement(icon, { color: active ? colors.primary : colors.text.secondary })}
+      {badge > 0 && (
+        <View style={[styles.sidebarBadge, { backgroundColor: colors.danger }]}>
+          <Text style={styles.sidebarBadgeText}>{badge > 99 ? '9+' : badge}</Text>
+        </View>
+      )}
+    </View>
+    <Text style={[styles.sidebarLabel, { color: active ? colors.primary : colors.text.primary, fontWeight: active ? 'bold' : '500' }]}>
+      {label}
+    </Text>
+  </TouchableOpacity>
+);
 
 const TabItem = ({ active, icon, label, onPress, activeColor, inactiveColor, activeBg, badge, styles, normalize }: any) => (
   <TouchableOpacity style={styles.tabItem} onPress={onPress} activeOpacity={0.7}>
@@ -361,6 +471,90 @@ const createStyles = (colors: any, normalize: any, isDark: boolean) => StyleShee
   detailPane: { flex: 1, backgroundColor: colors.background },
   emptyDetail: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 },
   emptyDetailText: { marginTop: 20, fontSize: normalize(16), textAlign: 'center' },
+
+  // Sidebar Styles
+  sidebar: {
+    width: 280,
+    borderRightWidth: 1,
+    padding: 20,
+    display: 'flex',
+    flexDirection: 'column',
+    // Effet Glassmorphism pour le Web
+    backgroundColor: isDark ? 'rgba(26,26,26,0.8)' : 'rgba(255,255,255,0.8)',
+    ...Platform.select({
+      web: {
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+      } as any
+    })
+  },
+  sidebarHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 40, marginTop: 10 },
+  sidebarLogo: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 15,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5
+  },
+  sidebarTitle: { fontSize: 22, fontWeight: '900', letterSpacing: -1 },
+  sidebarMenu: { flex: 1 },
+  sidebarItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    borderRadius: 16,
+    marginBottom: 10,
+    borderLeftWidth: 4,
+    borderColor: 'transparent',
+    transition: 'all 0.2s ease-in-out',
+  },
+  sidebarIconContainer: { marginRight: 15, position: 'relative' },
+  sidebarLabel: { fontSize: 16, letterSpacing: 0.5 },
+  sidebarBadge: {
+    position: 'absolute',
+    top: -8,
+    right: -8,
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 5,
+    borderWidth: 2,
+    borderColor: colors.surface
+  },
+  sidebarBadgeText: { color: '#fff', fontSize: 10, fontWeight: '900' },
+  sidebarFooter: { marginTop: 'auto', borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 20 },
+  sidebarProfile: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 16,
+    backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+  },
+  sidebarAvatarContainer: { position: 'relative', marginRight: 15 },
+  sidebarAvatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.border },
+  onlineIndicator: {
+    position: 'absolute',
+    bottom: 2,
+    right: 2,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#4CAF50',
+    borderWidth: 2,
+    borderColor: colors.surface
+  },
+  sidebarProfileInfo: { flex: 1 },
+  sidebarName: { fontSize: 15, fontWeight: '800' },
+  sidebarStatus: { fontSize: 12, fontWeight: '500', opacity: 0.7 },
+
   bottomBar: {
     flexDirection: 'row',
     backgroundColor: colors.surface,

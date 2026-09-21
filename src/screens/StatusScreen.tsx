@@ -196,6 +196,8 @@ export default function StatusScreen() {
 
   if (loading && !refreshing) return <View style={styles.centered}><ActivityIndicator size="large" color={themeColors.primary} /></View>;
 
+  const isWide = width > 1024;
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]}>
       <View style={{ height: insets.top, backgroundColor: themeColors.primary }} />
@@ -205,20 +207,32 @@ export default function StatusScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[themeColors.primary]} />}
         contentContainerStyle={{ flexGrow: 1 }}
       >
-        <View style={styles.content}>
-          {/* Section Statuts Style WhatsApp */}
-          {renderStatusItem({ user_id: currentUser?.id, full_name: 'Moi', statuses: myStatuses, avatar_url: currentUser?.avatar_url || currentUser?.avatar }, true)}
+        <View style={[styles.content, isWide && { paddingHorizontal: '10%', paddingTop: 30 }]}>
+          {/* Section Statuts Style WhatsApp - Grid on Desktop */}
+          <View style={isWide ? { flexDirection: 'row', flexWrap: 'wrap', gap: 20 } : {}}>
+            {renderStatusItem({ user_id: currentUser?.id, full_name: 'Moi', statuses: myStatuses, avatar_url: currentUser?.avatar_url || currentUser?.avatar }, true)}
 
-          <View style={[styles.listHeader, { backgroundColor: isDark ? '#222' : '#f0f2f5' }]}>
-            <Text style={[styles.listHeaderText, { color: themeColors.text.secondary }]}>Mises à jour récentes</Text>
+            {isWide && userStatuses.map((item) => (
+              <View key={item.user_id} style={{ width: '30%', minWidth: 250 }}>
+                {renderStatusItem(item)}
+              </View>
+            ))}
           </View>
 
-          {userStatuses.length > 0 ? (
-            userStatuses.map((item) => renderStatusItem(item))
-          ) : (
-            <View style={styles.emptyRecent}>
-              <Text style={{ color: themeColors.text.disabled, fontSize: 13 }}>Aucune mise à jour récente à afficher.</Text>
-            </View>
+          {!isWide && (
+            <>
+              <View style={[styles.listHeader, { backgroundColor: isDark ? '#222' : '#f0f2f5' }]}>
+                <Text style={[styles.listHeaderText, { color: themeColors.text.secondary }]}>Mises à jour récentes</Text>
+              </View>
+
+              {userStatuses.length > 0 ? (
+                userStatuses.map((item) => renderStatusItem(item))
+              ) : (
+                <View style={styles.emptyRecent}>
+                  <Text style={{ color: themeColors.text.disabled, fontSize: 13 }}>Aucune mise à jour récente à afficher.</Text>
+                </View>
+              )}
+            </>
           )}
 
           {/* Section Market Feed */}
@@ -226,7 +240,7 @@ export default function StatusScreen() {
             <Text style={[styles.listHeaderText, { color: themeColors.text.secondary }]}>Découvertes Market</Text>
           </View>
 
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.marketScroll}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.marketScroll, isWide && { paddingVertical: 30 }]}>
             {marketFeed.length > 0 ? (
                marketFeed.map((item) => renderMarketCircle(item))
             ) : (
@@ -238,8 +252,8 @@ export default function StatusScreen() {
         </View>
       </ScrollView>
 
-      <TouchableOpacity style={styles.fabEdit} onPress={() => navigation.navigate('CreateStatus')}><Pencil size={20} color="#455A64" /></TouchableOpacity>
-      <TouchableOpacity style={[styles.fabCamera, { backgroundColor: themeColors.primary }]} onPress={handlePickStatusImage}>
+      <TouchableOpacity style={[styles.fabEdit, isWide && { bottom: 100, right: 100 }]} onPress={() => navigation.navigate('CreateStatus')}><Pencil size={20} color="#455A64" /></TouchableOpacity>
+      <TouchableOpacity style={[styles.fabCamera, { backgroundColor: themeColors.primary }, isWide && { bottom: 30, right: 100 }]} onPress={handlePickStatusImage}>
         <CameraIcon size={24} color="#fff" />
       </TouchableOpacity>
     </SafeAreaView>

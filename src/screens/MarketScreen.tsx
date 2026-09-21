@@ -48,18 +48,20 @@ export default function MarketScreen() {
     );
   }
 
+  const isWide = width > 1024;
+
   // Si pas de business enregistré, proposer de s'enregistrer
   if (!business) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
         <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
-        <View style={styles.promoContainer}>
+        <View style={[styles.promoContainer, isWide && { paddingHorizontal: '20%' }]}>
           <Image
             source={{ uri: 'https://cdn-icons-png.flaticon.com/512/3081/3081559.png' }}
-            style={styles.promoImage}
+            style={[styles.promoImage, isWide && { width: 250, height: 250 }]}
           />
-          <Text style={[styles.title, { color: colors.text.primary }]}>Bienvenue sur Meet Market</Text>
-          <Text style={[styles.subtitle, { color: colors.text.secondary }]}>
+          <Text style={[styles.title, { color: colors.text.primary }, isWide && { fontSize: 40 }]}>Bienvenue sur Meet Market</Text>
+          <Text style={[styles.subtitle, { color: colors.text.secondary }, isWide && { fontSize: 20 }]}>
             Développez votre activité, trouvez des clients et gérez vos ventes directement depuis Meet Me.
           </Text>
 
@@ -111,24 +113,39 @@ export default function MarketScreen() {
   // Le Market réel sera ici dans la phase 2
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={styles.header}>
+      <View style={[styles.header, isWide && { paddingHorizontal: '10%', paddingTop: 40 }]}>
         <Text style={[styles.headerTitle, { color: colors.text.primary }]}>Market</Text>
         <TouchableOpacity onPress={() => navigation.navigate('BusinessDashboard')}>
-          <Ionicons name="apps-outline" size={24} color={colors.primary} />
+          <Ionicons name="apps-outline" size={32} color={colors.primary} />
         </TouchableOpacity>
       </View>
-      <View style={styles.centered}>
-        <Text style={{ color: colors.text.secondary }}>Espace Market Actif pour {business.business_name}</Text>
-        <TouchableOpacity
-          style={[styles.startBtn, { backgroundColor: colors.primary, marginTop: 20 }]}
-          onPress={() => navigation.navigate('BusinessDashboard')}
-        >
-          <Text style={styles.startBtnText}>ACCÉDER AU DASHBOARD</Text>
-        </TouchableOpacity>
+      <View style={[styles.centered, isWide && { paddingHorizontal: '20%' }]}>
+        <View style={isWide ? { flexDirection: 'row', alignItems: 'center', gap: 40 } : { alignItems: 'center' }}>
+          <Image
+            source={{ uri: business.logo_url ? getFullUrl(business.logo_url) : 'https://cdn-icons-png.flaticon.com/512/3081/3081559.png' }}
+            style={isWide ? { width: 300, height: 300, borderRadius: 150 } : { width: 150, height: 150, borderRadius: 75, marginBottom: 20 }}
+          />
+          <View style={isWide ? { flex: 1 } : { alignItems: 'center' }}>
+            <Text style={[styles.title, { color: colors.text.primary, textAlign: isWide ? 'left' : 'center' }]}>Espace Market Actif</Text>
+            <Text style={[styles.subtitle, { color: colors.text.secondary, textAlign: isWide ? 'left' : 'center' }]}>Bienvenue sur le tableau de bord de {business.business_name}. Gérez vos produits et vos ventes en toute simplicité.</Text>
+            <TouchableOpacity
+              style={[styles.startBtn, { backgroundColor: colors.primary, marginTop: 20 }]}
+              onPress={() => navigation.navigate('BusinessDashboard')}
+            >
+              <Text style={styles.startBtnText}>ACCÉDER AU DASHBOARD PRO</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       </View>
     </SafeAreaView>
   );
 }
+
+const getFullUrl = (url: string) => {
+  if (!url || url === 'null') return null;
+  if (url.startsWith('http')) return url;
+  return `https://meet-me-backend-sg5c.onrender.com/${url.startsWith('/') ? url.slice(1) : url}`;
+};
 
 const styles = StyleSheet.create({
   container: { flex: 1 },

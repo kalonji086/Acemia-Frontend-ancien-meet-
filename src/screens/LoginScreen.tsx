@@ -22,7 +22,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
 import { useUser } from '../context/UserContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as Device from 'expo-device';
 import { APP_VERSION } from '../utils/constants';
 import Animated, {
   useSharedValue,
@@ -92,12 +91,7 @@ export default function LoginScreen({ navigation, route }: any) {
     }
     setLoading(true);
 
-    const deviceInfo = {
-      brand: Device.brand,
-      model: Device.modelName,
-      os: Device.osName,
-      version: Device.osVersion
-    };
+    const deviceInfo = await apiService.getDeviceInfo();
 
     try {
       const response = await apiService.login({
@@ -147,6 +141,7 @@ export default function LoginScreen({ navigation, route }: any) {
   }));
 
   const styles = createStyles(colors, normalize, fontSizeFactor, isDark);
+  const isWide = width > 1024;
 
   const handleSendAppeal = async () => {
     if (!appealReason.trim()) return;
@@ -249,13 +244,22 @@ export default function LoginScreen({ navigation, route }: any) {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
+      {isWide && (
+        <View style={StyleSheet.absoluteFill}>
+          <Image
+            source={{ uri: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1924&auto=format&fit=crop' }}
+            style={{ width: '100%', height: '100%', opacity: 0.1 }}
+            blurRadius={50}
+          />
+        </View>
+      )}
       <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={{ flex: 1 }}
       >
-        <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
-          <View style={styles.contentWrapper}>
+        <ScrollView contentContainerStyle={[styles.scrollContainer, isWide && { alignSelf: 'center', width: 500, marginTop: 100, backgroundColor: colors.surface, borderRadius: 40, elevation: 10, shadowColor: colors.primary, shadowOpacity: 0.2, shadowRadius: 20 }]} showsVerticalScrollIndicator={false}>
+          <View style={[styles.contentWrapper, isWide && { paddingHorizontal: 40 }]}>
             <View style={styles.logoContainer}>
               <View style={[styles.iconStack, { backgroundColor: colors.primary }]}>
                 <MessageSquare size={normalize(45)} color="#fff" />
