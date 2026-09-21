@@ -50,6 +50,8 @@ export default function MarketScreen() {
     );
   }
 
+  const isWide = width > 1024;
+
   // Si pas de business enregistré, proposer de s'enregistrer
   if (!business) {
     return (
