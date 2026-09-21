@@ -282,6 +282,7 @@ export default function MainScreen({ navigation, route }: any) {
               label={t('chats')}
               onPress={() => handleTabPress('chats')}
               colors={colors}
+              styles={styles}
               badge={unreadTotal}
             />
             <SidebarItem
@@ -290,6 +291,7 @@ export default function MainScreen({ navigation, route }: any) {
               label={t('status')}
               onPress={() => handleTabPress('status')}
               colors={colors}
+              styles={styles}
             />
             <SidebarItem
               active={activeTab === 'emploi'}
@@ -297,6 +299,7 @@ export default function MainScreen({ navigation, route }: any) {
               label="Emploi"
               onPress={() => handleTabPress('emploi')}
               colors={colors}
+              styles={styles}
             />
             <SidebarItem
               active={activeTab === 'market'}
@@ -304,6 +307,7 @@ export default function MainScreen({ navigation, route }: any) {
               label={t('market')}
               onPress={() => handleTabPress('market')}
               colors={colors}
+              styles={styles}
             />
             <SidebarItem
               active={activeTab === 'school'}
@@ -311,6 +315,7 @@ export default function MainScreen({ navigation, route }: any) {
               label="School"
               onPress={() => handleTabPress('school')}
               colors={colors}
+              styles={styles}
             />
           </View>
 
@@ -419,7 +424,7 @@ export default function MainScreen({ navigation, route }: any) {
   );
 }
 
-const SidebarItem = ({ active, icon, label, onPress, colors, badge }: any) => (
+const SidebarItem = ({ active, icon, label, onPress, colors, badge, styles }: any) => (
   <TouchableOpacity
     style={[
       styles.sidebarItem,
