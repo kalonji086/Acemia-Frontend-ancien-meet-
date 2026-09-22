@@ -30,14 +30,14 @@ export default function SchoolDashboardScreen({ navigation }: any) {
   const checkStatus = async () => {
     setLoading(true);
     try {
-      const res = await apiService.getInstance().getSchoolStatus();
+      const res = await apiService.getSchoolStatus();
       if (res.success && res.hasRequest) {
         setHasRequest(true);
         setRequestStatus(res.data.status);
 
         // Si approuvé, on charge les métriques du dashboard
         if (res.data.status === 'approuve') {
-          const dashRes = await apiService.getInstance().getSchoolDashboard();
+          const dashRes = await apiService.getSchoolDashboard();
           if (dashRes.success) {
             setDashboardData(dashRes);
           }
