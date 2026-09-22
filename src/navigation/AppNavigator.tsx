@@ -44,6 +44,7 @@ import SchoolDashboardScreen from '../screens/SchoolDashboardScreen';
 import SchoolStudentsScreen from '../screens/SchoolStudentsScreen';
 import SchoolScheduleScreen from '../screens/SchoolScheduleScreen';
 import SchoolFeesScreen from '../screens/SchoolFeesScreen';
+import SchoolAccountsScreen from '../screens/SchoolAccountsScreen';
 import { useTheme } from '../context/ThemeContext';
 import { DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { Platform } from 'react-native';
@@ -194,6 +195,7 @@ export default function AppNavigator() {
         SchoolStudents: 'school/students',
         SchoolSchedule: 'school/schedule',
         SchoolFees: 'school/fees',
+        SchoolAccounts: 'school/accounts',
       },
     },
   };
@@ -399,6 +401,11 @@ export default function AppNavigator() {
         <Stack.Screen
           name="SchoolFees"
           component={SchoolFeesScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="SchoolAccounts"
+          component={SchoolAccountsScreen}
           options={{ headerShown: false }}
         />
       </Stack.Navigator>

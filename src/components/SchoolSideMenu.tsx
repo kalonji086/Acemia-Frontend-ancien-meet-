@@ -57,6 +57,12 @@ export default function SchoolSideMenu({ navigation, onClose, schoolName }: Scho
       action: () => navigation.navigate('SchoolFees')
     },
     {
+      id: 'accounts',
+      label: 'Demande de Comptes',
+      icon: <UserCheck size={normalize(20)} />,
+      action: () => navigation.navigate('SchoolAccounts')
+    },
+    {
       id: 'settings',
       label: 'Paramètres École',
       icon: <Settings size={normalize(20)} />,
