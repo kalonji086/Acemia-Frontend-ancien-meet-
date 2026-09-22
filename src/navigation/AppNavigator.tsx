@@ -45,6 +45,9 @@ import SchoolStudentsScreen from '../screens/SchoolStudentsScreen';
 import SchoolScheduleScreen from '../screens/SchoolScheduleScreen';
 import SchoolFeesScreen from '../screens/SchoolFeesScreen';
 import SchoolAccountsScreen from '../screens/SchoolAccountsScreen';
+import SchoolLoginScreen from '../screens/SchoolLoginScreen';
+import SchoolStaffDashboard from '../screens/SchoolStaffDashboard';
+import StudentDashboard from '../screens/StudentDashboard';
 import { useTheme } from '../context/ThemeContext';
 import { DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { Platform } from 'react-native';
@@ -196,6 +199,9 @@ export default function AppNavigator() {
         SchoolSchedule: 'school/schedule',
         SchoolFees: 'school/fees',
         SchoolAccounts: 'school/accounts',
+        SchoolLogin: 'school/login',
+        SchoolStaffDashboard: 'school/staff-dashboard',
+        StudentDashboard: 'school/student-dashboard',
       },
     },
   };
@@ -406,6 +412,21 @@ export default function AppNavigator() {
         <Stack.Screen
           name="SchoolAccounts"
           component={SchoolAccountsScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="SchoolLogin"
+          component={SchoolLoginScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="SchoolStaffDashboard"
+          component={SchoolStaffDashboard}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="StudentDashboard"
+          component={StudentDashboard}
           options={{ headerShown: false }}
         />
       </Stack.Navigator>

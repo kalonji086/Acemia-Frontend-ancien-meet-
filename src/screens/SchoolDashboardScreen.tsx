@@ -10,7 +10,7 @@ import {
   useWindowDimensions,
   Modal
 } from 'react-native';
-import { ArrowLeft, Users, GraduationCap, BookOpen, DollarSign, Clock, RefreshCw, Menu, X } from 'lucide-react-native';
+import { ArrowLeft, Users, GraduationCap, BookOpen, DollarSign, Clock, RefreshCw, Menu, X, School } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
 import apiService from '../services/api.service';
 import SchoolSideMenu from '../components/SchoolSideMenu';
@@ -87,7 +87,9 @@ export default function SchoolDashboardScreen({ navigation }: any) {
             <ArrowLeft size={24} color={colors.text.primary} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.text.primary, fontSize: normalize(18) }]}>Gestion École</Text>
-          <View style={{ width: 24 }} />
+          <TouchableOpacity onPress={() => navigation.navigate('SchoolLogin')}>
+            <School size={24} color={colors.primary} />
+          </TouchableOpacity>
         </View>
         <View style={styles.centeredContent}>
           <GraduationCap size={80} color={colors.primary} style={{ marginBottom: 20 }} />

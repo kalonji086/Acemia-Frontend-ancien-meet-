@@ -109,6 +109,7 @@ export default function SchoolStudentsScreen({ navigation }: any) {
             <View style={{ flex: 1 }}>
               <Text style={[styles.studentName, { color: colors.text.primary, fontSize: normalize(15) }]}>{item.full_name}</Text>
               <Text style={{ color: colors.text.secondary, fontSize: normalize(12) }}>Genre : {item.gender} • Classe : {item.class_name || 'Non assigné'}</Text>
+              <Text style={{ color: colors.primary, fontSize: normalize(11), fontWeight: 'bold' }}>Code : {item.access_code}</Text>
             </View>
           </View>
         )}
