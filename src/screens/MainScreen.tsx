@@ -3,7 +3,7 @@ import { View, StyleSheet, TouchableOpacity, Text, Dimensions, ActivityIndicator
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   MessageSquare, Aperture, Phone, ShoppingCart, AlertCircle,
-  MessagesSquare, Briefcase
+  MessagesSquare, Briefcase, GraduationCap
 } from 'lucide-react-native';
 import apiService from '../services/api.service';
 import socketService from '../services/socket.service';
@@ -11,6 +11,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import ChatListScreen from './ChatListScreen';
 import StatusScreen from './StatusScreen';
 import MarketScreen from './MarketScreen';
+import SchoolDashboardScreen from './SchoolDashboardScreen';
 import ChatScreen from './ChatScreen';
 import EmploiMainScreen from './EmploiMainScreen';
 import { useLanguage } from '../context/LanguageContext';
@@ -184,6 +185,7 @@ export default function MainScreen({ navigation, route }: any) {
         case 'status': return <StatusScreen />;
         case 'emploi': return <EmploiMainScreen navigation={navigation} />;
         case 'market': return <MarketScreen />;
+        case 'school': return <SchoolDashboardScreen navigation={navigation} />;
         default: return <ChatListScreen navigation={navigation} route={route} />;
       }
     } catch (err) {
@@ -212,6 +214,7 @@ export default function MainScreen({ navigation, route }: any) {
             <SidebarItem active={activeTab === 'status'} icon={<Aperture size={24} />} label={t('status')} onPress={() => handleTabPress('status')} colors={colors} styles={styles} />
             <SidebarItem active={activeTab === 'emploi'} icon={<Briefcase size={24} />} label="Emploi" onPress={() => handleTabPress('emploi')} colors={colors} styles={styles} />
             <SidebarItem active={activeTab === 'market'} icon={<ShoppingCart size={24} />} label={t('market')} onPress={() => handleTabPress('market')} colors={colors} styles={styles} />
+            <SidebarItem active={activeTab === 'school'} icon={<GraduationCap size={24} />} label="École" onPress={() => handleTabPress('school')} colors={colors} styles={styles} />
           </View>
 
           <View style={styles.sidebarFooter}>
@@ -234,6 +237,7 @@ export default function MainScreen({ navigation, route }: any) {
           <TabItem active={activeTab === 'status'} icon={<Aperture size={22} />} label={t('status')} onPress={() => handleTabPress('status')} activeColor={colors.primary} inactiveColor={colors.text.secondary} activeBg={isDark ? colors.primary + '20' : '#F3E5F5'} normalize={normalize} styles={styles} />
           <TabItem active={activeTab === 'emploi'} icon={<Briefcase size={22} />} label={t('emploi') || 'Emploi'} onPress={() => handleTabPress('emploi')} activeColor={colors.primary} inactiveColor={colors.text.secondary} activeBg={isDark ? colors.primary + '20' : '#F3E5F5'} normalize={normalize} styles={styles} />
           <TabItem active={activeTab === 'market'} icon={<ShoppingCart size={22} />} label={t('market')} onPress={() => handleTabPress('market')} activeColor={colors.primary} inactiveColor={colors.text.secondary} activeBg={isDark ? colors.primary + '20' : '#F3E5F5'} normalize={normalize} styles={styles} />
+          <TabItem active={activeTab === 'school'} icon={<GraduationCap size={22} />} label="École" onPress={() => handleTabPress('school')} activeColor={colors.primary} inactiveColor={colors.text.secondary} activeBg={isDark ? colors.primary + '20' : '#F3E5F5'} normalize={normalize} styles={styles} />
         </View>
       )}
     </View>

@@ -13,15 +13,16 @@ import {
   Platform,
   useWindowDimensions
 } from 'react-native';
-import { ArrowLeft, Building2, Mail, Phone, MapPin, GraduationCap, FileText } from 'lucide-react-native';
+import { ArrowLeft, Building2, Mail, Phone, MapPin, GraduationCap, FileText, ChevronRight } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
 import apiService from '../services/api.service';
 
 export default function SchoolRequestScreen({ navigation }: any) {
   const { colors, normalize } = useTheme();
-  const { width: windowWidth } = useWindowDimensions();
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const isTablet = windowWidth > 768;
   const [loading, setLoading] = useState(false);
+  const [step, setStep] = useState(1);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -37,14 +38,25 @@ export default function SchoolRequestScreen({ navigation }: any) {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleSubmit = async () => {
-    if (!formData.schoolName || !formData.schoolEmail || !formData.schoolType) {
-      return Alert.alert('Attention', 'Veuillez remplir les champs obligatoires (Nom, Email, Type).');
+  const nextStep = () => {
+    if (step === 1 && (!formData.schoolName || !formData.schoolType)) {
+      return Alert.alert('Attention', 'Veuillez remplir les champs obligatoires (Nom et Type).');
     }
+    if (step === 2 && !formData.schoolEmail) {
+      return Alert.alert('Attention', 'L\'email de l\'école est requis.');
+    }
+    if (step < 3) setStep(step + 1);
+  };
 
+  const prevStep = () => {
+    if (step > 1) setStep(step - 1);
+    else navigation.goBack();
+  };
+
+  const handleSubmit = async () => {
     setLoading(true);
     try {
-      const response = await apiService.getInstance().submitSchoolRequest(formData);
+      const response = await apiService.submitSchoolRequest(formData);
       if (response.success) {
         Alert.alert(
           'Demande envoyée !',
@@ -61,6 +73,128 @@ export default function SchoolRequestScreen({ navigation }: any) {
     }
   };
 
+  const renderStep = () => {
+    switch (step) {
+      case 1:
+        return (
+          <View style={styles.stepContainer}>
+            <Text style={[styles.stepTitle, { color: colors.text.primary, fontSize: normalize(20) }]}>
+              Étape 1 : Identité de l'école
+            </Text>
+
+            <View style={styles.inputGroup}>
+              <Text style={[styles.label, { color: colors.text.secondary, fontSize: normalize(14) }]}>Nom de l'école *</Text>
+              <View style={[styles.inputWrapper, { borderColor: colors.border }]}>
+                <Building2 size={20} color={colors.text.disabled} />
+                <TextInput
+                  style={[styles.input, { color: colors.text.primary, fontSize: normalize(16) }]}
+                  value={formData.schoolName}
+                  onChangeText={(v) => updateForm('schoolName', v)}
+                  placeholder="Ex: Complexe Scolaire Le Flambeau"
+                  placeholderTextColor={colors.text.disabled}
+                />
+              </View>
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={[styles.label, { color: colors.text.secondary, fontSize: normalize(14) }]}>Type d'enseignement *</Text>
+              <View style={[styles.inputWrapper, { borderColor: colors.border }]}>
+                <GraduationCap size={20} color={colors.text.disabled} />
+                <TextInput
+                  style={[styles.input, { color: colors.text.primary, fontSize: normalize(16) }]}
+                  value={formData.schoolType}
+                  onChangeText={(v) => updateForm('schoolType', v)}
+                  placeholder="Ex: Maternelle, Primaire, Secondaire"
+                  placeholderTextColor={colors.text.disabled}
+                />
+              </View>
+            </View>
+          </View>
+        );
+
+      case 2:
+        return (
+          <View style={styles.stepContainer}>
+            <Text style={[styles.stepTitle, { color: colors.text.primary, fontSize: normalize(20) }]}>
+              Étape 2 : Contacts & Localisation
+            </Text>
+
+            <View style={styles.inputGroup}>
+              <Text style={[styles.label, { color: colors.text.secondary, fontSize: normalize(14) }]}>Email de l'école *</Text>
+              <View style={[styles.inputWrapper, { borderColor: colors.border }]}>
+                <Mail size={20} color={colors.text.disabled} />
+                <TextInput
+                  style={[styles.input, { color: colors.text.primary, fontSize: normalize(16) }]}
+                  value={formData.schoolEmail}
+                  onChangeText={(v) => updateForm('schoolEmail', v)}
+                  placeholder="contact@ecole.com"
+                  placeholderTextColor={colors.text.disabled}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+              </View>
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={[styles.label, { color: colors.text.secondary, fontSize: normalize(14) }]}>Téléphone</Text>
+              <View style={[styles.inputWrapper, { borderColor: colors.border }]}>
+                <Phone size={20} color={colors.text.disabled} />
+                <TextInput
+                  style={[styles.input, { color: colors.text.primary, fontSize: normalize(16) }]}
+                  value={formData.schoolPhone}
+                  onChangeText={(v) => updateForm('schoolPhone', v)}
+                  placeholder="+243..."
+                  placeholderTextColor={colors.text.disabled}
+                  keyboardType="phone-pad"
+                />
+              </View>
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={[styles.label, { color: colors.text.secondary, fontSize: normalize(14) }]}>Adresse Physique</Text>
+              <View style={[styles.inputWrapper, { borderColor: colors.border }]}>
+                <MapPin size={20} color={colors.text.disabled} />
+                <TextInput
+                  style={[styles.input, { color: colors.text.primary, fontSize: normalize(16) }]}
+                  value={formData.schoolAddress}
+                  onChangeText={(v) => updateForm('schoolAddress', v)}
+                  placeholder="Ex: Gombe, Kinshasa"
+                  placeholderTextColor={colors.text.disabled}
+                />
+              </View>
+            </View>
+          </View>
+        );
+
+      case 3:
+        return (
+          <View style={styles.stepContainer}>
+            <Text style={[styles.stepTitle, { color: colors.text.primary, fontSize: normalize(20) }]}>
+              Étape 3 : Vision & Description
+            </Text>
+
+            <View style={styles.inputGroup}>
+              <Text style={[styles.label, { color: colors.text.secondary, fontSize: normalize(14) }]}>Description / Vision</Text>
+              <View style={[styles.inputWrapper, { borderColor: colors.border, alignItems: 'flex-start', paddingTop: 12, height: 120 }]}>
+                <FileText size={20} color={colors.text.disabled} style={{ marginTop: 2 }} />
+                <TextInput
+                  style={[styles.input, { color: colors.text.primary, fontSize: normalize(16), height: '100%', textAlignVertical: 'top' }]}
+                  value={formData.description}
+                  onChangeText={(v) => updateForm('description', v)}
+                  placeholder="Décrivez brièvement la vision de votre école..."
+                  placeholderTextColor={colors.text.disabled}
+                  multiline
+                  numberOfLines={4}
+                />
+              </View>
+            </View>
+          </View>
+        );
+      default:
+        return null;
+    }
+  };
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <KeyboardAvoidingView
@@ -68,126 +202,57 @@ export default function SchoolRequestScreen({ navigation }: any) {
         style={{ flex: 1 }}
       >
         <View style={[styles.header, { backgroundColor: colors.surface }]}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <TouchableOpacity onPress={prevStep} style={styles.backButton}>
             <ArrowLeft size={24} color={colors.text.primary} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.text.primary, fontSize: normalize(18) }]}>
-            Créer une École
+            Créer une École ({step}/3)
           </Text>
           <View style={{ width: 24 }} />
         </View>
 
+        {/* Barre de progression des étapes */}
+        <View style={styles.progressContainer}>
+          <View style={[styles.progressBar, { backgroundColor: colors.border }]}>
+            <View style={[styles.progressFill, { backgroundColor: colors.primary, width: `${(step / 3) * 100}%` }]} />
+          </View>
+        </View>
+
         <ScrollView contentContainerStyle={[styles.scrollContent, isTablet && styles.tabletContainer]}>
-          <Text style={[styles.subtitle, { color: colors.text.secondary, fontSize: normalize(14) }]}>
-            Devenez promoteur d'école en remplissant les informations requises ci-dessous.
-          </Text>
+          {renderStep()}
 
-          {/* School Name */}
-          <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: colors.text.secondary, fontSize: normalize(14) }]}>Nom de l'école *</Text>
-            <View style={[styles.inputWrapper, { borderColor: colors.border }]}>
-              <Building2 size={20} color={colors.text.disabled} />
-              <TextInput
-                style={[styles.input, { color: colors.text.primary, fontSize: normalize(16) }]}
-                value={formData.schoolName}
-                onChangeText={(v) => updateForm('schoolName', v)}
-                placeholder="Ex: Complexe Scolaire Le Flambeau"
-                placeholderTextColor={colors.text.disabled}
-              />
-            </View>
-          </View>
-
-          {/* School Email */}
-          <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: colors.text.secondary, fontSize: normalize(14) }]}>Email de l'école *</Text>
-            <View style={[styles.inputWrapper, { borderColor: colors.border }]}>
-              <Mail size={20} color={colors.text.disabled} />
-              <TextInput
-                style={[styles.input, { color: colors.text.primary, fontSize: normalize(16) }]}
-                value={formData.schoolEmail}
-                onChangeText={(v) => updateForm('schoolEmail', v)}
-                placeholder="contact@ecole.com"
-                placeholderTextColor={colors.text.disabled}
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
-            </View>
-          </View>
-
-          {/* School Phone */}
-          <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: colors.text.secondary, fontSize: normalize(14) }]}>Téléphone</Text>
-            <View style={[styles.inputWrapper, { borderColor: colors.border }]}>
-              <Phone size={20} color={colors.text.disabled} />
-              <TextInput
-                style={[styles.input, { color: colors.text.primary, fontSize: normalize(16) }]}
-                value={formData.schoolPhone}
-                onChangeText={(v) => updateForm('schoolPhone', v)}
-                placeholder="+243..."
-                placeholderTextColor={colors.text.disabled}
-                keyboardType="phone-pad"
-              />
-            </View>
-          </View>
-
-          {/* School Address */}
-          <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: colors.text.secondary, fontSize: normalize(14) }]}>Adresse Physique</Text>
-            <View style={[styles.inputWrapper, { borderColor: colors.border }]}>
-              <MapPin size={20} color={colors.text.disabled} />
-              <TextInput
-                style={[styles.input, { color: colors.text.primary, fontSize: normalize(16) }]}
-                value={formData.schoolAddress}
-                onChangeText={(v) => updateForm('schoolAddress', v)}
-                placeholder="Ex: Gombe, Kinshasa"
-                placeholderTextColor={colors.text.disabled}
-              />
-            </View>
-          </View>
-
-          {/* School Type */}
-          <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: colors.text.secondary, fontSize: normalize(14) }]}>Type d'enseignement *</Text>
-            <View style={[styles.inputWrapper, { borderColor: colors.border }]}>
-              <GraduationCap size={20} color={colors.text.disabled} />
-              <TextInput
-                style={[styles.input, { color: colors.text.primary, fontSize: normalize(16) }]}
-                value={formData.schoolType}
-                onChangeText={(v) => updateForm('schoolType', v)}
-                placeholder="Ex: Maternelle, Primaire, Secondaire"
-                placeholderTextColor={colors.text.disabled}
-              />
-            </View>
-          </View>
-
-          {/* Description */}
-          <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: colors.text.secondary, fontSize: normalize(14) }]}>Description / Vision</Text>
-            <View style={[styles.inputWrapper, { borderColor: colors.border, alignItems: 'flex-start', paddingTop: 12 }]}>
-              <FileText size={20} color={colors.text.disabled} style={{ marginTop: 2 }} />
-              <TextInput
-                style={[styles.input, { color: colors.text.primary, fontSize: normalize(16), height: 100, textAlignVertical: 'top' }]}
-                value={formData.description}
-                onChangeText={(v) => updateForm('description', v)}
-                placeholder="Décrivez brièvement la vision de votre école..."
-                placeholderTextColor={colors.text.disabled}
-                multiline
-                numberOfLines={4}
-              />
-            </View>
-          </View>
-
-          <TouchableOpacity
-            style={[styles.submitButton, { backgroundColor: colors.primary }]}
-            onPress={handleSubmit}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={[styles.submitButtonText, { fontSize: normalize(16) }]}>Soumettre la demande</Text>
+          <View style={styles.buttonRow}>
+            {step > 1 && (
+              <TouchableOpacity
+                style={[styles.navButton, { borderColor: colors.primary, borderWidth: 1, marginRight: 10 }]}
+                onPress={prevStep}
+              >
+                <Text style={[styles.navButtonText, { color: colors.primary }]}>Retour</Text>
+              </TouchableOpacity>
             )}
-          </TouchableOpacity>
+
+            {step < 3 ? (
+              <TouchableOpacity
+                style={[styles.actionButton, { backgroundColor: colors.primary }]}
+                onPress={nextStep}
+              >
+                <Text style={styles.actionButtonText}>Suivant</Text>
+                <ChevronRight size={18} color="#fff" />
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={[styles.actionButton, { backgroundColor: colors.primary }]}
+                onPress={handleSubmit}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.actionButtonText}>Soumettre la demande</Text>
+                )}
+              </TouchableOpacity>
+            )}
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -207,9 +272,13 @@ const styles = StyleSheet.create({
   },
   backButton: { padding: 4 },
   headerTitle: { fontWeight: 'bold' },
+  progressContainer: { paddingHorizontal: 20, paddingTop: 10 },
+  progressBar: { height: 6, borderRadius: 3, width: '100%', overflow: 'hidden' },
+  progressFill: { height: '100%' },
   scrollContent: { padding: 20 },
   tabletContainer: { maxWidth: 600, alignSelf: 'center', width: '100%' },
-  subtitle: { marginBottom: 25, textAlign: 'center', lineHeight: 20 },
+  stepContainer: { width: '100%' },
+  stepTitle: { fontWeight: 'bold', marginBottom: 20 },
   inputGroup: { marginBottom: 20 },
   label: { fontWeight: '600', marginBottom: 8 },
   inputWrapper: {
@@ -218,20 +287,26 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 12,
     paddingHorizontal: 12,
-    height: 54
+    height: 54,
+    width: '100%'
   },
   input: { flex: 1, marginLeft: 10, height: '100%' },
-  submitButton: {
+  buttonRow: { flexDirection: 'row', marginTop: 30, justifyContent: 'space-between', width: '100%' },
+  navButton: {
+    flex: 1,
     height: 54,
     borderRadius: 12,
     justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 20,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4
+    alignItems: 'center'
   },
-  submitButtonText: { color: '#fff', fontWeight: 'bold' }
+  navButtonText: { fontWeight: 'bold' },
+  actionButton: {
+    flex: 2,
+    height: 54,
+    borderRadius: 12,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
+  actionButtonText: { color: '#fff', fontWeight: 'bold', marginRight: 5 }
 });
