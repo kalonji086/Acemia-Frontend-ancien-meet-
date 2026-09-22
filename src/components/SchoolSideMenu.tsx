@@ -18,7 +18,8 @@ import {
   Bell,
   LogOut,
   HelpCircle,
-  Menu
+  Menu,
+  UserCheck
 } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
 
