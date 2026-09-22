@@ -7,11 +7,13 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
-  useWindowDimensions
+  useWindowDimensions,
+  Modal
 } from 'react-native';
-import { ArrowLeft, Users, GraduationCap, BookOpen, DollarSign, Clock, RefreshCw } from 'lucide-react-native';
+import { ArrowLeft, Users, GraduationCap, BookOpen, DollarSign, Clock, RefreshCw, Menu, X } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
 import apiService from '../services/api.service';
+import SchoolSideMenu from '../components/SchoolSideMenu';
 
 export default function SchoolDashboardScreen({ navigation }: any) {
   const { colors, normalize } = useTheme();
@@ -22,6 +24,7 @@ export default function SchoolDashboardScreen({ navigation }: any) {
   const [hasRequest, setHasRequest] = useState(false);
   const [requestStatus, setRequestStatus] = useState<string | null>(null);
   const [dashboardData, setDashboardData] = useState<any>(null);
+  const [menuVisible, setMenuVisible] = useState(false);
 
   useEffect(() => {
     checkStatus();
@@ -35,7 +38,6 @@ export default function SchoolDashboardScreen({ navigation }: any) {
         setHasRequest(true);
         setRequestStatus(res.data.status);
 
-        // Si approuvé, on charge les métriques du dashboard
         if (res.data.status === 'approuve') {
           const dashRes = await apiService.getSchoolDashboard();
           if (dashRes.success) {
@@ -57,14 +59,14 @@ export default function SchoolDashboardScreen({ navigation }: any) {
     <View style={[
       styles.statCard,
       { backgroundColor: colors.surface, borderColor: colors.border },
-      isTablet && { width: '23%' }
+      isTablet && { width: '23%', marginBottom: 0 }
     ]}>
       <View style={[styles.statIcon, { backgroundColor: color + '15' }]}>
         {React.cloneElement(icon, { color, size: normalize(24) })}
       </View>
-      <View>
+      <View style={{ flex: 1 }}>
         <Text style={[styles.statValue, { color: colors.text.primary, fontSize: normalize(18) }]}>{value}</Text>
-        <Text style={[styles.statTitle, { color: colors.text.secondary, fontSize: normalize(12) }]}>{title}</Text>
+        <Text style={[styles.statTitle, { color: colors.text.secondary, fontSize: normalize(12) }]} numberOfLines={1}>{title}</Text>
       </View>
     </View>
   );
@@ -77,7 +79,6 @@ export default function SchoolDashboardScreen({ navigation }: any) {
     );
   }
 
-  // Cas 1: Pas encore de demande créée
   if (!hasRequest) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -105,7 +106,6 @@ export default function SchoolDashboardScreen({ navigation }: any) {
     );
   }
 
-  // Cas 2: Demande en attente d'approbation
   if (requestStatus === 'en_attente') {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -134,7 +134,6 @@ export default function SchoolDashboardScreen({ navigation }: any) {
     );
   }
 
-  // Cas 3: Demande Rejetée
   if (requestStatus === 'rejete') {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -155,24 +154,46 @@ export default function SchoolDashboardScreen({ navigation }: any) {
     );
   }
 
-  // Cas 4: Approuvé -> Dashboard Actif
   const school = dashboardData?.school || {};
   const stats = dashboardData?.stats || {};
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { backgroundColor: colors.surface }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <ArrowLeft size={24} color={colors.text.primary} />
+        <TouchableOpacity onPress={() => setMenuVisible(true)}>
+          <Menu size={24} color={colors.text.primary} />
         </TouchableOpacity>
-        <View style={{ alignItems: 'center' }}>
-          <Text style={[styles.headerTitle, { color: colors.text.primary, fontSize: normalize(18) }]}>
+        <View style={{ alignItems: 'center', flex: 1, paddingHorizontal: 10 }}>
+          <Text style={[styles.headerTitle, { color: colors.text.primary, fontSize: normalize(16) }]} numberOfLines={1}>
             {school.school_name || 'Dashboard École'}
           </Text>
           <Text style={{ color: '#4CAF50', fontSize: normalize(11), fontWeight: 'bold' }}>PROMOTEUR AGRÉÉ</Text>
         </View>
-        <View style={{ width: 24 }} />
+        <TouchableOpacity onPress={() => navigation.navigate('ChatList')}>
+          <ArrowLeft size={24} color={colors.text.primary} />
+        </TouchableOpacity>
       </View>
+
+      {/* Menu Latéral Custom via Modal pour compatibilité Mobile & Tablettes complète */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={menuVisible}
+        onRequestClose={() => setMenuVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.menuDrawerContainer, { width: windowWidth * 0.75, maxWidth: 320 }]}>
+            <SchoolSideMenu
+              navigation={navigation}
+              schoolName={school.school_name}
+              onClose={() => setMenuVisible(false)}
+            />
+            <TouchableOpacity style={styles.closeDrawerButton} onPress={() => setMenuVisible(false)}>
+              <X size={24} color="#fff" />
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={[styles.statsGrid, isTablet && styles.tabletRow]}>
@@ -186,17 +207,17 @@ export default function SchoolDashboardScreen({ navigation }: any) {
           Outils de gestion disponibles
         </Text>
         <View style={[styles.menuGrid, isTablet && styles.tabletRow]}>
-          <TouchableOpacity style={[styles.menuCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <TouchableOpacity style={[styles.menuCard, { backgroundColor: colors.surface, borderColor: colors.border }, isTablet && { flex: 1, marginRight: 10 }]}>
             <Users size={28} color={colors.primary} />
             <Text style={[styles.menuText, { color: colors.text.primary }]}>Inscriptions & Élèves</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={[styles.menuCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <TouchableOpacity style={[styles.menuCard, { backgroundColor: colors.surface, borderColor: colors.border }, isTablet && { flex: 1, marginRight: 10 }]}>
             <BookOpen size={28} color={colors.primary} />
             <Text style={[styles.menuText, { color: colors.text.primary }]}>Horaires & Cours</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={[styles.menuCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <TouchableOpacity style={[styles.menuCard, { backgroundColor: colors.surface, borderColor: colors.border }, isTablet && { flex: 1 }]}>
             <DollarSign size={28} color={colors.primary} />
             <Text style={[styles.menuText, { color: colors.text.primary }]}>Frais Scolaires</Text>
           </TouchableOpacity>
@@ -244,5 +265,8 @@ const styles = StyleSheet.create({
   menuGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
   menuCard: { width: '48%', padding: 20, borderRadius: 20, borderWidth: 1, alignItems: 'center', justifyContent: 'center', height: 120, marginBottom: 15 },
   menuText: { fontWeight: '600', marginTop: 12, textAlign: 'center', fontSize: 13 },
-  tabletRow: { flexDirection: 'row', justifyContent: 'space-between', flexWrap: 'nowrap' }
+  tabletRow: { flexDirection: 'row', justifyContent: 'space-between', flexWrap: 'nowrap', width: '100%', marginBottom: 20 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', flexDirection: 'row' },
+  menuDrawerContainer: { height: '100%', backgroundColor: '#fff', position: 'relative' },
+  closeDrawerButton: { position: 'absolute', top: 20, right: -45, backgroundColor: 'rgba(0,0,0,0.7)', p: 8, borderRadius: 20, padding: 8 }
 });
