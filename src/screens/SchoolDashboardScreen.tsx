@@ -214,6 +214,11 @@ export default function SchoolDashboardScreen({ navigation }: any) {
             <Text style={[styles.menuText, { color: colors.text.primary }]}>Inscriptions & Élèves</Text>
           </TouchableOpacity>
 
+          <TouchableOpacity style={[styles.menuCard, { backgroundColor: colors.surface, borderColor: colors.border }, isTablet && { flex: 1, marginRight: 10 }]} onPress={() => navigation.navigate('SchoolClasses')}>
+            <GraduationCap size={28} color={colors.primary} />
+            <Text style={[styles.menuText, { color: colors.text.primary }]}>Gestion des Classes</Text>
+          </TouchableOpacity>
+
           <TouchableOpacity style={[styles.menuCard, { backgroundColor: colors.surface, borderColor: colors.border }, isTablet && { flex: 1, marginRight: 10 }]} onPress={() => navigation.navigate('SchoolSchedule')}>
             <BookOpen size={28} color={colors.primary} />
             <Text style={[styles.menuText, { color: colors.text.primary }]}>Horaires & Cours</Text>

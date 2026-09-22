@@ -46,6 +46,12 @@ export default function SchoolSideMenu({ navigation, onClose, schoolName }: Scho
       action: () => navigation.navigate('SchoolStudents')
     },
     {
+      id: 'classes_mgmt',
+      label: 'Gestion des Classes',
+      icon: <GraduationCap size={normalize(20)} />,
+      action: () => navigation.navigate('SchoolClasses')
+    },
+    {
       id: 'classes',
       label: 'Horaires & Cours',
       icon: <BookOpen size={normalize(20)} />,

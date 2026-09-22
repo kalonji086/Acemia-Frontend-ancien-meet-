@@ -45,6 +45,7 @@ import SchoolStudentsScreen from '../screens/SchoolStudentsScreen';
 import SchoolScheduleScreen from '../screens/SchoolScheduleScreen';
 import SchoolFeesScreen from '../screens/SchoolFeesScreen';
 import SchoolAccountsScreen from '../screens/SchoolAccountsScreen';
+import SchoolClassesScreen from '../screens/SchoolClassesScreen';
 import SchoolLoginScreen from '../screens/SchoolLoginScreen';
 import SchoolStaffDashboard from '../screens/SchoolStaffDashboard';
 import StudentDashboard from '../screens/StudentDashboard';
@@ -199,6 +200,7 @@ export default function AppNavigator() {
         SchoolSchedule: 'school/schedule',
         SchoolFees: 'school/fees',
         SchoolAccounts: 'school/accounts',
+        SchoolClasses: 'school/classes',
         SchoolLogin: 'school/login',
         SchoolStaffDashboard: 'school/staff-dashboard',
         StudentDashboard: 'school/student-dashboard',
@@ -412,6 +414,11 @@ export default function AppNavigator() {
         <Stack.Screen
           name="SchoolAccounts"
           component={SchoolAccountsScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="SchoolClasses"
+          component={SchoolClassesScreen}
           options={{ headerShown: false }}
         />
         <Stack.Screen
