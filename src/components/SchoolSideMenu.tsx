@@ -36,25 +36,25 @@ export default function SchoolSideMenu({ navigation, onClose, schoolName }: Scho
       id: 'dashboard',
       label: 'Tableau de bord',
       icon: <Home size={normalize(20)} />,
-      action: () => {}
+      action: () => navigation.navigate('SchoolDashboard')
     },
     {
       id: 'students',
       label: 'Inscriptions & Élèves',
       icon: <Users size={normalize(20)} />,
-      action: () => {}
+      action: () => navigation.navigate('SchoolStudents')
     },
     {
       id: 'classes',
       label: 'Horaires & Cours',
       icon: <BookOpen size={normalize(20)} />,
-      action: () => {}
+      action: () => navigation.navigate('SchoolSchedule')
     },
     {
       id: 'finance',
       label: 'Frais Scolaires',
       icon: <DollarSign size={normalize(20)} />,
-      action: () => {}
+      action: () => navigation.navigate('SchoolFees')
     },
     {
       id: 'settings',

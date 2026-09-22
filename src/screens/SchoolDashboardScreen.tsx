@@ -207,17 +207,17 @@ export default function SchoolDashboardScreen({ navigation }: any) {
           Outils de gestion disponibles
         </Text>
         <View style={[styles.menuGrid, isTablet && styles.tabletRow]}>
-          <TouchableOpacity style={[styles.menuCard, { backgroundColor: colors.surface, borderColor: colors.border }, isTablet && { flex: 1, marginRight: 10 }]}>
+          <TouchableOpacity style={[styles.menuCard, { backgroundColor: colors.surface, borderColor: colors.border }, isTablet && { flex: 1, marginRight: 10 }]} onPress={() => navigation.navigate('SchoolStudents')}>
             <Users size={28} color={colors.primary} />
             <Text style={[styles.menuText, { color: colors.text.primary }]}>Inscriptions & Élèves</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={[styles.menuCard, { backgroundColor: colors.surface, borderColor: colors.border }, isTablet && { flex: 1, marginRight: 10 }]}>
+          <TouchableOpacity style={[styles.menuCard, { backgroundColor: colors.surface, borderColor: colors.border }, isTablet && { flex: 1, marginRight: 10 }]} onPress={() => navigation.navigate('SchoolSchedule')}>
             <BookOpen size={28} color={colors.primary} />
             <Text style={[styles.menuText, { color: colors.text.primary }]}>Horaires & Cours</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={[styles.menuCard, { backgroundColor: colors.surface, borderColor: colors.border }, isTablet && { flex: 1 }]}>
+          <TouchableOpacity style={[styles.menuCard, { backgroundColor: colors.surface, borderColor: colors.border }, isTablet && { flex: 1 }]} onPress={() => navigation.navigate('SchoolFees')}>
             <DollarSign size={28} color={colors.primary} />
             <Text style={[styles.menuText, { color: colors.text.primary }]}>Frais Scolaires</Text>
           </TouchableOpacity>
