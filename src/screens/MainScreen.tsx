@@ -64,7 +64,7 @@ export default function MainScreen({ navigation, route }: any) {
     if (route.params?.screen && route.params.screen !== activeTab) {
       setActiveTab(route.params.screen);
     }
-  }, [route.params?.screen]);
+  }, [route.params?.screen, activeTab]);
 
   useEffect(() => {
     const startSocket = async () => {
@@ -117,7 +117,7 @@ export default function MainScreen({ navigation, route }: any) {
       socketService.off('profile_updated');
       socketService.off('legal_update');
     };
-  }, []);
+  }, [navigation, setUser]);
 
   // --- 2. EARLY RETURN (AFTER ALL HOOKS) ---
   if (userLoading || !currentUser || !colors) {
@@ -133,6 +133,13 @@ export default function MainScreen({ navigation, route }: any) {
   const isWeb = Platform.OS === 'web';
   const showSidebar = isWeb && screenWidth > 1024;
   const styles = createStyles(colors, normalize, isDark);
+
+  const handleTabPress = (tab: string) => {
+    setActiveTab(tab);
+    if (isWeb) {
+      navigation.setParams({ screen: tab });
+    }
+  };
 
   const renderContent = () => {
     try {
@@ -201,10 +208,10 @@ export default function MainScreen({ navigation, route }: any) {
           </View>
 
           <View style={styles.sidebarMenu}>
-            <SidebarItem active={activeTab === 'chats'} icon={<MessagesSquare size={24} />} label={t('chats')} onPress={() => setActiveTab('chats')} colors={colors} badge={unreadTotal} />
-            <SidebarItem active={activeTab === 'status'} icon={<Aperture size={24} />} label={t('status')} onPress={() => setActiveTab('status')} colors={colors} />
-            <SidebarItem active={activeTab === 'emploi'} icon={<Briefcase size={24} />} label="Emploi" onPress={() => setActiveTab('emploi')} colors={colors} />
-            <SidebarItem active={activeTab === 'market'} icon={<ShoppingCart size={24} />} label={t('market')} onPress={() => setActiveTab('market')} colors={colors} />
+            <SidebarItem active={activeTab === 'chats'} icon={<MessagesSquare size={24} />} label={t('chats')} onPress={() => handleTabPress('chats')} colors={colors} badge={unreadTotal} styles={styles} />
+            <SidebarItem active={activeTab === 'status'} icon={<Aperture size={24} />} label={t('status')} onPress={() => handleTabPress('status')} colors={colors} styles={styles} />
+            <SidebarItem active={activeTab === 'emploi'} icon={<Briefcase size={24} />} label="Emploi" onPress={() => handleTabPress('emploi')} colors={colors} styles={styles} />
+            <SidebarItem active={activeTab === 'market'} icon={<ShoppingCart size={24} />} label={t('market')} onPress={() => handleTabPress('market')} colors={colors} styles={styles} />
           </View>
 
           <View style={styles.sidebarFooter}>
@@ -223,17 +230,17 @@ export default function MainScreen({ navigation, route }: any) {
 
       {!showSidebar && (
         <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 10), height: normalize(70) + insets.bottom, backgroundColor: colors.surface, borderTopColor: colors.border }]}>
-          <TabItem active={activeTab === 'chats'} icon={<MessagesSquare size={22} />} label={t('chats')} onPress={() => setActiveTab('chats')} activeColor={colors.primary} inactiveColor={colors.text.secondary} activeBg={isDark ? colors.primary + '20' : '#F3E5F5'} badge={unreadTotal} normalize={normalize} />
-          <TabItem active={activeTab === 'status'} icon={<Aperture size={22} />} label={t('status')} onPress={() => setActiveTab('status')} activeColor={colors.primary} inactiveColor={colors.text.secondary} activeBg={isDark ? colors.primary + '20' : '#F3E5F5'} normalize={normalize} />
-          <TabItem active={activeTab === 'emploi'} icon={<Briefcase size={22} />} label={t('emploi') || 'Emploi'} onPress={() => setActiveTab('emploi')} activeColor={colors.primary} inactiveColor={colors.text.secondary} activeBg={isDark ? colors.primary + '20' : '#F3E5F5'} normalize={normalize} />
-          <TabItem active={activeTab === 'market'} icon={<ShoppingCart size={22} />} label={t('market')} onPress={() => setActiveTab('market')} activeColor={colors.primary} inactiveColor={colors.text.secondary} activeBg={isDark ? colors.primary + '20' : '#F3E5F5'} normalize={normalize} />
+          <TabItem active={activeTab === 'chats'} icon={<MessagesSquare size={22} />} label={t('chats')} onPress={() => handleTabPress('chats')} activeColor={colors.primary} inactiveColor={colors.text.secondary} activeBg={isDark ? colors.primary + '20' : '#F3E5F5'} badge={unreadTotal} normalize={normalize} styles={styles} />
+          <TabItem active={activeTab === 'status'} icon={<Aperture size={22} />} label={t('status')} onPress={() => handleTabPress('status')} activeColor={colors.primary} inactiveColor={colors.text.secondary} activeBg={isDark ? colors.primary + '20' : '#F3E5F5'} normalize={normalize} styles={styles} />
+          <TabItem active={activeTab === 'emploi'} icon={<Briefcase size={22} />} label={t('emploi') || 'Emploi'} onPress={() => handleTabPress('emploi')} activeColor={colors.primary} inactiveColor={colors.text.secondary} activeBg={isDark ? colors.primary + '20' : '#F3E5F5'} normalize={normalize} styles={styles} />
+          <TabItem active={activeTab === 'market'} icon={<ShoppingCart size={22} />} label={t('market')} onPress={() => handleTabPress('market')} activeColor={colors.primary} inactiveColor={colors.text.secondary} activeBg={isDark ? colors.primary + '20' : '#F3E5F5'} normalize={normalize} styles={styles} />
         </View>
       )}
     </View>
   );
 }
 
-const SidebarItem = ({ active, icon, label, onPress, colors, badge }: any) => (
+const SidebarItem = ({ active, icon, label, onPress, colors, badge, styles }: any) => (
   <TouchableOpacity style={[styles.sidebarItem, active && { backgroundColor: colors.primary + '15', borderColor: colors.primary }]} onPress={onPress}>
     <View style={styles.sidebarIconContainer}>
       {React.cloneElement(icon, { color: active ? colors.primary : colors.text.secondary })}
@@ -243,7 +250,7 @@ const SidebarItem = ({ active, icon, label, onPress, colors, badge }: any) => (
   </TouchableOpacity>
 );
 
-const TabItem = ({ active, icon, label, onPress, activeColor, inactiveColor, activeBg, badge, normalize }: any) => (
+const TabItem = ({ active, icon, label, onPress, activeColor, inactiveColor, activeBg, badge, normalize, styles }: any) => (
   <TouchableOpacity style={styles.tabItem} onPress={onPress} activeOpacity={0.7}>
     <View style={[styles.iconContainer, active && { backgroundColor: activeBg }]}>
       {React.cloneElement(icon, { color: active ? activeColor : inactiveColor })}
@@ -285,5 +292,3 @@ const createStyles = (colors: any, normalize: any, isDark: boolean) => StyleShee
   badgeContainer: { position: 'absolute', top: -5, right: -5, backgroundColor: colors?.danger || '#F44336', borderRadius: 10, minWidth: 18, height: 18, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 4, borderWidth: 2, borderColor: isDark ? (colors?.surface || '#000') : '#fff' },
   badgeText: { color: '#fff', fontSize: 10, fontWeight: 'bold' },
 });
-
-const styles = StyleSheet.create({}); // For TS

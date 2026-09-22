@@ -664,6 +664,28 @@ class ApiService {
     } catch (e: any) { return this.handleError(e); }
   }
 
+  // School Module
+  async submitSchoolRequest(data: any): Promise<ApiResponse> {
+    try {
+      const res = await this.api.post('/school/request', data);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async getSchoolStatus(): Promise<ApiResponse> {
+    try {
+      const res = await this.api.get('/school/status');
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async getSchoolDashboard(): Promise<ApiResponse> {
+    try {
+      const res = await this.api.get('/school/dashboard');
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
   async postJob(data: any): Promise<ApiResponse> {
     try {
       const res = await this.api.post('/employer/jobs', data);

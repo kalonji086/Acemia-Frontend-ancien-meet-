@@ -39,6 +39,8 @@ import JobDetailsScreen from '../screens/JobDetailsScreen';
 import CreateJobPostingScreen from '../screens/CreateJobPostingScreen';
 import MyJobsScreen from '../screens/MyJobsScreen';
 import EmployerPlanningScreen from '../screens/EmployerPlanningScreen';
+import SchoolRequestScreen from '../screens/SchoolRequestScreen';
+import SchoolDashboardScreen from '../screens/SchoolDashboardScreen';
 import { useTheme } from '../context/ThemeContext';
 import { DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { Platform } from 'react-native';
@@ -184,6 +186,8 @@ export default function AppNavigator() {
         BusinessDashboard: 'business',
         EmploiMain: 'emploi',
         EmployerDashboard: 'employer-dashboard',
+        SchoolRequest: 'school/request',
+        SchoolDashboard: 'school/dashboard',
       },
     },
   };
@@ -364,6 +368,16 @@ export default function AppNavigator() {
         <Stack.Screen
           name="EmployerPlanning"
           component={EmployerPlanningScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="SchoolRequest"
+          component={SchoolRequestScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="SchoolDashboard"
+          component={SchoolDashboardScreen}
           options={{ headerShown: false }}
         />
       </Stack.Navigator>
