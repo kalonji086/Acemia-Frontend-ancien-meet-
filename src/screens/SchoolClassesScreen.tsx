@@ -36,11 +36,11 @@ export default function SchoolClassesScreen({ navigation }: any) {
     setLoading(true);
     try {
       const clsRes = await apiService.getSchoolClasses();
-      const staffRes = await apiService.api.get('/school/account-requests');
+      const staffRes = await apiService.getSchoolAccountRequests();
       const studRes = await apiService.getSchoolStudents();
 
       if (clsRes.success) setClasses(clsRes.data || []);
-      if (staffRes.data.success) setStaffList(staffRes.data.data.filter((s: any) => s.status === 'approuve'));
+      if (staffRes.success) setStaffList(staffRes.data || []);
       if (studRes.success) setStudents(studRes.data || []);
     } catch (e) {
       console.error(e);
@@ -50,12 +50,12 @@ export default function SchoolClassesScreen({ navigation }: any) {
   };
 
   const handleSaveClass = async () => {
-    if (!className || !classLevel) return Alert.alert('Attention', 'Nom et Niveau requis.');
+    if (!className.trim() || !classLevel.trim()) return Alert.alert('Attention', 'Nom et Niveau requis.');
     try {
       const res = await apiService.addSchoolClass({
         id: selectedClass?.id,
-        name: className,
-        level: classLevel,
+        name: className.trim(),
+        level: classLevel.trim(),
         staffId: assignedStaffId || null,
         isActive: selectedClass ? selectedClass.is_active : true
       });
@@ -64,9 +64,11 @@ export default function SchoolClassesScreen({ navigation }: any) {
         setClassModalVisible(false);
         resetClassForm();
         fetchData();
+      } else {
+        Alert.alert('Erreur', res.error || 'Impossible de sauvegarder la classe.');
       }
-    } catch (e) {
-      Alert.alert('Erreur', 'Impossible de sauvegarder la classe.');
+    } catch (e: any) {
+      Alert.alert('Erreur', e.message || 'Impossible de sauvegarder la classe.');
     }
   };
 
@@ -75,8 +77,12 @@ export default function SchoolClassesScreen({ navigation }: any) {
       { text: 'Annuler', style: 'cancel' },
       { text: 'Supprimer', style: 'destructive', onPress: async () => {
         try {
-          await apiService.api.delete(`/school/classes/${id}`);
-          fetchData();
+          const res = await apiService.deleteSchoolClass(id);
+          if (res.success) {
+            fetchData();
+          } else {
+            Alert.alert('Erreur', res.error || 'Impossible de supprimer la classe.');
+          }
         } catch (e) { Alert.alert('Erreur'); }
       }}
     ]);
@@ -84,7 +90,13 @@ export default function SchoolClassesScreen({ navigation }: any) {
 
   const handleToggleClassStatus = async (item: any) => {
     try {
-      await apiService.addSchoolClass({ ...item, isActive: !item.is_active, staffId: item.staff_id });
+      await apiService.addSchoolClass({
+        id: item.id,
+        name: item.name,
+        level: item.level,
+        staffId: item.staff_id || null,
+        isActive: !item.is_active
+      });
       fetchData();
     } catch (e) { Alert.alert('Erreur'); }
   };
@@ -93,14 +105,21 @@ export default function SchoolClassesScreen({ navigation }: any) {
     if (!targetClassId) return Alert.alert('Erreur', 'Sélectionnez une classe de destination.');
     try {
       const res = await apiService.addSchoolStudent({
-        ...studentToTransfer,
-        classId: targetClassId
+        id: studentToTransfer?.id,
+        fullName: studentToTransfer?.full_name,
+        gender: studentToTransfer?.gender,
+        birthDate: studentToTransfer?.birth_date,
+        classId: targetClassId,
+        isActive: studentToTransfer?.is_active
       });
       if (res.success) {
+        Alert.alert('Succès', 'Élève transféré avec succès !');
         setTransferModalVisible(false);
         fetchData();
+      } else {
+        Alert.alert('Erreur', res.error || 'Impossible de transférer l\'élève.');
       }
-    } catch (e) { Alert.alert('Erreur'); }
+    } catch (e: any) { Alert.alert('Erreur', e.message || 'Erreur lors du transfert.'); }
   };
 
   const resetClassForm = () => {

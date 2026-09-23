@@ -17,7 +17,7 @@ export interface ApiResponse<T = any> {
 
 class ApiService {
   private static instance: ApiService;
-  private api: AxiosInstance;
+  public api: AxiosInstance;
   private isRefreshing = false;
   private refreshSubscribers: ((token: string) => void)[] = [];
 
@@ -710,6 +710,34 @@ class ApiService {
   async addSchoolClass(data: any): Promise<ApiResponse> {
     try {
       const res = await this.api.post('/school/classes', data);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async deleteSchoolClass(id: string): Promise<ApiResponse> {
+    try {
+      const res = await this.api.delete(`/school/classes/${id}`);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async deleteSchoolStudent(id: string): Promise<ApiResponse> {
+    try {
+      const res = await this.api.delete(`/school/students/${id}`);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async getSchoolAccountRequests(): Promise<ApiResponse> {
+    try {
+      const res = await this.api.get('/school/account-requests');
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async addSchoolAccountRequest(data: any): Promise<ApiResponse> {
+    try {
+      const res = await this.api.post('/school/account-requests', data);
       return res.data;
     } catch (e: any) { return this.handleError(e); }
   }
