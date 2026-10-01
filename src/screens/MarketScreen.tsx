@@ -124,7 +124,7 @@ export default function MarketScreen() {
       <View style={[styles.centered, isWide && { paddingHorizontal: '20%' }]}>
         <View style={isWide ? { flexDirection: 'row', alignItems: 'center', gap: 40 } : { alignItems: 'center' }}>
           <Image
-            source={{ uri: business.logo_url ? getFullUrl(business.logo_url) : 'https://cdn-icons-png.flaticon.com/512/3081/3081559.png' }}
+            source={{ uri: business.logo_url ? getFullUrl(business.logo_url) || 'https://cdn-icons-png.flaticon.com/512/3081/3081559.png' : 'https://cdn-icons-png.flaticon.com/512/3081/3081559.png' }}
             style={isWide ? { width: 300, height: 300, borderRadius: 150 } : { width: 150, height: 150, borderRadius: 75, marginBottom: 20 }}
           />
           <View style={isWide ? { flex: 1 } : { alignItems: 'center' }}>

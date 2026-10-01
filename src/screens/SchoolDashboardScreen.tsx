@@ -30,15 +30,24 @@ export default function SchoolDashboardScreen({ navigation }: any) {
     checkStatus();
   }, []);
 
+  const normalizeSchoolStatus = (status: string | null | undefined) => {
+    const value = String(status || '').trim().toLowerCase();
+    if (value === 'approuve' || value === 'approuvé') return 'approuve';
+    if (value === 'rejete' || value === 'rejeté') return 'rejete';
+    if (value === 'en attente' || value === 'en_attente') return 'en_attente';
+    return value;
+  };
+
   const checkStatus = async () => {
     setLoading(true);
     try {
-      const res = await apiService.getSchoolStatus();
+      const res: any = await apiService.getSchoolStatus();
       if (res.success && res.hasRequest) {
+        const status = normalizeSchoolStatus(res.data?.status);
         setHasRequest(true);
-        setRequestStatus(res.data.status);
+        setRequestStatus(status);
 
-        if (res.data.status === 'approuve') {
+        if (status === 'approuve') {
           const dashRes = await apiService.getSchoolDashboard();
           if (dashRes.success) {
             setDashboardData(dashRes);
@@ -275,5 +284,5 @@ const styles = StyleSheet.create({
   tabletRow: { flexDirection: 'row', justifyContent: 'space-between', flexWrap: 'nowrap', width: '100%', marginBottom: 20 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', flexDirection: 'row' },
   menuDrawerContainer: { height: '100%', backgroundColor: '#fff', position: 'relative' },
-  closeDrawerButton: { position: 'absolute', top: 20, right: -45, backgroundColor: 'rgba(0,0,0,0.7)', p: 8, borderRadius: 20, padding: 8 }
+  closeDrawerButton: { position: 'absolute', top: 20, right: -45, backgroundColor: 'rgba(0,0,0,0.7)', borderRadius: 20, padding: 8 }
 });

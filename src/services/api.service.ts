@@ -72,7 +72,7 @@ class ApiService {
       config.timeout = 60000;
       config.timeoutErrorMessage = 'Request timeout';
       config.headers['X-Request-ID'] = Date.now().toString(36) + Math.random().toString(36).substr(2);
-      
+
       const token = await this.getAuthToken();
       if (token) config.headers.Authorization = `Bearer ${token}`;
       return config;
@@ -766,6 +766,102 @@ class ApiService {
   async addSchoolFeeInvoice(data: any): Promise<ApiResponse> {
     try {
       const res = await this.api.post('/school/fees', data);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  // Nouvelles fonctionnalités École - Matières
+  async getSchoolSubjects(): Promise<ApiResponse> {
+    try {
+      const res = await this.api.get('/school/subjects');
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async addSchoolSubject(data: any): Promise<ApiResponse> {
+    try {
+      const res = await this.api.post('/school/subjects', data);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  // Nouvelles fonctionnalités École - Évaluations et Notes
+  async getSchoolEvaluations(params?: { classId?: string; subjectId?: string }): Promise<ApiResponse> {
+    try {
+      const res = await this.api.get('/school/evaluations', { params });
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async addSchoolEvaluation(data: any): Promise<ApiResponse> {
+    try {
+      const res = await this.api.post('/school/evaluations', data);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async getSchoolEvaluationGrades(evaluationId: string): Promise<ApiResponse> {
+    try {
+      const res = await this.api.get(`/school/evaluations/${evaluationId}/grades`);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async addSchoolEvaluationGrades(evaluationId: string, data: { grades: any[] }): Promise<ApiResponse> {
+    try {
+      const res = await this.api.post(`/school/evaluations/${evaluationId}/grades`, data);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  // Nouvelles fonctionnalités École - Présences
+  async getSchoolAttendance(params?: { startDate?: string; endDate?: string; classId?: string; studentId?: string }): Promise<ApiResponse> {
+    try {
+      const res = await this.api.get('/school/attendance', { params });
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async recordSchoolAttendance(data: { date: string; records: any[] }): Promise<ApiResponse> {
+    try {
+      const res = await this.api.post('/school/attendance', data);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async getSchoolAttendanceStats(params?: { startDate?: string; endDate?: string }): Promise<ApiResponse> {
+    try {
+      const res = await this.api.get('/school/attendance/stats', { params });
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  // Nouvelles fonctionnalités École - Ressources
+  async getSchoolResources(params?: { classId?: string; subjectId?: string; fileType?: string }): Promise<ApiResponse> {
+    try {
+      const res = await this.api.get('/school/resources', { params });
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async addSchoolResource(data: any): Promise<ApiResponse> {
+    try {
+      const res = await this.api.post('/school/resources', data);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  // Nouvelles fonctionnalités École - Rapports
+  async getSchoolReports(params: { reportType: string; startDate?: string; endDate?: string }): Promise<ApiResponse> {
+    try {
+      const res = await this.api.get('/school/reports', { params });
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async exportSchoolData(params: { dataType: string }): Promise<ApiResponse> {
+    try {
+      const res = await this.api.get('/school/export', { params });
       return res.data;
     } catch (e: any) { return this.handleError(e); }
   }

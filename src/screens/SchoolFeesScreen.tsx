@@ -156,5 +156,5 @@ const styles = StyleSheet.create({
   feeCard: { flexDirection: 'row', alignItems: 'center', padding: 15, borderRadius: 12, borderWidth: 1, marginBottom: 10 },
   studentName: { fontWeight: 'bold' },
   statusBadge: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8 },
-  statusText: { color: '#fff', fontSize: 11, fontWeight: 'bold', uppercase: true }
+  statusText: { color: '#fff', fontSize: 11, fontWeight: 'bold', textTransform: 'uppercase', textAlign: 'center' }
 });

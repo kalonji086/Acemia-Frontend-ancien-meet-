@@ -73,7 +73,7 @@ export default function SchoolSideMenu({ navigation, onClose, schoolName }: Scho
       id: 'settings',
       label: 'Paramètres École',
       icon: <Settings size={normalize(20)} />,
-      action: () => {}
+      action: () => navigation.navigate('Settings')
     }
   ];
 
@@ -99,7 +99,7 @@ export default function SchoolSideMenu({ navigation, onClose, schoolName }: Scho
               onClose();
             }}
           >
-            <View style={[styles.iconContainer, { color: colors.text.secondary }]}>
+            <View style={styles.iconContainer}>
               {item.icon}
             </View>
             <Text style={[styles.menuLabel, { color: colors.text.primary, fontSize: normalize(14) }]}>

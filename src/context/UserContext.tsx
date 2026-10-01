@@ -15,15 +15,38 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUserState] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
+  const normalizeUser = (newUser: any) => {
+    if (!newUser) return null;
+
+    const fullName = newUser.full_name || newUser.name || newUser.fullName || 'Utilisateur';
+    const avatarUrl = newUser.avatar_url || newUser.avatar || newUser.avatarUrl || null;
+
+    return {
+      ...newUser,
+      id: newUser.id || newUser.userId || newUser.user_id,
+      full_name: newUser.full_name || fullName,
+      name: fullName,
+      avatar_url: avatarUrl,
+      avatar: avatarUrl,
+      username: newUser.username || newUser.pseudo || null,
+      phone_number: newUser.phone_number || newUser.phone || null,
+      email: newUser.email || null,
+      status: newUser.status || 'Disponible',
+      gender: newUser.gender ?? null,
+      country: newUser.country ?? null,
+      province: newUser.province ?? null,
+      city: newUser.city ?? null,
+      commune: newUser.commune ?? null,
+      birth_date: newUser.birth_date ?? null,
+      preferred_language: newUser.preferred_language ?? 'fr',
+      auto_translate: newUser.auto_translate ?? false,
+    };
+  };
+
   const setUser = async (newUser: any) => {
     try {
       if (newUser) {
-        const formattedUser = {
-          ...newUser,
-          id: newUser.id || newUser.userId,
-          name: newUser.full_name || newUser.name || 'Utilisateur',
-          avatar: newUser.avatar_url || newUser.avatar
-        };
+        const formattedUser = normalizeUser(newUser);
         setUserState(formattedUser);
         await AsyncStorage.setItem('user', JSON.stringify(formattedUser));
       } else {
@@ -40,7 +63,8 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const storedUser = await AsyncStorage.getItem('user');
       if (storedUser) {
-        setUserState(JSON.parse(storedUser));
+        const parsedUser = JSON.parse(storedUser);
+        setUserState(normalizeUser(parsedUser));
       }
     } catch (e) {
       console.error('Failed to load user from storage', e);
@@ -56,14 +80,20 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const handleProfileUpdate = (data: any) => {
       setUserState((prevUser: any) => {
         if (prevUser && prevUser.id === data.userId) {
-          const updated = {
+          const updated = normalizeUser({
             ...prevUser,
             full_name: data.full_name || prevUser.full_name,
-            name: data.full_name || prevUser.full_name,
+            name: data.full_name || prevUser.name,
             avatar_url: data.avatar_url || prevUser.avatar_url,
-            avatar: data.avatar_url || prevUser.avatar_url,
-            username: data.username || prevUser.username
-          };
+            avatar: data.avatar_url || prevUser.avatar,
+            username: data.username || prevUser.username,
+            gender: data.gender ?? prevUser.gender,
+            country: data.country ?? prevUser.country,
+            province: data.province ?? prevUser.province,
+            city: data.city ?? prevUser.city,
+            commune: data.commune ?? prevUser.commune,
+            birth_date: data.birth_date ?? prevUser.birth_date,
+          });
           AsyncStorage.setItem('user', JSON.stringify(updated));
           return updated;
         }

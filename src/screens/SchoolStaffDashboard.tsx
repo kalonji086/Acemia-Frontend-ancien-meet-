@@ -13,8 +13,12 @@ export default function SchoolStaffDashboard({ route, navigation }: any) {
   const { width: windowWidth } = useWindowDimensions();
   const isTablet = windowWidth > 768;
 
-  const renderModule = (label: string, icon: any, color: string) => (
-    <TouchableOpacity style={[styles.moduleCard, { backgroundColor: colors.surface, borderColor: colors.border }, isTablet && { width: '31%' }]}>
+  const renderModule = (label: string, icon: any, color: string, screen?: string) => (
+    <TouchableOpacity
+      key={label}
+      style={[styles.moduleCard, { backgroundColor: colors.surface, borderColor: colors.border }, isTablet && { width: '31%' }]}
+      onPress={() => screen ? navigation.navigate(screen) : undefined}
+    >
       <View style={[styles.moduleIcon, { backgroundColor: color + '15' }]}>
         {React.cloneElement(icon, { color, size: normalize(24) })}
       </View>
@@ -27,37 +31,37 @@ export default function SchoolStaffDashboard({ route, navigation }: any) {
       case 'prefet':
         return (
           <>
-            {renderModule('Discipline & Sanctions', <ShieldAlert />, '#F44336')}
-            {renderModule('Rapports de Conduite', <FileText />, '#FF9800')}
-            {renderModule('Suivi des Bulletins', <BarChart3 />, '#2196F3')}
-            {renderModule('Absences Générales', <Users />, '#9C27B0')}
+            {renderModule('Discipline & Sanctions', <ShieldAlert />, '#F44336', 'SchoolReports')}
+            {renderModule('Rapports de Conduite', <FileText />, '#FF9800', 'SchoolReports')}
+            {renderModule('Suivi des Bulletins', <BarChart3 />, '#2196F3', 'SchoolGrades')}
+            {renderModule('Absences Générales', <Users />, '#9C27B0', 'SchoolAttendance')}
           </>
         );
       case 'directeur':
         return (
           <>
-            {renderModule('État Financier Global', <DollarSign />, '#4CAF50')}
-            {renderModule('Gestion du Personnel', <UserCheck />, '#673AB7')}
-            {renderModule('Notes Circulaires', <Bell />, '#FF5722')}
-            {renderModule('Statistiques École', <TrendingUp />, '#3F51B5')}
+            {renderModule('État Financier Global', <DollarSign />, '#4CAF50', 'SchoolReports')}
+            {renderModule('Gestion du Personnel', <UserCheck />, '#673AB7', 'SchoolAccounts')}
+            {renderModule('Notes Circulaires', <Bell />, '#FF5722', 'SchoolReports')}
+            {renderModule('Statistiques École', <TrendingUp />, '#3F51B5', 'SchoolReports')}
           </>
         );
       case 'enseignant':
         return (
           <>
-            {renderModule('Appel de Classe', <ListChecks />, '#00BCD4')}
-            {renderModule('Journal de Classe', <BookOpen />, '#795548')}
-            {renderModule('Suivi Élèves', <Users />, '#E91E63')}
-            {renderModule('Mes Horaires', <Calendar />, '#4CAF50')}
+            {renderModule('Appel de Classe', <ListChecks />, '#00BCD4', 'SchoolAttendance')}
+            {renderModule('Journal de Classe', <BookOpen />, '#795548', 'SchoolStudents')}
+            {renderModule('Suivi Élèves', <Users />, '#E91E63', 'SchoolStudents')}
+            {renderModule('Mes Horaires', <Calendar />, '#4CAF50', 'SchoolSchedule')}
           </>
         );
       case 'professeur':
         return (
           <>
-            {renderModule('Gestion des Cours', <BookOpen />, '#3F51B5')}
-            {renderModule('Saisie des Notes', <BarChart3 />, '#FF9800')}
-            {renderModule('Devoirs & Travaux', <FileText />, '#009688')}
-            {renderModule('Messagerie Parents', <MessageSquare />, '#2196F3')}
+            {renderModule('Gestion des Cours', <BookOpen />, '#3F51B5', 'SchoolSchedule')}
+            {renderModule('Saisie des Notes', <BarChart3 />, '#FF9800', 'SchoolGrades')}
+            {renderModule('Devoirs & Travaux', <FileText />, '#009688', 'SchoolGrades')}
+            {renderModule('Messagerie Parents', <MessageSquare />, '#2196F3', 'Settings')}
           </>
         );
       default:

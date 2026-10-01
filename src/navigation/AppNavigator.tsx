@@ -49,6 +49,9 @@ import SchoolClassesScreen from '../screens/SchoolClassesScreen';
 import SchoolLoginScreen from '../screens/SchoolLoginScreen';
 import SchoolStaffDashboard from '../screens/SchoolStaffDashboard';
 import StudentDashboard from '../screens/StudentDashboard';
+import SchoolGradesScreen from '../screens/SchoolGradesScreen';
+import SchoolAttendanceScreen from '../screens/SchoolAttendanceScreen';
+import SchoolReportsScreen from '../screens/SchoolReportsScreen';
 import { useTheme } from '../context/ThemeContext';
 import { DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { Platform } from 'react-native';
@@ -124,7 +127,7 @@ export default function AppNavigator() {
       if (currentRoute?.name === 'LegalAcceptance') return;
 
       console.log('AppNavigator: Forcing navigation to LegalAcceptance (REAL-TIME)');
-      
+
       navRef.current.dispatch(
         CommonActions.reset({
           index: 0,
@@ -204,6 +207,9 @@ export default function AppNavigator() {
         SchoolLogin: 'school/login',
         SchoolStaffDashboard: 'school/staff-dashboard',
         StudentDashboard: 'school/student-dashboard',
+        SchoolGrades: 'school/grades',
+        SchoolAttendance: 'school/attendance',
+        SchoolReports: 'school/reports',
       },
     },
   };
@@ -226,34 +232,34 @@ export default function AppNavigator() {
           component={LegalAcceptanceScreen}
           options={{ headerShown: false }}
         />
-        <Stack.Screen 
-          name="Login" 
-          component={LoginScreen} 
+        <Stack.Screen
+          name="Login"
+          component={LoginScreen}
           options={{ headerShown: false }}
         />
-        <Stack.Screen 
-          name="Signup" 
-          component={SignupScreen} 
+        <Stack.Screen
+          name="Signup"
+          component={SignupScreen}
           options={{ headerShown: false }}
         />
-        <Stack.Screen 
-          name="ForgotPassword" 
-          component={ForgotPasswordScreen} 
+        <Stack.Screen
+          name="ForgotPassword"
+          component={ForgotPasswordScreen}
           options={{ headerShown: false }}
         />
-        <Stack.Screen 
-          name="ChatList" 
+        <Stack.Screen
+          name="ChatList"
           component={MainScreen}
           options={{ headerShown: false }}
         />
-        <Stack.Screen 
-          name="Chat" 
-          component={ChatScreen} 
+        <Stack.Screen
+          name="Chat"
+          component={ChatScreen}
           options={{ headerShown: false }}
         />
-        <Stack.Screen 
-          name="Settings" 
-          component={SettingsScreen} 
+        <Stack.Screen
+          name="Settings"
+          component={SettingsScreen}
           options={{ headerTitle: 'Paramètres' }}
         />
         <Stack.Screen
@@ -434,6 +440,21 @@ export default function AppNavigator() {
         <Stack.Screen
           name="StudentDashboard"
           component={StudentDashboard}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="SchoolGrades"
+          component={SchoolGradesScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="SchoolAttendance"
+          component={SchoolAttendanceScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="SchoolReports"
+          component={SchoolReportsScreen}
           options={{ headerShown: false }}
         />
       </Stack.Navigator>
