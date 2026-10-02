@@ -73,7 +73,7 @@ export default function SchoolSideMenu({ navigation, onClose, schoolName }: Scho
       id: 'settings',
       label: 'Paramètres École',
       icon: <Settings size={normalize(20)} />,
-      action: () => navigation.navigate('Settings')
+      action: () => navigation.navigate('SchoolSettings')
     }
   ];
 

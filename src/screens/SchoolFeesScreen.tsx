@@ -30,9 +30,12 @@ export default function SchoolFeesScreen({ navigation }: any) {
       const feesRes = await apiService.getSchoolFees();
       const studRes = await apiService.getSchoolStudents();
       if (feesRes.success) setFees(feesRes.data || []);
+      else Alert.alert('Frais scolaires', feesRes.error || 'Impossible de charger les frais.');
       if (studRes.success) setStudents(studRes.data || []);
+      else Alert.alert('Élèves', studRes.error || 'Impossible de charger les élèves.');
     } catch (e) {
-      console.error(e);
+      console.error('Unable to load school fees', e);
+      Alert.alert('Frais scolaires', 'Impossible de charger les données de l’école.');
     } finally {
       setLoading(false);
     }
@@ -42,13 +45,18 @@ export default function SchoolFeesScreen({ navigation }: any) {
     if (!studentId || !amountDue) {
       return Alert.alert('Erreur', 'Veuillez sélectionner un élève et un montant requis');
     }
+    const due = Number(amountDue);
+    const paid = Number(amountPaid || '0');
+    if (!Number.isFinite(due) || due <= 0 || !Number.isFinite(paid) || paid < 0 || paid > due) {
+      return Alert.alert('Erreur', 'Saisissez des montants valides. Le montant payé ne peut pas dépasser le montant dû.');
+    }
     try {
       const res = await apiService.addSchoolFeeInvoice({
         studentId,
-        amountDue: parseFloat(amountDue),
-        amountPaid: parseFloat(amountPaid || '0'),
+        amountDue: due,
+        amountPaid: paid,
         dueDate,
-        status: parseFloat(amountPaid) >= parseFloat(amountDue) ? 'paye' : (parseFloat(amountPaid) > 0 ? 'partiel' : 'non_paye')
+        status: paid >= due ? 'paye' : (paid > 0 ? 'partiel' : 'non_paye')
       });
       if (res.success) {
         Alert.alert('Succès', 'Facturation scolaire enregistrée !');
@@ -56,8 +64,11 @@ export default function SchoolFeesScreen({ navigation }: any) {
         setAmountPaid('');
         setShowAddForm(false);
         fetchData();
+      } else {
+        Alert.alert('Erreur', res.error || 'Impossible d’enregistrer les frais.');
       }
     } catch (e) {
+      console.error('Unable to add school fee', e);
       Alert.alert('Erreur', 'Impossible d\'enregistrer les frais');
     }
   };
@@ -87,6 +98,23 @@ export default function SchoolFeesScreen({ navigation }: any) {
       {showAddForm && (
         <ScrollView style={[styles.form, { backgroundColor: colors.surface, borderColor: colors.border }, isTablet && styles.tabletForm]}>
           <Text style={[styles.formTitle, { color: colors.text.primary, fontSize: normalize(16) }]}>Enregistrer un Paiement / Frais</Text>
+
+          <Text style={[styles.label, { color: colors.text.secondary }]}>Élève *</Text>
+          {students.length === 0 ? (
+            <Text style={[styles.emptySelection, { color: colors.text.secondary }]}>Inscrivez d’abord un élève avant d’enregistrer des frais.</Text>
+          ) : (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.selectionScroll}>
+              {students.map((student) => (
+                <TouchableOpacity
+                  key={student.id}
+                  style={[styles.selectionChip, { borderColor: colors.border }, studentId === student.id && { backgroundColor: colors.primary, borderColor: colors.primary }]}
+                  onPress={() => setStudentId(student.id)}
+                >
+                  <Text style={{ color: studentId === student.id ? '#fff' : colors.text.primary, fontWeight: '700' }}>{student.full_name}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          )}
 
           <TextInput
             style={[styles.input, { color: colors.text.primary, borderColor: colors.border }]}
@@ -150,6 +178,10 @@ const styles = StyleSheet.create({
   form: { padding: 20, borderBottomWidth: 1, marginHorizontal: 20, marginTop: 15, borderRadius: 12, borderWidth: 1, maxHeight: 350 },
   tabletForm: { maxWidth: 500, alignSelf: 'center', width: '100%' },
   formTitle: { fontWeight: 'bold', marginBottom: 12 },
+  label: { fontSize: 12, fontWeight: '700', marginBottom: 7 },
+  selectionScroll: { marginBottom: 14 },
+  selectionChip: { borderWidth: 1, borderRadius: 16, paddingHorizontal: 12, paddingVertical: 8, marginRight: 8 },
+  emptySelection: { marginBottom: 14, lineHeight: 18 },
   input: { height: 48, borderWidth: 1, borderRadius: 8, paddingHorizontal: 12, marginBottom: 12 },
   submitBtn: { height: 48, borderRadius: 8, justifyContent: 'center', alignItems: 'center', marginTop: 10, marginBottom: 20 },
   submitBtnText: { color: '#fff', fontWeight: 'bold' },

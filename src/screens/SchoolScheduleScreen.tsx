@@ -32,9 +32,12 @@ export default function SchoolScheduleScreen({ navigation }: any) {
       const schRes = await apiService.getSchoolSchedules();
       const clsRes = await apiService.getSchoolClasses();
       if (schRes.success) setSchedules(schRes.data || []);
+      else Alert.alert('Horaires', schRes.error || 'Impossible de charger les horaires.');
       if (clsRes.success) setClasses(clsRes.data || []);
+      else Alert.alert('Classes', clsRes.error || 'Impossible de charger les classes.');
     } catch (e) {
-      console.error(e);
+      console.error('Unable to load school schedules', e);
+      Alert.alert('Horaires', 'Impossible de charger les données de l’école.');
     } finally {
       setLoading(false);
     }
@@ -52,8 +55,11 @@ export default function SchoolScheduleScreen({ navigation }: any) {
         setTeacherName('');
         setShowAddForm(false);
         fetchData();
+      } else {
+        Alert.alert('Erreur', res.error || 'Impossible d’ajouter le cours.');
       }
     } catch (e) {
+      console.error('Unable to add school schedule', e);
       Alert.alert('Erreur', 'Impossible d\'ajouter le cours');
     }
   };
@@ -83,6 +89,36 @@ export default function SchoolScheduleScreen({ navigation }: any) {
       {showAddForm && (
         <ScrollView style={[styles.form, { backgroundColor: colors.surface, borderColor: colors.border }, isTablet && styles.tabletForm]}>
           <Text style={[styles.formTitle, { color: colors.text.primary, fontSize: normalize(16) }]}>Planifier un Cours</Text>
+
+          <Text style={[styles.label, { color: colors.text.secondary }]}>Classe *</Text>
+          {classes.length === 0 ? (
+            <Text style={[styles.emptySelection, { color: colors.text.secondary }]}>Créez d’abord une classe avant de planifier un cours.</Text>
+          ) : (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.selectionScroll}>
+              {classes.map((schoolClass) => (
+                <TouchableOpacity
+                  key={schoolClass.id}
+                  style={[styles.selectionChip, { borderColor: colors.border }, classId === schoolClass.id && { backgroundColor: colors.primary, borderColor: colors.primary }]}
+                  onPress={() => setClassId(schoolClass.id)}
+                >
+                  <Text style={{ color: classId === schoolClass.id ? '#fff' : colors.text.primary, fontWeight: '700' }}>{schoolClass.name}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          )}
+
+          <Text style={[styles.label, { color: colors.text.secondary }]}>Jour</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.selectionScroll}>
+            {['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'].map((day) => (
+              <TouchableOpacity
+                key={day}
+                style={[styles.selectionChip, { borderColor: colors.border }, dayOfWeek === day && { backgroundColor: colors.primary, borderColor: colors.primary }]}
+                onPress={() => setDayOfWeek(day)}
+              >
+                <Text style={{ color: dayOfWeek === day ? '#fff' : colors.text.primary, fontWeight: '700' }}>{day}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
 
           <TextInput
             style={[styles.input, { color: colors.text.primary, borderColor: colors.border }]}
@@ -149,6 +185,10 @@ const styles = StyleSheet.create({
   form: { padding: 20, borderBottomWidth: 1, marginHorizontal: 20, marginTop: 15, borderRadius: 12, borderWidth: 1, maxHeight: 350 },
   tabletForm: { maxWidth: 500, alignSelf: 'center', width: '100%' },
   formTitle: { fontWeight: 'bold', marginBottom: 12 },
+  label: { fontSize: 12, fontWeight: '700', marginBottom: 7 },
+  selectionScroll: { marginBottom: 14 },
+  selectionChip: { borderWidth: 1, borderRadius: 16, paddingHorizontal: 12, paddingVertical: 8, marginRight: 8 },
+  emptySelection: { marginBottom: 14, lineHeight: 18 },
   input: { height: 48, borderWidth: 1, borderRadius: 8, paddingHorizontal: 12, marginBottom: 12 },
   submitBtn: { height: 48, borderRadius: 8, justifyContent: 'center', alignItems: 'center', marginTop: 10, marginBottom: 20 },
   submitBtnText: { color: '#fff', fontWeight: 'bold' },

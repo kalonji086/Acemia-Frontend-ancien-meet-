@@ -7,6 +7,7 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
+  Alert,
   useWindowDimensions,
   Modal
 } from 'react-native';
@@ -51,14 +52,20 @@ export default function SchoolDashboardScreen({ navigation }: any) {
           const dashRes = await apiService.getSchoolDashboard();
           if (dashRes.success) {
             setDashboardData(dashRes);
+          } else {
+            Alert.alert('Tableau de bord', dashRes.error || 'Impossible de charger les données de l’école.');
           }
         }
       } else {
         setHasRequest(false);
         setRequestStatus(null);
+        if (!res.success) {
+          Alert.alert('École', res.error || 'Impossible de vérifier le statut de l’école.');
+        }
       }
     } catch (e) {
-      console.error(e);
+      console.error('Unable to load school dashboard', e);
+      Alert.alert('Tableau de bord', 'Impossible de charger les données de l’école.');
     } finally {
       setLoading(false);
     }

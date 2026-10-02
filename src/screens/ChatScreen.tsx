@@ -4,8 +4,11 @@ import {
   Alert,
   FlatList,
   Image,
+  ImageBackground,
   KeyboardAvoidingView,
+  Modal,
   Platform,
+  Pressable,
   SafeAreaView,
   Share,
   StatusBar,
@@ -22,6 +25,7 @@ import {
   CheckCheck,
   Clock,
   Download,
+  Heart,
   Mic,
   MoreVertical,
   Paperclip,
@@ -36,6 +40,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import * as ImagePicker from 'expo-image-picker';
 import * as Sharing from 'expo-sharing';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import apiService from '../services/api.service';
@@ -44,6 +49,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useUser } from '../context/UserContext';
 import { API_BASE_URL } from '../utils/constants';
+import { PRESET_WALLPAPERS } from '../utils/wallpapers';
 
 const formatFileSize = (size?: number | string | null) => {
   if (size === null || size === undefined || size === '') return null;
@@ -173,6 +179,8 @@ const MessageItem = React.memo((props: any) => {
     chatColor,
     styles,
     downloadedFiles,
+    currentUser,
+    onLike,
   } = props;
 
   const normalized = dedupePayload(item);
@@ -188,6 +196,8 @@ const MessageItem = React.memo((props: any) => {
   const isFileMessage = messageType === 'file' && (Boolean(mediaUrl) || Boolean(normalized.file_name || normalized.filename || normalized.name));
   const isDeleted = Boolean(normalized.content && normalized.content.includes('Ce message a été supprimé'));
   const isSending = normalized.status === 'sending';
+  const likes = Array.isArray(normalized.likes) ? normalized.likes : [];
+  const isLikedByCurrentUser = likes.some((userId: string | number) => String(userId) === String(currentUser?.id));
 
   const bubbleStyle = useMemo(() => [
     styles.bubble,
@@ -362,6 +372,19 @@ const MessageItem = React.memo((props: any) => {
           )}
 
           <View style={styles.msgFooter}>
+            {!isDeleted && !isSending && (
+              <TouchableOpacity
+                style={styles.likeButton}
+                onPress={() => onLike(normalized)}
+                accessibilityRole="button"
+                accessibilityLabel={isLikedByCurrentUser ? 'Retirer le j’aime' : 'Aimer le message'}
+              >
+                <Heart size={13} color={isLikedByCurrentUser ? '#ef4444' : isMe ? 'rgba(255,255,255,0.8)' : '#667085'} fill={isLikedByCurrentUser ? '#ef4444' : 'transparent'} />
+                {likes.length > 0 && (
+                  <Text style={[styles.likesCount, { color: isMe ? 'rgba(255,255,255,0.8)' : '#667085' }]}>{likes.length}</Text>
+                )}
+              </TouchableOpacity>
+            )}
             <Text style={[styles.timeText, { color: isMe ? 'rgba(255,255,255,0.75)' : '#667085' }]}>
               {safeDate(normalized.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </Text>
@@ -408,12 +431,15 @@ const createStyles = (colors: any, normalize: any, isDark: boolean) => StyleShee
   headerBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', marginLeft: 8 },
   avatar: { width: normalize(40), height: normalize(40), borderRadius: normalize(20), backgroundColor: '#E2E8F0', marginRight: normalize(10) },
   body: { flex: 1 },
+  wallpaper: { opacity: isDark ? 0.14 : 0.22 },
   messagesList: { paddingHorizontal: 10, paddingTop: 8, paddingBottom: 12 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   messageRow: { flexDirection: 'row', marginVertical: 6 },
   bubble: { maxWidth: '82%', borderRadius: 18, paddingHorizontal: 12, paddingVertical: 10, overflow: 'hidden' },
   msgText: { fontSize: normalize(15), lineHeight: normalize(22) },
   msgFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', marginTop: 6 },
+  likeButton: { flexDirection: 'row', alignItems: 'center', marginRight: 7, minWidth: 18, minHeight: 18, justifyContent: 'center' },
+  likesCount: { fontSize: 10, fontWeight: '700', marginLeft: 3 },
   timeText: { fontSize: 11, fontWeight: '500' },
   senderName: { fontSize: 10, fontWeight: '700', marginBottom: 4, marginLeft: 6 },
   msgAvatar: { width: normalize(28), height: normalize(28), borderRadius: normalize(14), marginRight: 8, alignSelf: 'flex-end', backgroundColor: '#e5e7eb' },
@@ -466,6 +492,17 @@ const createStyles = (colors: any, normalize: any, isDark: boolean) => StyleShee
   recordingButton: { backgroundColor: '#d93025' },
   recordingTime: { color: '#d93025', fontSize: normalize(12), fontWeight: '700', marginHorizontal: 4 },
   sendButton: { width: normalize(46), height: normalize(46), borderRadius: normalize(23), backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
+  actionSheetOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.45)' },
+  actionSheet: { paddingHorizontal: 16, paddingTop: 10, paddingBottom: 24, borderTopLeftRadius: 22, borderTopRightRadius: 22, backgroundColor: colors.surface },
+  actionSheetTitle: { paddingVertical: 10, fontSize: normalize(14), fontWeight: '700', color: colors.text.secondary, textAlign: 'center' },
+  actionSheetButton: { minHeight: 48, justifyContent: 'center', borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
+  actionSheetButtonText: { fontSize: normalize(16), fontWeight: '600', color: colors.text.primary, textAlign: 'center' },
+  destructiveAction: { color: '#dc2626' },
+  wallpaperGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', paddingVertical: 8 },
+  wallpaperOption: { width: '31%', aspectRatio: 1, borderRadius: 12, overflow: 'hidden', marginBottom: 12, borderWidth: 2, borderColor: 'transparent' },
+  wallpaperOptionSelected: { borderColor: colors.primary },
+  wallpaperPreview: { width: '100%', height: '100%' },
+  wallpaperLabel: { position: 'absolute', right: 0, bottom: 0, left: 0, paddingVertical: 3, backgroundColor: 'rgba(0,0,0,0.5)', color: '#fff', fontSize: normalize(10), fontWeight: '700', textAlign: 'center' },
 });
 
 export default function ChatScreen({ navigation, route }: any) {
@@ -483,6 +520,11 @@ export default function ChatScreen({ navigation, route }: any) {
   const [downloadProgress, setDownloadProgress] = useState<Record<string, number | undefined>>({});
   const [downloadedFiles, setDownloadedFiles] = useState<Record<string, string>>({});
   const [chatInfo, setChatInfo] = useState<any>(null);
+  const [isChatFavorite, setIsChatFavorite] = useState(false);
+  const [selectedMessage, setSelectedMessage] = useState<any>(null);
+  const [isWallpaperPickerOpen, setIsWallpaperPickerOpen] = useState(false);
+  const [wallpaperId, setWallpaperId] = useState('default');
+  const [customWallpaperUri, setCustomWallpaperUri] = useState<string | null>(null);
   const [sound, setSound] = useState<Audio.Sound | null>(null);
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
@@ -491,7 +533,10 @@ export default function ChatScreen({ navigation, route }: any) {
   const recordingRef = useRef<Audio.Recording | null>(null);
 
   const currentChatName = route?.params?.name || chatInfo?.name || 'Conversation';
-  const currentChatAvatar = route?.params?.avatar || chatInfo?.avatar || null;
+  const currentChatAvatar = route?.params?.avatar || chatInfo?.avatar_url || chatInfo?.avatar || null;
+  const wallpaperStorageKey = `chat-wallpaper:${currentUser?.id || 'guest'}:${chatId || 'unknown'}`;
+  const selectedWallpaper = PRESET_WALLPAPERS.find((wallpaper) => wallpaper.id === wallpaperId) || PRESET_WALLPAPERS[0];
+  const wallpaperSource = customWallpaperUri ? { uri: customWallpaperUri } : selectedWallpaper.image;
 
   const loadMessages = useCallback(async () => {
     if (!chatId) return;
@@ -514,6 +559,52 @@ export default function ChatScreen({ navigation, route }: any) {
   useEffect(() => {
     if (!chatId) return;
 
+    const loadChatInfo = async () => {
+      const res = await apiService.getChat(chatId);
+      if (!res?.success) {
+        console.error('Error fetching chat details', res?.error);
+        return;
+      }
+      setChatInfo(res.data);
+      setIsChatFavorite(Boolean(res.data?.is_favorite));
+    };
+
+    loadChatInfo().catch((error) => {
+      console.error('Error fetching chat details', error);
+    });
+  }, [chatId]);
+
+  useEffect(() => {
+    if (!chatId) return;
+    let isActive = true;
+    setWallpaperId('default');
+    setCustomWallpaperUri(null);
+
+    const loadWallpaper = async () => {
+      try {
+        const savedValue = await AsyncStorage.getItem(wallpaperStorageKey);
+        if (!savedValue || !isActive) return;
+        const savedWallpaper = JSON.parse(savedValue);
+        if (typeof savedWallpaper?.wallpaperId === 'string') {
+          setWallpaperId(savedWallpaper.wallpaperId);
+        }
+        if (typeof savedWallpaper?.customWallpaperUri === 'string') {
+          setCustomWallpaperUri(savedWallpaper.customWallpaperUri);
+        }
+      } catch (error) {
+        console.error('Unable to load chat wallpaper', error);
+      }
+    };
+
+    loadWallpaper();
+    return () => {
+      isActive = false;
+    };
+  }, [chatId, wallpaperStorageKey]);
+
+  useEffect(() => {
+    if (!chatId) return;
+
     const onNewMessage = (payload: any) => {
       const incoming = payload?.message ?? payload;
       if (!incoming || (incoming.chat_id !== chatId && incoming.chatId !== chatId)) return;
@@ -527,6 +618,20 @@ export default function ChatScreen({ navigation, route }: any) {
     socketService.on('new_message', onNewMessage);
     return () => socketService.off('new_message', onNewMessage);
   }, [chatId]);
+
+  useEffect(() => {
+    const onReaction = (payload: any) => {
+      if (!payload?.messageId || !Array.isArray(payload.likes)) return;
+      setMessages((prev) => prev.map((message) => (
+        String(message.id) === String(payload.messageId)
+          ? { ...message, likes: payload.likes }
+          : message
+      )));
+    };
+
+    socketService.on('message_reaction', onReaction);
+    return () => socketService.off('message_reaction', onReaction);
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -546,12 +651,104 @@ export default function ChatScreen({ navigation, route }: any) {
     };
   }, []);
 
-  const handleMessageLongPress = useCallback((item: any) => {
-    Alert.alert('Message', item?.content || 'Media message', [
-      { text: 'OK' },
-      { text: 'Share', onPress: () => Share.share({ message: item?.content || item?.file_name || 'Message' }) },
-    ]);
+  const shareMessage = useCallback(async (item: any) => {
+    const normalized = dedupePayload(item);
+    const fileUrl = getFullUrl(normalized.file_url || normalized.media_url || normalized.localUri);
+    const message = normalized.content || normalized.file_name || 'Message';
+    try {
+      if (Platform.OS === 'web') {
+        const sharedText = [message, fileUrl].filter(Boolean).join('\n');
+        if (typeof navigator.share === 'function') {
+          await navigator.share({ text: sharedText });
+          return;
+        }
+        if (navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(sharedText);
+          Alert.alert('Transfert', 'Le message a été copié dans le presse-papiers.');
+          return;
+        }
+        throw new Error('Web sharing is not available.');
+      }
+
+      await Share.share({
+        message,
+        ...(fileUrl ? { url: fileUrl } : {}),
+      });
+    } catch (error) {
+      console.error('Message share failed', error);
+      Alert.alert('Transfert', 'Impossible de transférer ce message.');
+    }
   }, []);
+
+  const toggleChatFavorite = useCallback(async () => {
+    if (!chatId) return;
+    const nextFavorite = !isChatFavorite;
+    const res = await apiService.toggleFavoriteChat(chatId, nextFavorite);
+    if (!res?.success) {
+      Alert.alert('Favoris', res?.error || 'Impossible de modifier les favoris.');
+      return;
+    }
+    setIsChatFavorite(nextFavorite);
+  }, [chatId, isChatFavorite]);
+
+  const deleteMessage = useCallback(async (item: any, deleteType: 'everyone' | 'me') => {
+    const normalized = dedupePayload(item);
+    const res = await apiService.deleteMessage(String(normalized.id), deleteType);
+    if (!res?.success) {
+      Alert.alert('Suppression', res?.error || 'Impossible de supprimer ce message.');
+      return;
+    }
+
+    setMessages((prev) => {
+      if (deleteType === 'me') {
+        return prev.filter((message) => String(message.id) !== String(normalized.id));
+      }
+      return prev.map((message) => (
+        String(message.id) === String(normalized.id)
+          ? { ...message, content: 'Ce message a été supprimé', type: 'text', file_url: null, media_url: null }
+          : message
+      ));
+    });
+  }, []);
+
+  const likeMessage = useCallback(async (item: any) => {
+    const normalized = dedupePayload(item);
+    const res = await apiService.reactToMessage(String(normalized.id));
+    if (!res?.success || !Array.isArray(res.data?.likes)) {
+      Alert.alert('J’aime', res?.error || 'Impossible de modifier le j’aime de ce message.');
+      return;
+    }
+    setMessages((prev) => prev.map((message) => (
+      String(message.id) === String(normalized.id)
+        ? { ...message, likes: res.data.likes }
+        : message
+    )));
+  }, []);
+
+  const handleMessageLongPress = useCallback((item: any) => {
+    const normalized = dedupePayload(item);
+    if (Platform.OS === 'web') {
+      setSelectedMessage(normalized);
+      return;
+    }
+
+    const isMine = String(normalized.sender_id || normalized.user_id || normalized.author_id) === String(currentUser?.id);
+    const actions: any[] = [
+      { text: 'Transférer', onPress: () => { shareMessage(normalized); } },
+      { text: isChatFavorite ? 'Retirer des favoris' : 'Mettre en favoris', onPress: () => { toggleChatFavorite(); } },
+      { text: 'Supprimer pour moi', style: 'destructive', onPress: () => { deleteMessage(normalized, 'me'); } },
+    ];
+
+    if (isMine) {
+      actions.splice(2, 0, {
+        text: 'Supprimer pour tous',
+        style: 'destructive',
+        onPress: () => { deleteMessage(normalized, 'everyone'); },
+      });
+    }
+    actions.push({ text: 'Annuler', style: 'cancel' });
+    Alert.alert('Actions du message', normalized.content || normalized.file_name || 'Message média', actions);
+  }, [currentUser?.id, deleteMessage, isChatFavorite, shareMessage, toggleChatFavorite]);
 
   const playAudio = useCallback(async (item: any) => {
     const normalized = dedupePayload(item);
@@ -739,14 +936,14 @@ export default function ChatScreen({ navigation, route }: any) {
     }
   }, [chatId, loadMessages, recording, recordingDuration]);
 
-  const pickImage = useCallback(async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.8 });
-    if (!result.canceled && result.assets?.[0]) {
-      const selected = result.assets[0];
-      const photoName = selected.fileName || 'photo.jpg';
+  const sendImage = useCallback(async (selected: ImagePicker.ImagePickerAsset) => {
+    if (!chatId) return;
+    setIsSending(true);
+    try {
+      const photoName = selected.fileName || `photo-${Date.now()}.jpg`;
       const uploadRes = await apiService.uploadFile({ uri: selected.uri, name: photoName, type: selected.mimeType || 'image/jpeg' }, 'image');
       if (!uploadRes.success) {
-        Alert.alert('Photo upload failed', uploadRes.error || 'Unable to upload the selected photo.');
+        Alert.alert('Échec de l’envoi', uploadRes.error || 'Impossible de téléverser la photo.');
         return;
       }
 
@@ -763,13 +960,81 @@ export default function ChatScreen({ navigation, route }: any) {
       });
 
       if (!sendRes.success) {
-        Alert.alert('Send failed', sendRes.error || 'Unable to send the selected photo.');
+        Alert.alert('Échec de l’envoi', sendRes.error || 'Impossible d’envoyer la photo.');
         return;
       }
 
       await loadMessages();
+    } catch (error) {
+      console.error('Photo send failed', error);
+      Alert.alert('Échec de l’envoi', 'Impossible d’envoyer la photo.');
+    } finally {
+      setIsSending(false);
     }
   }, [chatId, loadMessages]);
+
+  const pickImage = useCallback(async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert('Autorisation requise', 'Autorisez l’accès à la galerie pour envoyer une photo.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets?.[0]) {
+      await sendImage(result.assets[0]);
+    }
+  }, [sendImage]);
+
+  const takePhoto = useCallback(async () => {
+    const permission = await ImagePicker.requestCameraPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert('Autorisation requise', 'Autorisez l’accès à la caméra pour prendre une photo.');
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets?.[0]) {
+      await sendImage(result.assets[0]);
+    }
+  }, [sendImage]);
+
+  const saveWallpaper = useCallback(async (nextWallpaperId: string, nextCustomUri: string | null) => {
+    try {
+      await AsyncStorage.setItem(wallpaperStorageKey, JSON.stringify({
+        wallpaperId: nextWallpaperId,
+        customWallpaperUri: nextCustomUri,
+      }));
+      setWallpaperId(nextWallpaperId);
+      setCustomWallpaperUri(nextCustomUri);
+      setIsWallpaperPickerOpen(false);
+    } catch (error) {
+      console.error('Unable to save chat wallpaper', error);
+      Alert.alert('Fond d’écran', 'Impossible d’enregistrer ce fond d’écran.');
+    }
+  }, [wallpaperStorageKey]);
+
+  const pickCustomWallpaper = useCallback(async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert('Autorisation requise', 'Autorisez l’accès à la galerie pour choisir un fond d’écran.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.7,
+    });
+    if (!result.canceled && result.assets?.[0]) {
+      await saveWallpaper('custom', result.assets[0].uri);
+    }
+  }, [saveWallpaper]);
 
   const pickDocument = useCallback(async () => {
     const result = await DocumentPicker.getDocumentAsync({ multiple: false });
@@ -820,7 +1085,7 @@ export default function ChatScreen({ navigation, route }: any) {
       downloadedFiles={downloadedFiles}
       t={t}
       onTranslate={() => Promise.resolve()}
-      onLike={() => {}}
+      onLike={likeMessage}
       chatColor={colors.primary}
       styles={styles}
       />
@@ -847,13 +1112,27 @@ export default function ChatScreen({ navigation, route }: any) {
         </View>
 
         <View style={styles.headerActions}>
-          <TouchableOpacity style={styles.headerBtn}><Camera size={18} color={colors.text.primary} /></TouchableOpacity>
-          <TouchableOpacity style={styles.headerBtn}><MoreVertical size={18} color={colors.text.primary} /></TouchableOpacity>
+          <TouchableOpacity
+            style={styles.headerBtn}
+            onPress={takePhoto}
+            accessibilityRole="button"
+            accessibilityLabel="Prendre une photo"
+          >
+            <Camera size={18} color={colors.text.primary} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.headerBtn}
+            onPress={() => setIsWallpaperPickerOpen(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Personnaliser la conversation"
+          >
+            <MoreVertical size={18} color={colors.text.primary} />
+          </TouchableOpacity>
         </View>
       </View>
 
       <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={insets.bottom + 8}>
-        <View style={styles.body}>
+        <ImageBackground source={wallpaperSource} style={styles.body} imageStyle={styles.wallpaper}>
           {isLoading && messages.length === 0 ? (
             <View style={styles.center}><ActivityIndicator size="small" color={colors.primary} /></View>
           ) : (
@@ -866,7 +1145,7 @@ export default function ChatScreen({ navigation, route }: any) {
               onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
             />
           )}
-        </View>
+        </ImageBackground>
 
         <View style={styles.composer}>
           <TouchableOpacity style={styles.iconButton} onPress={pickImage} accessibilityRole="button" accessibilityLabel="Envoyer une photo">
@@ -902,6 +1181,96 @@ export default function ChatScreen({ navigation, route }: any) {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
+
+      <Modal
+        transparent
+        visible={Platform.OS === 'web' && Boolean(selectedMessage)}
+        animationType="fade"
+        onRequestClose={() => setSelectedMessage(null)}
+      >
+        <Pressable style={styles.actionSheetOverlay} onPress={() => setSelectedMessage(null)}>
+          <View style={styles.actionSheet} onStartShouldSetResponder={() => true}>
+            <Text style={styles.actionSheetTitle}>Actions du message</Text>
+            <TouchableOpacity
+              style={styles.actionSheetButton}
+              onPress={() => {
+                const item = selectedMessage;
+                setSelectedMessage(null);
+                shareMessage(item);
+              }}
+            >
+              <Text style={styles.actionSheetButtonText}>Transférer</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.actionSheetButton}
+              onPress={() => {
+                setSelectedMessage(null);
+                toggleChatFavorite();
+              }}
+            >
+              <Text style={styles.actionSheetButtonText}>{isChatFavorite ? 'Retirer des favoris' : 'Mettre en favoris'}</Text>
+            </TouchableOpacity>
+            {selectedMessage && String(selectedMessage.sender_id || selectedMessage.user_id || selectedMessage.author_id) === String(currentUser?.id) && (
+              <TouchableOpacity
+                style={styles.actionSheetButton}
+                onPress={() => {
+                  const item = selectedMessage;
+                  setSelectedMessage(null);
+                  deleteMessage(item, 'everyone');
+                }}
+              >
+                <Text style={[styles.actionSheetButtonText, styles.destructiveAction]}>Supprimer pour tous</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity
+              style={styles.actionSheetButton}
+              onPress={() => {
+                const item = selectedMessage;
+                setSelectedMessage(null);
+                deleteMessage(item, 'me');
+              }}
+            >
+              <Text style={[styles.actionSheetButtonText, styles.destructiveAction]}>Supprimer pour moi</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.actionSheetButton} onPress={() => setSelectedMessage(null)}>
+              <Text style={styles.actionSheetButtonText}>Annuler</Text>
+            </TouchableOpacity>
+          </View>
+        </Pressable>
+      </Modal>
+
+      <Modal
+        transparent
+        visible={isWallpaperPickerOpen}
+        animationType="slide"
+        onRequestClose={() => setIsWallpaperPickerOpen(false)}
+      >
+        <Pressable style={styles.actionSheetOverlay} onPress={() => setIsWallpaperPickerOpen(false)}>
+          <View style={styles.actionSheet} onStartShouldSetResponder={() => true}>
+            <Text style={styles.actionSheetTitle}>Personnaliser le fond d’écran</Text>
+            <View style={styles.wallpaperGrid}>
+              {PRESET_WALLPAPERS.map((wallpaper) => (
+                <TouchableOpacity
+                  key={wallpaper.id}
+                  style={[styles.wallpaperOption, !customWallpaperUri && wallpaperId === wallpaper.id && styles.wallpaperOptionSelected]}
+                  onPress={() => saveWallpaper(wallpaper.id, null)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Fond d’écran ${wallpaper.name}`}
+                >
+                  <Image source={wallpaper.image} style={styles.wallpaperPreview} />
+                  <Text style={styles.wallpaperLabel}>{wallpaper.name}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <TouchableOpacity style={styles.actionSheetButton} onPress={pickCustomWallpaper}>
+              <Text style={styles.actionSheetButtonText}>Choisir une photo personnalisée</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.actionSheetButton} onPress={() => setIsWallpaperPickerOpen(false)}>
+              <Text style={styles.actionSheetButtonText}>Annuler</Text>
+            </TouchableOpacity>
+          </View>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }

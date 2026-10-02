@@ -26,10 +26,12 @@ export default function SchoolAccountsScreen({ navigation }: any) {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const res = await apiService.api.get('/school/account-requests');
-      if (res.data.success) setRequests(res.data.data || []);
+      const res = await apiService.getSchoolAccountRequests();
+      if (res.success) setRequests(res.data || []);
+      else Alert.alert('Comptes du personnel', res.error || 'Impossible de charger les demandes.');
     } catch (e) {
-      console.error(e);
+      console.error('Unable to load school account requests', e);
+      Alert.alert('Comptes du personnel', 'Impossible de charger les demandes.');
     } finally {
       setLoading(false);
     }
@@ -40,16 +42,19 @@ export default function SchoolAccountsScreen({ navigation }: any) {
       return Alert.alert('Attention', 'Veuillez remplir tous les champs obligatoires.');
     }
     try {
-      const res = await apiService.api.post('/school/account-requests', { fullName, email, role, phone });
-      if (res.data.success) {
+      const res = await apiService.addSchoolAccountRequest({ fullName, email, role, phone });
+      if (res.success) {
         Alert.alert('Demande Envoyée', 'La demande de création de compte pour le personnel a été soumise avec succès.');
         setFullName('');
         setEmail('');
         setPhone('');
         setShowForm(false);
         fetchData();
+      } else {
+        Alert.alert('Erreur', res.error || 'Impossible de soumettre la demande.');
       }
     } catch (e) {
+      console.error('Unable to create school account request', e);
       Alert.alert('Erreur', 'Impossible de soumettre la demande.');
     }
   };

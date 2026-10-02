@@ -686,6 +686,20 @@ class ApiService {
     } catch (e: any) { return this.handleError(e); }
   }
 
+  async getSchoolSettings(): Promise<ApiResponse> {
+    try {
+      const res = await this.api.get('/school/settings');
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async updateSchoolSettings(data: any): Promise<ApiResponse> {
+    try {
+      const res = await this.api.put('/school/settings', data);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
   async getSchoolStudents(): Promise<ApiResponse> {
     try {
       const res = await this.api.get('/school/students');

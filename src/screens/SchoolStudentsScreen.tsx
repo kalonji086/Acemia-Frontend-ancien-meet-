@@ -50,8 +50,11 @@ export default function SchoolStudentsScreen({ navigation }: any) {
       const clsRes = await apiService.getSchoolClasses();
       if (studRes.success) setStudents(studRes.data || []);
       if (clsRes.success) setClasses(clsRes.data || []);
+      const error = studRes.error || clsRes.error;
+      if (error) Alert.alert('Inscriptions', error);
     } catch (e) {
-      console.error(e);
+      console.error('Unable to load school students', e);
+      Alert.alert('Inscriptions', 'Impossible de charger les données de l’école.');
     } finally {
       setLoading(false);
     }

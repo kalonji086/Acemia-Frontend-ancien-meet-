@@ -42,8 +42,11 @@ export default function SchoolClassesScreen({ navigation }: any) {
       if (clsRes.success) setClasses(clsRes.data || []);
       if (staffRes.success) setStaffList(staffRes.data || []);
       if (studRes.success) setStudents(studRes.data || []);
+      const error = clsRes.error || staffRes.error || studRes.error;
+      if (error) Alert.alert('Gestion des classes', error);
     } catch (e) {
-      console.error(e);
+      console.error('Unable to load school classes', e);
+      Alert.alert('Gestion des classes', 'Impossible de charger les données de l’école.');
     } finally {
       setLoading(false);
     }
