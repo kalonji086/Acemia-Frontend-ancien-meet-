@@ -14,17 +14,19 @@ export default function SchoolLoginScreen({ navigation }: any) {
 
     setLoading(true);
     try {
-      const res = await apiService.api.post('/school/login-by-code', { code });
-      if (res.data.success) {
-        const { type, role, user } = res.data;
+      const res = await apiService.loginSchoolByCode(code.trim().toUpperCase());
+      if (res.success) {
+        const { type, role, user } = res;
         if (type === 'student') {
           navigation.navigate('StudentDashboard', { user });
         } else {
           navigation.navigate('SchoolStaffDashboard', { user, role });
         }
+      } else {
+        Alert.alert('Erreur d’accès', res.error || 'Code invalide ou erreur de connexion.');
       }
     } catch (e: any) {
-      Alert.alert('Erreur d\'accès', e.response?.data?.error || 'Code invalide ou erreur de connexion.');
+      Alert.alert('Erreur d’accès', e.message || 'Code invalide ou erreur de connexion.');
     } finally {
       setLoading(false);
     }

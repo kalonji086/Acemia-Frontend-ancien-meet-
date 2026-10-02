@@ -19,7 +19,10 @@ import {
   LogOut,
   HelpCircle,
   Menu,
-  UserCheck
+  UserCheck,
+  BarChart3,
+  ClipboardCheck,
+  FileBarChart
 } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
 
@@ -68,6 +71,24 @@ export default function SchoolSideMenu({ navigation, onClose, schoolName }: Scho
       label: 'Demande de Comptes',
       icon: <UserCheck size={normalize(20)} />,
       action: () => navigation.navigate('SchoolAccounts')
+    },
+    {
+      id: 'grades',
+      label: 'Évaluations & Notes',
+      icon: <BarChart3 size={normalize(20)} />,
+      action: () => navigation.navigate('SchoolGrades')
+    },
+    {
+      id: 'attendance',
+      label: 'Présences',
+      icon: <ClipboardCheck size={normalize(20)} />,
+      action: () => navigation.navigate('SchoolAttendance')
+    },
+    {
+      id: 'reports',
+      label: 'Rapports scolaires',
+      icon: <FileBarChart size={normalize(20)} />,
+      action: () => navigation.navigate('SchoolReports')
     },
     {
       id: 'settings',

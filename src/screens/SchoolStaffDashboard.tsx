@@ -1,23 +1,44 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, useWindowDimensions } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, useWindowDimensions, ActivityIndicator, Alert } from 'react-native';
 import {
   ArrowLeft, GraduationCap, Users, ShieldAlert, BarChart3,
   Calendar, BookOpen, UserCheck, MessageSquare, Bell, LogOut,
   FileText, TrendingUp, DollarSign, ListChecks
 } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
+import apiService from '../services/api.service';
 
 export default function SchoolStaffDashboard({ route, navigation }: any) {
   const { user, role } = route.params;
   const { colors, normalize } = useTheme();
   const { width: windowWidth } = useWindowDimensions();
   const isTablet = windowWidth > 768;
+  const [loading, setLoading] = useState(true);
+  const [portal, setPortal] = useState<any>(null);
+
+  const loadPortal = useCallback(async () => {
+    setLoading(true);
+    const response = await apiService.getSchoolPortalDashboard();
+    if (response.success) {
+      setPortal(response.data);
+    } else {
+      Alert.alert('Espace Personnel', response.error || 'Impossible de charger les données scolaires.');
+    }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    loadPortal().catch((error) => {
+      console.error('Unable to load staff portal', error);
+      setLoading(false);
+    });
+  }, [loadPortal]);
 
   const renderModule = (label: string, icon: any, color: string, screen?: string) => (
     <TouchableOpacity
       key={label}
       style={[styles.moduleCard, { backgroundColor: colors.surface, borderColor: colors.border }, isTablet && { width: '31%' }]}
-      onPress={() => screen ? navigation.navigate(screen) : undefined}
+      onPress={() => Alert.alert('Espace Personnel', 'Ce module sera disponible avec les droits spécifiques à votre rôle.')}
     >
       <View style={[styles.moduleIcon, { backgroundColor: color + '15' }]}>
         {React.cloneElement(icon, { color, size: normalize(24) })}
@@ -69,12 +90,19 @@ export default function SchoolStaffDashboard({ route, navigation }: any) {
     }
   };
 
+  if (loading) {
+    return <View style={[styles.centered, { backgroundColor: colors.background }]}><ActivityIndicator size="large" color={colors.primary} /></View>;
+  }
+
+  const staff = portal?.staff || user;
+  const stats = portal?.stats || {};
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { backgroundColor: colors.surface }]}>
         <View style={{ flex: 1 }}>
-          <Text style={[styles.schoolName, { color: colors.primary, fontSize: normalize(13) }]}>{user.schoolName}</Text>
-          <Text style={[styles.userName, { color: colors.text.primary, fontSize: normalize(18) }]}>{user.fullName}</Text>
+          <Text style={[styles.schoolName, { color: colors.primary, fontSize: normalize(13) }]}>{staff.school_name || user.schoolName}</Text>
+          <Text style={[styles.userName, { color: colors.text.primary, fontSize: normalize(18) }]}>{staff.full_name || user.fullName}</Text>
           <View style={[styles.roleBadge, { backgroundColor: colors.primary + '15' }]}>
             <Text style={[styles.roleText, { color: colors.primary }]}>{role.toUpperCase()}</Text>
           </View>
@@ -94,13 +122,16 @@ export default function SchoolStaffDashboard({ route, navigation }: any) {
         <View style={[styles.infoCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <View style={styles.infoRow}>
             <Calendar size={18} color={colors.text.secondary} />
-            <Text style={[styles.infoText, { color: colors.text.secondary }]}>Année Scolaire 2026-2027</Text>
+            <Text style={[styles.infoText, { color: colors.text.secondary }]}>{stats.totalStudents || 0} élèves actifs</Text>
           </View>
           <View style={styles.infoRow}>
             <GraduationCap size={18} color={colors.text.secondary} />
-            <Text style={[styles.infoText, { color: colors.text.secondary }]}>Trimestre 1 en cours</Text>
+            <Text style={[styles.infoText, { color: colors.text.secondary }]}>{portal?.schedules?.length || 0} cours planifiés</Text>
           </View>
         </View>
+        <TouchableOpacity style={[styles.refreshButton, { borderColor: colors.primary }]} onPress={loadPortal}>
+          <Text style={{ color: colors.primary, fontWeight: '700' }}>Actualiser</Text>
+        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
@@ -108,6 +139,7 @@ export default function SchoolStaffDashboard({ route, navigation }: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   header: { padding: 25, flexDirection: 'row', alignItems: 'center', borderBottomWidth: 0.5, borderBottomColor: '#ddd' },
   schoolName: { fontWeight: 'bold', textTransform: 'uppercase', marginBottom: 2 },
   userName: { fontWeight: 'black' },
@@ -122,5 +154,6 @@ const styles = StyleSheet.create({
   moduleLabel: { fontWeight: '600', textAlign: 'center' },
   infoCard: { padding: 20, borderRadius: 20, borderWidth: 1 },
   infoRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
-  infoText: { marginLeft: 10, fontWeight: '500' }
+  infoText: { marginLeft: 10, fontWeight: '500' },
+  refreshButton: { alignSelf: 'center', marginTop: 18, borderWidth: 1, borderRadius: 10, paddingHorizontal: 16, paddingVertical: 10 }
 });

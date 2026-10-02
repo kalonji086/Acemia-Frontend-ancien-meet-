@@ -15,6 +15,13 @@ export interface ApiResponse<T = any> {
   statusCode?: number;
 }
 
+interface SchoolCodeLoginResponse {
+  type: 'staff' | 'student';
+  role: string;
+  user: any;
+  schoolSessionToken: string;
+}
+
 class ApiService {
   private static instance: ApiService;
   public api: AxiosInstance;
@@ -878,6 +885,33 @@ class ApiService {
       const res = await this.api.get('/school/export', { params });
       return res.data;
     } catch (e: any) { return this.handleError(e); }
+  }
+
+  async loginSchoolByCode(code: string): Promise<ApiResponse<SchoolCodeLoginResponse> & Partial<SchoolCodeLoginResponse>> {
+    try {
+      const res = await this.api.post('/school/login-by-code', { code });
+      if (res.data?.success && res.data.schoolSessionToken) {
+        await AsyncStorage.setItem('school_session_token', res.data.schoolSessionToken);
+      }
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async getSchoolPortalDashboard(): Promise<ApiResponse> {
+    try {
+      const schoolSessionToken = await AsyncStorage.getItem('school_session_token');
+      if (!schoolSessionToken) {
+        return { success: false, error: 'Session scolaire absente. Reconnectez-vous avec votre code.' };
+      }
+      const res = await this.api.get('/school/portal/dashboard', {
+        headers: { 'X-School-Session': schoolSessionToken }
+      });
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async logoutSchoolSession(): Promise<void> {
+    await AsyncStorage.removeItem('school_session_token');
   }
 
   async postJob(data: any): Promise<ApiResponse> {
