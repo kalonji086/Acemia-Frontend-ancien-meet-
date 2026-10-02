@@ -29,6 +29,7 @@ import UserProfileScreen from '../screens/UserProfileScreen';
 import BusinessRegistrationScreen from '../screens/BusinessRegistrationScreen';
 import BusinessDashboardScreen from '../screens/BusinessDashboardScreen';
 import BusinessPublicProfileScreen from '../screens/BusinessPublicProfileScreen';
+import MarketChatScreen from '../screens/MarketChatScreen';
 import EmploiMainScreen from '../screens/EmploiMainScreen';
 import EmployerRequestScreen from '../screens/EmployerRequestScreen';
 import EmployerDashboardScreen from '../screens/EmployerDashboardScreen';
@@ -347,6 +348,11 @@ export default function AppNavigator() {
         <Stack.Screen
           name="BusinessPublicProfile"
           component={BusinessPublicProfileScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="MarketChat"
+          component={MarketChatScreen}
           options={{ headerShown: false }}
         />
         <Stack.Screen

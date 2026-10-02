@@ -287,21 +287,25 @@ export default function BusinessDashboardScreen({ navigation }: any) {
 
   const renderSidebar = () => (
     <View style={[styles.sidebar, { backgroundColor: isDark ? '#1a1a1a' : '#f8f9fa', borderRightColor: colors.border }]}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ alignItems: 'center', paddingTop: normalize(20) }}>
-        <TouchableOpacity style={[styles.sidebarItem, activeMenu === 'overview' && { backgroundColor: catColor + '20' }]} onPress={() => setActiveMenu('overview')}><Ionicons name="grid" size={24} color={activeMenu === 'overview' ? catColor : colors.text.secondary} /></TouchableOpacity>
+      <View style={styles.sidebarBrand}>
+        <Ionicons name="storefront" size={22} color={catColor} />
+        <Text numberOfLines={1} style={[styles.sidebarBusinessName, { color: colors.text.primary }]}>{business.business_name}</Text>
+      </View>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingVertical: normalize(12) }}>
+        <TouchableOpacity style={[styles.sidebarItem, activeMenu === 'overview' && { backgroundColor: catColor + '20' }]} onPress={() => setActiveMenu('overview')}><Ionicons name="grid" size={22} color={activeMenu === 'overview' ? catColor : colors.text.secondary} /><Text style={[styles.sidebarLabel, { color: activeMenu === 'overview' ? catColor : colors.text.secondary }]}>Vue d’ensemble</Text></TouchableOpacity>
         {(category === 'Boutique') ? (
           <>
-            <TouchableOpacity style={[styles.sidebarItem, activeMenu === 'orders' && { backgroundColor: catColor + '20' }]} onPress={() => setActiveMenu('orders')}><Ionicons name="cart" size={24} color={activeMenu === 'orders' ? catColor : colors.text.secondary} /></TouchableOpacity>
-            <TouchableOpacity style={[styles.sidebarItem, activeMenu === 'stock' && { backgroundColor: catColor + '20' }]} onPress={() => setActiveMenu('stock')}><Ionicons name="cube" size={24} color={activeMenu === 'stock' ? catColor : colors.text.secondary} /></TouchableOpacity>
+            <TouchableOpacity style={[styles.sidebarItem, activeMenu === 'orders' && { backgroundColor: catColor + '20' }]} onPress={() => setActiveMenu('orders')}><Ionicons name="cart" size={22} color={activeMenu === 'orders' ? catColor : colors.text.secondary} /><Text style={[styles.sidebarLabel, { color: activeMenu === 'orders' ? catColor : colors.text.secondary }]}>Commandes</Text></TouchableOpacity>
+            <TouchableOpacity style={[styles.sidebarItem, activeMenu === 'stock' && { backgroundColor: catColor + '20' }]} onPress={() => setActiveMenu('stock')}><Ionicons name="cube" size={22} color={activeMenu === 'stock' ? catColor : colors.text.secondary} /><Text style={[styles.sidebarLabel, { color: activeMenu === 'stock' ? catColor : colors.text.secondary }]}>Stock</Text></TouchableOpacity>
           </>
         ) : (
           <>
-            <TouchableOpacity style={[styles.sidebarItem, activeMenu === 'requests' && { backgroundColor: catColor + '20' }]} onPress={() => setActiveMenu('requests')}><Ionicons name="document-text" size={24} color={activeMenu === 'requests' ? catColor : colors.text.secondary} /></TouchableOpacity>
-            <TouchableOpacity style={[styles.sidebarItem, activeMenu === 'docs' && { backgroundColor: catColor + '20' }]} onPress={() => setActiveMenu('docs')}><Ionicons name="folder" size={24} color={activeMenu === 'docs' ? catColor : colors.text.secondary} /></TouchableOpacity>
+            <TouchableOpacity style={[styles.sidebarItem, activeMenu === 'requests' && { backgroundColor: catColor + '20' }]} onPress={() => setActiveMenu('requests')}><Ionicons name="document-text" size={22} color={activeMenu === 'requests' ? catColor : colors.text.secondary} /><Text style={[styles.sidebarLabel, { color: activeMenu === 'requests' ? catColor : colors.text.secondary }]}>Demandes</Text></TouchableOpacity>
+            <TouchableOpacity style={[styles.sidebarItem, activeMenu === 'docs' && { backgroundColor: catColor + '20' }]} onPress={() => setActiveMenu('docs')}><Ionicons name="folder" size={22} color={activeMenu === 'docs' ? catColor : colors.text.secondary} /><Text style={[styles.sidebarLabel, { color: activeMenu === 'docs' ? catColor : colors.text.secondary }]}>Documents</Text></TouchableOpacity>
           </>
         )}
-        <TouchableOpacity style={[styles.sidebarItem, activeMenu === 'publish' && { backgroundColor: catColor + '20' }]} onPress={() => setActiveMenu('publish')}><Ionicons name="add-circle" size={24} color={activeMenu === 'publish' ? catColor : colors.text.secondary} /></TouchableOpacity>
-        <TouchableOpacity style={[styles.sidebarItem, activeMenu === 'messages' && { backgroundColor: catColor + '20' }]} onPress={() => setActiveMenu('messages')}><Ionicons name="chatbubbles" size={24} color={activeMenu === 'messages' ? catColor : colors.text.secondary} /></TouchableOpacity>
+        <TouchableOpacity style={[styles.sidebarItem, activeMenu === 'publish' && { backgroundColor: catColor + '20' }]} onPress={() => setActiveMenu('publish')}><Ionicons name="add-circle" size={22} color={activeMenu === 'publish' ? catColor : colors.text.secondary} /><Text style={[styles.sidebarLabel, { color: activeMenu === 'publish' ? catColor : colors.text.secondary }]}>Publier</Text></TouchableOpacity>
+        <TouchableOpacity style={[styles.sidebarItem, activeMenu === 'messages' && { backgroundColor: catColor + '20' }]} onPress={() => setActiveMenu('messages')}><Ionicons name="chatbubbles" size={22} color={activeMenu === 'messages' ? catColor : colors.text.secondary} /><Text style={[styles.sidebarLabel, { color: activeMenu === 'messages' ? catColor : colors.text.secondary }]}>Messages Market</Text></TouchableOpacity>
       </ScrollView>
     </View>
   );
@@ -481,7 +485,7 @@ export default function BusinessDashboardScreen({ navigation }: any) {
     <View style={styles.mainContent}>
       <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>Messages Clients</Text>
       <FlatList data={chats} keyExtractor={item => item.id} showsVerticalScrollIndicator={true} persistentScrollbar={true} renderItem={({ item }) => (
-        <TouchableOpacity style={[styles.moduleCard, { backgroundColor: colors.surface }]} onPress={() => navigation.navigate('Chat', { chatId: item.id, name: item.other_name })}><Image source={{ uri: getFullUrl(item.other_avatar) || `https://ui-avatars.com/api/?name=${item.other_name}` }} style={styles.moduleAvatar} /><View style={{ flex: 1 }}><Text style={[styles.moduleName, { color: colors.text.primary }]}>{item.other_name}</Text><Text style={{ color: colors.text.secondary, fontSize: 12 }} numberOfLines={1}>{item.last_message || 'Nouvelle discussion'}</Text></View><Ionicons name="chevron-forward" size={20} color={colors.text.disabled} /></TouchableOpacity>
+        <TouchableOpacity style={[styles.moduleCard, { backgroundColor: colors.surface }]} onPress={() => navigation.navigate('MarketChat', { conversationId: item.id, name: item.other_name, avatarUrl: item.other_avatar })}><Image source={{ uri: getFullUrl(item.other_avatar) || `https://ui-avatars.com/api/?name=${item.other_name}` }} style={styles.moduleAvatar} /><View style={{ flex: 1 }}><Text style={[styles.moduleName, { color: colors.text.primary }]}>{item.other_name}</Text><Text style={{ color: colors.text.secondary, fontSize: 12 }} numberOfLines={1}>{item.last_message || 'Nouvelle discussion commerciale'}</Text></View><Ionicons name="chevron-forward" size={20} color={colors.text.disabled} /></TouchableOpacity>
       )} ListEmptyComponent={<Text style={styles.emptyMsg}>Aucun message.</Text>} />
     </View>
   );
@@ -511,8 +515,11 @@ function createStyles(colors: any, normalize: any, factor: number, isDark: boole
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: normalize(20), borderBottomWidth: 0.5, borderBottomColor: colors.border, backgroundColor: colors.surface },
   headerInfo: { flex: 1 }, businessName: { fontSize: normalize(22, factor), fontWeight: '900' }, categoryTag: { fontSize: normalize(10, factor), fontWeight: 'bold', marginTop: 2, letterSpacing: 1 },
   contentWrapper: { flex: 1, flexDirection: 'row' },
-  sidebar: { width: normalize(65), alignItems: 'center', borderRightWidth: 0.5 },
-  sidebarItem: { width: normalize(45), height: normalize(45), borderRadius: normalize(15), justifyContent: 'center', alignItems: 'center', marginBottom: normalize(15) },
+  sidebar: { width: normalize(210), borderRightWidth: 0.5 },
+  sidebarBrand: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: normalize(14), paddingVertical: normalize(18), borderBottomWidth: 0.5, borderBottomColor: colors.border },
+  sidebarBusinessName: { flex: 1, fontSize: normalize(13), fontWeight: '800' },
+  sidebarItem: { flexDirection: 'row', alignItems: 'center', minHeight: normalize(46), borderRadius: normalize(12), marginHorizontal: normalize(10), marginBottom: normalize(5), paddingHorizontal: normalize(12) },
+  sidebarLabel: { marginLeft: normalize(10), fontSize: normalize(12), fontWeight: '700' },
   mainContent: { flex: 1, padding: normalize(20) },
   dashboardHeader: { marginBottom: 25 },
   sectionTitle: { fontSize: normalize(18, factor), fontWeight: 'bold', marginBottom: normalize(20) },

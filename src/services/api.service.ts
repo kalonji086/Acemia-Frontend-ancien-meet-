@@ -628,6 +628,27 @@ class ApiService {
     } catch (e: any) { return this.handleError(e); }
   }
 
+  async createMarketConversation(businessId: string): Promise<ApiResponse> {
+    try {
+      const res = await this.api.post('/market/conversations', { businessId });
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async getMarketMessages(conversationId: string): Promise<ApiResponse> {
+    try {
+      const res = await this.api.get(`/market/conversations/${conversationId}/messages`);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async sendMarketMessage(conversationId: string, content: string): Promise<ApiResponse> {
+    try {
+      const res = await this.api.post(`/market/conversations/${conversationId}/messages`, { content });
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
   async getMarketDocuments(): Promise<ApiResponse> {
     try {
       const res = await this.api.get('/market/documents');

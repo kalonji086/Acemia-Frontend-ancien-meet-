@@ -118,8 +118,8 @@ export default function BusinessRegistrationScreen({ navigation }: any) {
     if (step === 1 && !formData.category) {
       return Alert.alert('Info', 'Veuillez sélectionner une catégorie');
     }
-    if (step === 2 && (!formData.businessName || !formData.addressCity)) {
-      return Alert.alert('Info', 'Le nom et la ville sont obligatoires');
+    if (step === 2 && (!formData.businessName.trim() || !formData.shortDescription.trim() || !formData.addressCity.trim() || !formData.contactInfo.trim())) {
+      return Alert.alert('Informations incomplètes', 'Indiquez le nom, une brève description, un moyen de contact et la ville.');
     }
     if (step === 3) {
       if (!formData.idCardUrl) return Alert.alert('Info', 'La photo de votre pièce d\'identité est requise');
@@ -190,6 +190,7 @@ export default function BusinessRegistrationScreen({ navigation }: any) {
       persistentScrollbar={true}
     >
       <Text style={[styles.stepTitle, { color: colors.text.primary, fontSize: normalize(24, fontSizeFactor) }]}>Détails du business</Text>
+      <Text style={[styles.stepSubtitle, { color: colors.text.secondary, fontSize: normalize(14, fontSizeFactor) }]}>Les champs marqués d’un astérisque sont requis pour vérifier votre activité.</Text>
 
       <Text style={[styles.label, { fontSize: normalize(12, fontSizeFactor) }]}>Nom du business *</Text>
       <TextInput
@@ -200,13 +201,23 @@ export default function BusinessRegistrationScreen({ navigation }: any) {
         placeholderTextColor={colors.text.disabled}
       />
 
-      <Text style={[styles.label, { fontSize: normalize(12, fontSizeFactor) }]}>Bref description</Text>
+      <Text style={[styles.label, { fontSize: normalize(12, fontSizeFactor) }]}>Brève description *</Text>
       <TextInput
         style={[styles.input, { color: colors.text.primary, backgroundColor: colors.surface, fontSize: normalize(16, fontSizeFactor), borderColor: colors.border, borderWidth: 1 }]}
         value={formData.shortDescription}
         onChangeText={v => updateField('shortDescription', v)}
         placeholder="Une phrase pour vous présenter"
         placeholderTextColor={colors.text.disabled}
+      />
+
+      <Text style={[styles.label, { fontSize: normalize(12, fontSizeFactor) }]}>Téléphone, e-mail ou WhatsApp *</Text>
+      <TextInput
+        style={[styles.input, { color: colors.text.primary, backgroundColor: colors.surface, fontSize: normalize(16, fontSizeFactor), borderColor: colors.border, borderWidth: 1 }]}
+        value={formData.contactInfo}
+        onChangeText={v => updateField('contactInfo', v)}
+        placeholder="Ex : +243 000 000 000 ou contact@entreprise.cd"
+        placeholderTextColor={colors.text.disabled}
+        autoCapitalize="none"
       />
 
       <Text style={[styles.label, { fontSize: normalize(12, fontSizeFactor) }]}>Description complète</Text>
@@ -394,7 +405,7 @@ export default function BusinessRegistrationScreen({ navigation }: any) {
           <TouchableOpacity onPress={() => step > 1 ? setStep(step - 1) : navigation.goBack()} style={{ padding: 5 }}>
             <Ionicons name="arrow-back" size={24} color={colors.text.primary} />
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: colors.text.primary, fontSize: normalize(18, fontSizeFactor) }]}>Étape {step} sur 5</Text>
+          <Text style={[styles.headerTitle, { color: colors.text.primary, fontSize: normalize(18, fontSizeFactor) }]}>Inscription Market — Étape {step}/5</Text>
           <View style={{ width: 34 }} />
         </View>
 

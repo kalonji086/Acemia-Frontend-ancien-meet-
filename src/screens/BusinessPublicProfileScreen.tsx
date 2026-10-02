@@ -135,6 +135,19 @@ export default function BusinessPublicProfileScreen({ navigation, route }: any) 
     } catch (e) { Alert.alert('Erreur', 'Impossible de commenter'); }
   };
 
+  const openMarketConversation = async () => {
+    const response = await apiService.createMarketConversation(businessId);
+    if (!response.success) {
+      Alert.alert('Discussion Market', response.error || 'Impossible de démarrer la discussion.');
+      return;
+    }
+    navigation.navigate('MarketChat', {
+      conversationId: response.data.id,
+      name: business.business_name,
+      avatarUrl: business.logo_url
+    });
+  };
+
   const getFullUrl = (url: string) => {
     if (!url || url === 'null') return null;
     if (url.startsWith('http') || url.startsWith('file://') || url.startsWith('content://')) return url;
@@ -210,7 +223,7 @@ export default function BusinessPublicProfileScreen({ navigation, route }: any) 
           <View style={styles.contactRow}><Ionicons name="location-outline" size={20} color={colors.text.secondary} /><Text style={[styles.contactText, { color: colors.text.secondary }]}>{business.address_quarter}, {business.address_commune}, {business.address_city}</Text></View>
         </View>
 
-        <TouchableOpacity style={[styles.contactBtn, { backgroundColor: colors.primary }]} onPress={() => apiService.createChat([business.user_id]).then(res => res.success && navigation.navigate('Chat', { chatId: res.data.id, name: business.business_name }))}>
+        <TouchableOpacity style={[styles.contactBtn, { backgroundColor: colors.primary }]} onPress={openMarketConversation}>
           <Ionicons name="chatbubble-ellipses" size={24} color="#fff" /><Text style={styles.contactBtnText}>CONTACTER LE BUSINESS</Text>
         </TouchableOpacity>
 
