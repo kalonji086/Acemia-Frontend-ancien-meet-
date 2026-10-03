@@ -28,9 +28,8 @@ export default function SchoolDashboardScreen({ navigation }: any) {
   const [menuVisible, setMenuVisible] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', checkStatus);
-    return unsubscribe;
-  }, [navigation]);
+    checkStatus();
+  }, []);
 
   const normalizeSchoolStatus = (status: string | null | undefined) => {
     const value = String(status || '').trim().toLowerCase();
