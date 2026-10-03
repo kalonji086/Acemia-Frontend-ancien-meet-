@@ -137,7 +137,9 @@ export default function SchoolAccountsScreen({ navigation }: any) {
             <UserCheck size={24} color={colors.primary} style={{ marginRight: 15 }} />
             <View style={{ flex: 1 }}>
               <Text style={[styles.name, { color: colors.text.primary, fontSize: normalize(15) }]}>{item.full_name}</Text>
-              <Text style={{ color: colors.text.secondary, fontSize: normalize(12) }}>Rôle : {item.role.toUpperCase()} • Code : {item.generated_code || 'En attente'}</Text>
+              <Text style={{ color: colors.text.secondary, fontSize: normalize(12) }}>
+                Rôle : {item.role.toUpperCase()} • Code : {item.status === 'approuve' ? item.generated_code : 'En attente d’approbation'}
+              </Text>
             </View>
             <View style={[styles.badge, { backgroundColor: item.status === 'approuve' ? '#4CAF50' : '#FF9800' }]}>
               <Text style={styles.badgeText}>{item.status}</Text>
