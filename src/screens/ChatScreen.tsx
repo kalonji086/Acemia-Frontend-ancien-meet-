@@ -904,6 +904,7 @@ export default function ChatScreen({ navigation, route }: any) {
       const uploadRes = await apiService.uploadFile({
         uri,
         name: `voice-${Date.now()}.m4a`,
+        type: 'audio/mp4',
         mimeType: 'audio/mp4',
       }, 'audio');
       if (!uploadRes.success || !uploadRes.data?.fileUrl) {
