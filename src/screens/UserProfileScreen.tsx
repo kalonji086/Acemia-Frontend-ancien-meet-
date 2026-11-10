@@ -10,7 +10,6 @@ import {
   StatusBar,
   ActivityIndicator,
   Alert,
-  Dimensions,
   ImageBackground,
 } from 'react-native';
 import {
@@ -23,8 +22,6 @@ import { SOCKET_URL } from '../utils/constants';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-const { width } = Dimensions.get('window');
 
 export default function UserProfileScreen({ navigation, route }: any) {
   const { userId, name: initialName, avatar: initialAvatar } = route.params;

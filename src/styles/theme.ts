@@ -1,14 +1,7 @@
-import { Dimensions, PixelRatio } from 'react-native';
+import { PixelRatio } from 'react-native';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-
-const scale = SCREEN_WIDTH / 375;
-export const normalize = (size: number, factor: number = 1) => {
-  // Limiter le scale pour les tablettes pour éviter des éléments trop gros
-  const adjustedScale = SCREEN_WIDTH > 600 ? 1.2 : scale;
-  const newSize = size * adjustedScale * factor;
-  return Math.round(PixelRatio.roundToNearestPixel(newSize));
-};
+export const normalize = (size: number, factor: number = 1) =>
+  Math.round(PixelRatio.roundToNearestPixel(size * factor));
 
 export const colors = {
   primary: '#673AB7',

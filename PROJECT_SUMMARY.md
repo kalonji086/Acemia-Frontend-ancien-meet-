@@ -1,4 +1,4 @@
-# Résumé du Projet Meet Me - Frontend
+# Résumé du Projet Acemia - Frontend
 
 ## 🎯 Objectif
 Création d'une application de chat moderne avec React Native/Expo comprenant toutes les fonctionnalités demandées.
@@ -185,7 +185,7 @@ npm start
 
 ## 🏆 Conclusion
 
-Le frontend de Meet Me est **complètement implémenté** avec :
+Le frontend de Acemia est **complètement implémenté** avec :
 - ✅ Tous les écrans demandés
 - ✅ Design moderne et professionnel
 - ✅ Architecture solide et maintenable

@@ -1,14 +1,14 @@
 {
   "expo": {
-    "name": "Meet Me",
+    "name": "Acemia",
     "slug": "meet-me",
-    "version": "1.0.0",
+    "version": "8.0.0",
     "orientation": "portrait",
-    "icon": "./assets/Logo.png",
+    "icon": "./assets/AcemiaLogo.png",
     "userInterfaceStyle": "light",
     "splash": {
-      "image": "./assets/Logo.png",
-      "backgroundColor": "#673AB7",
+      "image": "./assets/AcemiaLogo.png",
+      "backgroundColor": "#FFFFFF",
       "resizeMode": "contain"
     },
     "ios": {
@@ -16,24 +16,23 @@
       "bundleIdentifier": "com.deve",
       "buildNumber": "1",
       "infoPlist": {
-        "NSCameraUsageDescription": "Meet a besoin d'accéder à votre caméra pour prendre des photos.",
-        "NSMicrophoneUsageDescription": "Meet a besoin d'accéder à votre micro pour envoyer des messages vocaux.",
-        "NSContactsUsageDescription": "Meet a besoin d'accéder à vos contacts pour synchroniser vos amis.",
-        "NSPhotoLibraryUsageDescription": "Meet a besoin d'accéder à votre bibliothèque photo pour partager des images.",
+        "NSCameraUsageDescription": "Acemia a besoin d'accéder à votre caméra pour prendre des photos.",
+        "NSMicrophoneUsageDescription": "Acemia a besoin d'accéder à votre micro pour envoyer des messages vocaux.",
+        "NSContactsUsageDescription": "Acemia a besoin d'accéder à vos contacts pour synchroniser vos amis.",
+        "NSPhotoLibraryUsageDescription": "Acemia a besoin d'accéder à votre bibliothèque photo pour partager des images.",
         "UIBackgroundModes": [
           "audio",
           "fetch"
         ],
         "UIViewControllerBasedStatusBarAppearance": true
       },
-      "requiresFullScreen": true,
       "userInterfaceStyle": "automatic"
     },
     "android": {
       "package": "com.deve",
-      "versionCode": 96,
+      "versionCode": 98,
       "adaptiveIcon": {
-        "foregroundImage": "./assets/Logo.png",
+        "foregroundImage": "./assets/AcemiaLogo.png",
         "backgroundColor": "#ffffff"
       },
       "permissions": [
@@ -47,10 +46,7 @@
         "VIBRATE"
       ],
       "softwareKeyboardLayoutMode": "resize",
-      "enableProguardInReleaseBuilds": false,
-      "enableShrinkResourcesInReleaseBuilds": false,
-      "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "edgeToEdgeEnabled": true
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -63,8 +59,8 @@
         {
           "android": {
             "minSdkVersion": 24,
-            "targetSdkVersion": 35,
-            "compileSdkVersion": 35,
+            "targetSdkVersion": 36,
+            "compileSdkVersion": 36,
             "newArchEnabled": false,
             "jsEngine": "hermes",
             "kotlinVersion": "1.9.25",
@@ -76,7 +72,8 @@
           }
         }
       ],
-      "expo-font"
+      "expo-font",
+      "expo-mail-composer"
     ],
     "extra": {
       "apiUrl": "https://meet-me-backend-sg5c.onrender.com/api",

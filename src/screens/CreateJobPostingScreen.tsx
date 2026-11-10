@@ -268,7 +268,7 @@ export default function CreateJobPostingScreen({ navigation }: any) {
 
             <View style={[styles.reviewCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                <CheckCircle2 size={24} color={colors.primary} />
-               <Text style={[styles.reviewText, { color: colors.text.primary }]}>En publiant cette offre, vous confirmez qu'elle respecte les conditions d'utilisation de Meet Me Emploi.</Text>
+               <Text style={[styles.reviewText, { color: colors.text.primary }]}>En publiant cette offre, vous confirmez qu'elle respecte les conditions d'utilisation d'Acemia Emploi.</Text>
             </View>
           </View>
         );

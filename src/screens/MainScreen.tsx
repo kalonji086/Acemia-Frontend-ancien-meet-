@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, TouchableOpacity, Text, Dimensions, ActivityIndicator, Image, Platform } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Text, ActivityIndicator, Image, Platform, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   MessageSquare, Aperture, Phone, ShoppingCart, AlertCircle,
@@ -18,18 +18,16 @@ import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
 import { useUser } from '../context/UserContext';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-
 export default function MainScreen({ navigation, route }: any) {
   // --- 1. HOOKS (MUST ALWAYS RUN IN THE SAME ORDER) ---
   const { colors, isDark, normalize } = useTheme();
   const { user: currentUser, setUser, loading: userLoading } = useUser();
   const { t } = useLanguage();
   const insets = useSafeAreaInsets();
+  const { width: screenWidth } = useWindowDimensions();
 
   const [activeTab, setActiveTab] = useState('chats');
   const [selectedChat, setSelectedChat] = useState<any>(null);
-  const [screenWidth, setScreenWidth] = useState(SCREEN_WIDTH);
   const [unreadTotal, setUnreadTotal] = useState(0);
 
   useEffect(() => {
@@ -52,13 +50,6 @@ export default function MainScreen({ navigation, route }: any) {
       socketService.off('new_message', handleMsg);
       socketService.off('message_read', handleMsg);
     };
-  }, []);
-
-  useEffect(() => {
-    const sub = Dimensions.addEventListener('change', ({ window }) => {
-      setScreenWidth(window.width);
-    });
-    return () => sub.remove();
   }, []);
 
   useEffect(() => {
@@ -130,10 +121,10 @@ export default function MainScreen({ navigation, route }: any) {
   }
 
   // --- 3. LOGIC & RENDER ---
-  const isTablet = screenWidth > 768;
+  const isTablet = screenWidth >= 800;
   const isWeb = Platform.OS === 'web';
   const showSidebar = isWeb && screenWidth > 1024;
-  const styles = createStyles(colors, normalize, isDark);
+  const styles = createStyles(colors, normalize, isDark, screenWidth);
 
   const handleTabPress = (tab: string) => {
     setActiveTab(tab);
@@ -206,7 +197,7 @@ export default function MainScreen({ navigation, route }: any) {
             <View style={[styles.sidebarLogo, { backgroundColor: colors.primary }]}>
               <MessageSquare size={24} color="#fff" />
             </View>
-            <Text style={[styles.sidebarTitle, { color: colors.text.primary }]}>Meet Me</Text>
+            <Text style={[styles.sidebarTitle, { color: colors.text.primary }]}>Acemia</Text>
           </View>
 
           <View style={styles.sidebarMenu}>
@@ -264,11 +255,11 @@ const TabItem = ({ active, icon, label, onPress, activeColor, inactiveColor, act
   </TouchableOpacity>
 );
 
-const createStyles = (colors: any, normalize: any, isDark: boolean) => StyleSheet.create({
+const createStyles = (colors: any, normalize: any, isDark: boolean, screenWidth: number) => StyleSheet.create({
   container: { flex: 1 },
   content: { flex: 1 },
   splitView: { flex: 1, flexDirection: 'row' },
-  masterPane: { width: 350, borderRightWidth: 1, borderRightColor: colors?.border || '#eee' },
+  masterPane: { width: Math.min(Math.max(screenWidth * 0.34, 280), 400), borderRightWidth: 1, borderRightColor: colors?.border || '#eee' },
   detailPane: { flex: 1 },
   emptyDetail: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 },
   emptyDetailText: { marginTop: 20, fontSize: normalize(16), textAlign: 'center' },

@@ -1,4 +1,4 @@
-# Meet Me - Application de Chat
+# Acemia - Application de Chat
 
 Une application de chat moderne avec traduction en temps réel, messages vocaux et notifications push.
 
@@ -176,4 +176,4 @@ L'application utilise un système de design cohérent avec :
 
 ## Licence
 
-© 2024 Meet Me. Tous droits réservés.
+© 2024 Acemia. Tous droits réservés.

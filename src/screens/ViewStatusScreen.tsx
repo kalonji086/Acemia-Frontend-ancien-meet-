@@ -6,7 +6,7 @@ import {
   Image,
   SafeAreaView,
   StatusBar,
-  Dimensions,
+  useWindowDimensions,
   TouchableOpacity,
   TextInput,
   KeyboardAvoidingView,
@@ -22,11 +22,11 @@ import apiService from '../services/api.service';
 import { SOCKET_URL } from '../utils/constants';
 import SocketService from '../services/socket.service';
 
-const { width, height } = Dimensions.get('window');
 const QUICK_EMOJIS = ['❤️', '😂', '😮', '😢', '🙏', '👍'];
 const STATUS_DURATION = 5000; // 5 secondes par status comme WhatsApp
 
 const AnimatedFloatingEmoji = ({ emoji }: { emoji: string }) => {
+  const { width, height } = useWindowDimensions();
   const anim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -69,6 +69,7 @@ const AnimatedFloatingEmoji = ({ emoji }: { emoji: string }) => {
 };
 
 export default function ViewStatusScreen({ navigation, route }: any) {
+  const { width } = useWindowDimensions();
   const userStatus = route?.params?.userStatus;
   const [currentIndex, setCurrentIndex] = useState(0);
   const progressAnim = useRef(new Animated.Value(0)).current;
@@ -90,7 +91,7 @@ export default function ViewStatusScreen({ navigation, route }: any) {
   if (!userStatus || !userStatus.statuses) return null;
 
   const currentStatus = userStatus.statuses[currentIndex];
-  const isOwner = currentUser?.id === userStatus.user_id;
+  const isOwner = String(currentUser?.id) === String(userStatus.user_id);
 
   const getFullUrl = (url: string) => {
     if (!url || url === 'null') return null;
@@ -106,12 +107,12 @@ export default function ViewStatusScreen({ navigation, route }: any) {
     const fetchUser = async () => {
       const user = await apiService.getCurrentUser();
       setCurrentUser(user);
+      if (user && String(user.id) !== String(userStatus.user_id)) {
+        await apiService.markStatusAsViewed(currentStatus.id);
+      }
     };
-    fetchUser();
+    fetchUser().catch((error) => console.error('Unable to load status viewer', error));
     fetchReactions();
-    if (!isOwner) {
-      apiService.markStatusAsViewed(currentStatus.id);
-    }
 
     // Écouter les réactions en temps réel
     const onRealTimeReaction = (data: any) => {
@@ -372,7 +373,7 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   mainContainer: { flex: 1, position: 'relative' },
   touchArea: { flex: 1 },
-  image: { width: width, height: height, backgroundColor: '#000' },
+  image: { width: '100%', height: '100%', backgroundColor: '#000' },
   overlay: { ...StyleSheet.absoluteFillObject, paddingTop: 10, justifyContent: 'space-between' },
   progressContainer: { flexDirection: 'row', paddingHorizontal: 10, marginBottom: 10 },
   progressBarBg: { flex: 1, height: 2, backgroundColor: 'rgba(255,255,255,0.3)', marginHorizontal: 2, borderRadius: 1, overflow: 'hidden' },
@@ -394,7 +395,7 @@ const styles = StyleSheet.create({
   replyInput: { flex: 1, color: '#fff', fontSize: 16, paddingRight: 10 },
   viewsContainer: { flexDirection: 'row', alignItems: 'center', alignSelf: 'center', marginBottom: 20, backgroundColor: 'rgba(0,0,0,0.5)', padding: 10, borderRadius: 20 },
   viewsText: { color: '#fff', marginHorizontal: 10, fontWeight: '600' },
-  reactionsModal: { position: 'absolute', bottom: 0, width: '100%', height: height * 0.5, backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, elevation: 20 },
+  reactionsModal: { position: 'absolute', bottom: 0, width: '100%', height: '50%', backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, elevation: 20 },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
   modalTitle: { fontSize: 18, fontWeight: 'bold', color: '#000' },
   reactionItem: { flexDirection: 'row', alignItems: 'center', marginBottom: 15 },

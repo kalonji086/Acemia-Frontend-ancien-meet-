@@ -176,7 +176,7 @@ export default function ErrorScreen({
             Code d'erreur : {Date.now().toString(36).toUpperCase()}
           </Text>
           <Text style={[styles.footerText, { color: colors.text.disabled }]}>
-            Version 93.0.0 • {Platform.OS.toUpperCase()}
+            {Platform.OS.toUpperCase()} • Build 96
           </Text>
         </View>
       </ScrollView>

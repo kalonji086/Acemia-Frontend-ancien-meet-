@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,15 +8,15 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Image,
+  ImageBackground,
   Alert,
   ActivityIndicator,
   StatusBar,
-  Dimensions,
-  Image,
+  useWindowDimensions,
 } from 'react-native';
 import {
-  ShieldAlert, X, Mail, Megaphone, MessageSquare,
-  Heart, EyeOff, Eye
+  ShieldAlert, X, Mail, Lock, Megaphone, EyeOff, Eye
 } from 'lucide-react-native';
 import apiService from '../services/api.service';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -32,10 +32,9 @@ import Animated, {
   withTiming
 } from 'react-native-reanimated';
 
-const { width } = Dimensions.get('window');
-
 export default function LoginScreen({ navigation, route }: any) {
   const { colors, normalize, isDark, fontSizeFactor } = useTheme();
+  const { width } = useWindowDimensions();
   const { setUser } = useUser();
 
   const mode = route.params?.mode || 'full'; // 'full' or 'password_only'
@@ -51,6 +50,7 @@ export default function LoginScreen({ navigation, route }: any) {
   const [showAppealModal, setShowAppealModal] = useState(false);
   const [appealReason, setAppealReason] = useState('');
   const [sendingAppeal, setSendingAppeal] = useState(false);
+  const passwordInputRef = useRef<TextInput>(null);
 
   const insets = useSafeAreaInsets();
   const shakeOffset = useSharedValue(0);
@@ -86,27 +86,42 @@ export default function LoginScreen({ navigation, route }: any) {
   };
 
   const handleLogin = async () => {
-    if (!email || !password) {
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail || !password) {
       Alert.alert('Erreur', 'Veuillez remplir tous les champs');
       return;
     }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+      Alert.alert('Erreur', 'Veuillez saisir une adresse email valide.');
+      return;
+    }
+
     setLoading(true);
 
-    const deviceInfo = await apiService.getDeviceInfo();
-
     try {
+      const deviceInfo = await apiService.getDeviceInfo();
       const response = await apiService.login({
-        email,
+        email: normalizedEmail,
         password,
         device_info: deviceInfo,
         appVersion: APP_VERSION
       });
       if (response.success) {
+        const user = response.data?.user;
+        if (!user) {
+          Alert.alert('Erreur', 'La connexion a réussi, mais le profil utilisateur est incomplet. Réessayez.');
+          return;
+        }
+
         // 1. Mettre à jour le contexte utilisateur et attendre la persistance
-        await setUser(response.data.user);
+        await setUser(user);
 
         // 2. Mettre à jour le timestamp d'ouverture
-        await AsyncStorage.setItem('last_app_open', Date.now().toString());
+        try {
+          await AsyncStorage.setItem('last_app_open', Date.now().toString());
+        } catch (storageError) {
+          console.warn('Login: Failed to save last app open timestamp', storageError);
+        }
 
         // 3. Petite pause pour laisser le temps au state de se propager avant le switch
         setTimeout(() => {
@@ -120,18 +135,19 @@ export default function LoginScreen({ navigation, route }: any) {
         if (response.isLocked) {
           setIsLocked(true);
           setLockMessage(response.message || 'Compte bloqué');
-        } else if ((response as any).attemptsLeft !== undefined) {
+        } else if ((response as { attemptsLeft?: number }).attemptsLeft !== undefined) {
           Alert.alert(
             '⚠️ Sécurité',
-            `Mot de passe incorrect. Attention, après 3 tentatives infructueuses, votre accès sera définitivement bloqué.\n\nTentatives restantes : ${(response as any).attemptsLeft}`,
+            `Mot de passe incorrect. Attention, après 3 tentatives infructueuses, votre accès sera définitivement bloqué.\n\nTentatives restantes : ${(response as { attemptsLeft?: number }).attemptsLeft}`,
             [{ text: "J'ai compris", style: 'destructive' }]
           );
         } else {
-          Alert.alert('Erreur', response.error || 'Échec de la connexion');
+          Alert.alert('Erreur', response.error || response.message || 'Échec de la connexion');
         }
       }
     } catch (error: any) {
-      Alert.alert('Erreur', 'Une erreur réseau est survenue');
+      console.error('Login: Authentication failed', error);
+      Alert.alert('Erreur', error?.message || 'Une erreur est survenue pendant la connexion.');
     } finally {
       setLoading(false);
     }
@@ -141,7 +157,7 @@ export default function LoginScreen({ navigation, route }: any) {
     transform: [{ translateX: shakeOffset.value }],
   }));
 
-  const styles = createStyles(colors, normalize, fontSizeFactor, isDark);
+  const styles = createStyles(colors, normalize, fontSizeFactor, isDark, width);
   const isWide = width > 1024;
 
   const handleSendAppeal = async () => {
@@ -178,7 +194,7 @@ export default function LoginScreen({ navigation, route }: any) {
 
         <View style={styles.bannedContent}>
           <Text style={styles.bannedText}>
-            L'accès à ce compte Meet Me a été suspendu pour violation grave de nos conditions d'utilisation.
+            L'accès à ce compte Acemia a été suspendu pour violation grave de nos conditions d'utilisation.
           </Text>
 
           <View style={styles.bannedInfoBox}>
@@ -244,39 +260,48 @@ export default function LoginScreen({ navigation, route }: any) {
   }
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
-      {isWide && (
-        <View style={StyleSheet.absoluteFill}>
-          <Image
-            source={{ uri: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1924&auto=format&fit=crop' }}
-            style={{ width: '100%', height: '100%', opacity: 0.1 }}
-            blurRadius={50}
-          />
-        </View>
-      )}
+    <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom, backgroundColor: colors.background }]}>
+      <ImageBackground
+        source={require('../../assets/AcemiaBackground.png')}
+        style={StyleSheet.absoluteFill}
+        resizeMode="cover"
+      />
+      <View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.backgroundImageOverlay]} />
+      <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+        <View style={[styles.backgroundOrb, styles.backgroundOrbTop, { backgroundColor: colors.primary + '12' }]} />
+        <View style={[styles.backgroundOrb, styles.backgroundOrbBottom, { backgroundColor: colors.secondary + '10' }]} />
+      </View>
       <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={{ flex: 1 }}
       >
-        <ScrollView contentContainerStyle={[styles.scrollContainer, isWide && { alignSelf: 'center', width: 500, marginTop: 100, backgroundColor: colors.surface, borderRadius: 40, elevation: 10, shadowColor: colors.primary, shadowOpacity: 0.2, shadowRadius: 20 }]} showsVerticalScrollIndicator={false}>
-          <View style={[styles.contentWrapper, isWide && { paddingHorizontal: 40 }]}>
+        <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+          <View style={[styles.contentWrapper, isWide && styles.wideContentWrapper]}>
             <View style={styles.logoContainer}>
-              <View style={[styles.iconStack, { backgroundColor: colors.primary }]}>
-                <MessageSquare size={normalize(45)} color="#fff" />
-                <Heart size={normalize(20)} color={colors.secondary} style={styles.heartIcon} />
-              </View>
-              <Text style={[styles.appName, { color: colors.primary }]}>Meet Me</Text>
+              <Image
+                source={require('../../assets/AcemiaLogo.png')}
+                style={styles.brandLogo}
+                resizeMode="contain"
+                accessibilityLabel="Acemia"
+              />
               <Text style={[styles.tagline, { color: colors.text.secondary }]}>
-                {mode === 'password_only' ? `Heureux de vous revoir, ${name.split(' ')[0]} !` : 'Connexion sécurisée'}
+                {mode === 'password_only' ? `Heureux de vous revoir, ${name.split(' ')[0]} !` : 'Connectez-vous pour retrouver vos proches'}
               </Text>
             </View>
 
             <Animated.View style={[styles.formContainer, animatedShakeStyle]}>
+              <Text style={[styles.formTitle, { color: colors.text.primary }]}>
+                {mode === 'password_only' ? 'Confirmer votre identité' : 'Bienvenue'}
+              </Text>
+              <Text style={[styles.formSubtitle, { color: colors.text.secondary }]}>
+                {mode === 'password_only' ? 'Saisissez votre mot de passe pour continuer.' : 'Entrez vos identifiants pour vous connecter.'}
+              </Text>
               {mode === 'full' ? (
                 <>
                   <Text style={[styles.label, { color: colors.text.primary }]}>Adresse Email</Text>
                   <View style={[styles.inputContainer, { backgroundColor: isDark ? '#333' : '#f9f9f9', borderColor: colors.border }]}>
+                    <Mail size={normalize(18)} color={colors.text.secondary} />
                     <TextInput
                       style={[styles.input, { color: colors.text.primary }]}
                       placeholder="votre@email.com"
@@ -285,6 +310,12 @@ export default function LoginScreen({ navigation, route }: any) {
                       onChangeText={setEmail}
                       keyboardType="email-address"
                       autoCapitalize="none"
+                      autoCorrect={false}
+                      autoComplete="email"
+                      textContentType="emailAddress"
+                      returnKeyType="next"
+                      onSubmitEditing={() => passwordInputRef.current?.focus()}
+                      accessibilityLabel="Adresse email"
                     />
                   </View>
                 </>
@@ -297,13 +328,21 @@ export default function LoginScreen({ navigation, route }: any) {
 
               <Text style={[styles.label, { color: colors.text.primary }]}>Mot de passe</Text>
               <View style={[styles.inputContainer, { backgroundColor: isDark ? '#333' : '#f9f9f9', borderColor: colors.border }]}>
+                <Lock size={normalize(17)} color={colors.text.secondary} />
                 <TextInput
+                  ref={passwordInputRef}
                   style={[styles.input, { color: colors.text.primary }]}
                   placeholder="Votre mot de passe"
                   placeholderTextColor={colors.text.disabled}
                   value={password}
                   onChangeText={setPassword}
                   secureTextEntry={!showPassword}
+                  autoCapitalize="none"
+                  autoComplete="current-password"
+                  textContentType="password"
+                  returnKeyType="go"
+                  onSubmitEditing={handleLogin}
+                  accessibilityLabel="Mot de passe"
                 />
                 <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.passwordToggle}>
                   {showPassword ? <EyeOff size={normalize(20)} color={colors.text.secondary} /> : <Eye size={normalize(20)} color={colors.text.secondary} />}
@@ -345,14 +384,22 @@ export default function LoginScreen({ navigation, route }: any) {
   );
 }
 
-const createStyles = (colors: any, normalize: any, factor: number, isDark: boolean) => StyleSheet.create({
+const createStyles = (colors: any, normalize: any, factor: number, isDark: boolean, width: number) => StyleSheet.create({
   container: { flex: 1 },
-  scrollContainer: { flexGrow: 1, justifyContent: 'center' },
+  scrollContainer: { flexGrow: 1, justifyContent: 'center', paddingVertical: 28 },
   contentWrapper: {
-    paddingHorizontal: width > 600 ? '20%' : 30,
-    paddingVertical: 40,
-    alignItems: 'center'
+    width: '100%',
+    maxWidth: 480,
+    alignSelf: 'center',
+    paddingHorizontal: width < 360 ? 18 : 26,
+    paddingVertical: 24,
+    alignItems: 'center',
   },
+  wideContentWrapper: { maxWidth: 500 },
+  backgroundOrb: { position: 'absolute', borderRadius: 999 },
+  backgroundImageOverlay: { backgroundColor: 'rgba(255,255,255,0.56)' },
+  backgroundOrbTop: { width: 260, height: 260, top: -150, right: -80 },
+  backgroundOrbBottom: { width: 320, height: 320, bottom: -210, left: -150 },
   bannedContainer: { flex: 1, backgroundColor: '#000', padding: 30, justifyContent: 'center' },
   bannedHeader: { alignItems: 'center', marginBottom: 40 },
   bannedIconCircle: { width: 120, height: 120, borderRadius: 60, backgroundColor: 'rgba(255, 59, 48, 0.1)', justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: '#ff3b30' },
@@ -368,23 +415,23 @@ const createStyles = (colors: any, normalize: any, factor: number, isDark: boole
   emailButtonText: { color: '#fff', fontWeight: 'bold', marginLeft: 10, fontSize: 15 },
   bannedFooterBtn: { position: 'absolute', bottom: 40, left: 30, right: 30, alignItems: 'center' },
   bannedFooterText: { color: '#666', fontWeight: 'bold', fontSize: 12, textDecorationLine: 'underline' },
-  logoContainer: { alignItems: 'center', marginBottom: normalize(45) },
-  iconStack: { width: normalize(90), height: normalize(90), borderRadius: normalize(45), justifyContent: 'center', alignItems: 'center', marginBottom: 20, elevation: 5 },
-  heartIcon: { position: 'absolute', bottom: normalize(20) },
-  appName: { fontSize: normalize(32, factor), fontWeight: 'bold' },
-  tagline: { fontSize: normalize(14, factor), textAlign: 'center', marginTop: 8 },
-  formContainer: { width: '100%' },
-  label: { fontSize: normalize(13, factor), fontWeight: '700', marginBottom: 8 },
-  inputContainer: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 15, borderRadius: 15, marginBottom: 20, height: normalize(55), borderWidth: 1.5 },
-  input: { flex: 1, fontSize: normalize(16, factor) },
+  logoContainer: { alignItems: 'center', marginBottom: normalize(28) },
+  brandLogo: { width: normalize(190), height: normalize(155), marginBottom: 8 },
+  tagline: { fontSize: normalize(13, factor), textAlign: 'center', marginTop: 6 },
+  formContainer: { width: '100%', padding: width < 360 ? 18 : 24, backgroundColor: colors.surface, borderRadius: 26, borderWidth: 1, borderColor: colors.border, shadowColor: '#17152B', shadowOpacity: isDark ? 0 : 0.08, shadowRadius: 24, shadowOffset: { width: 0, height: 10 }, elevation: isDark ? 0 : 3 },
+  formTitle: { fontSize: normalize(21, factor), fontWeight: '800', letterSpacing: -0.4 },
+  formSubtitle: { fontSize: normalize(13, factor), marginTop: 5, marginBottom: 24, lineHeight: normalize(19, factor) },
+  label: { fontSize: normalize(12, factor), fontWeight: '700', marginBottom: 8 },
+  inputContainer: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 15, borderRadius: 14, marginBottom: 20, height: normalize(54), borderWidth: 1 },
+  input: { flex: 1, minWidth: 0, fontSize: normalize(15, factor) },
   lockedEmailContainer: { flexDirection: 'row', alignItems: 'center', padding: 15, backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)', borderRadius: 12, marginBottom: 20, borderWidth: 1, borderStyle: 'dashed', borderColor: colors.border },
   lockedEmailText: { fontSize: normalize(14, factor), marginLeft: 10, fontWeight: '600' },
   passwordToggle: { padding: 5 },
-  loginButton: { borderRadius: 30, height: normalize(55), justifyContent: 'center', alignItems: 'center', marginTop: 15, elevation: 3 },
+  loginButton: { borderRadius: 15, height: normalize(54), justifyContent: 'center', alignItems: 'center', marginTop: 10, elevation: 3 },
   loginButtonDisabled: { opacity: 0.7 },
   loginButtonText: { color: '#fff', fontSize: normalize(16, factor), fontWeight: 'bold' },
   footerLinks: { alignItems: 'center', marginTop: 10, width: '100%' },
-  signupButton: { backgroundColor: 'transparent', borderRadius: 30, height: normalize(55), justifyContent: 'center', alignItems: 'center', marginTop: 20, borderWidth: 2, width: '100%' },
+  signupButton: { backgroundColor: 'transparent', borderRadius: 15, height: normalize(52), justifyContent: 'center', alignItems: 'center', marginTop: 20, borderWidth: 1.5, width: '100%' },
   signupButtonText: { fontSize: normalize(16, factor), fontWeight: 'bold' },
   switchAccountBtn: { marginTop: 20, padding: 10 },
   switchAccountText: { fontSize: normalize(13, factor), fontWeight: 'bold', textDecorationLine: 'underline' },

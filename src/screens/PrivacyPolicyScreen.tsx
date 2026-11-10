@@ -7,14 +7,11 @@ import {
   TouchableOpacity,
   StatusBar,
   ActivityIndicator,
-  Dimensions,
 } from 'react-native';
 import { ArrowLeft } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import apiService from '../services/api.service';
-
-const { width } = Dimensions.get('window');
 
 export default function PrivacyPolicyScreen({ navigation, isComponent = false }: any) {
   const { colors, isDark, normalize } = useTheme();

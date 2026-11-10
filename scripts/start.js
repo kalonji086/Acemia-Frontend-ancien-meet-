@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * Script de démarrage de l'application Meet Me
+ * Script de démarrage de l'application Acemia
  * Ce script vérifie les dépendances et démarre l'application
  */
 
@@ -9,7 +9,7 @@ const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
-console.log('🚀 Démarrage de Meet Me...\n');
+console.log("🚀 Démarrage d'Acemia...\n");
 
 // Vérifier si Node.js est installé
 try {

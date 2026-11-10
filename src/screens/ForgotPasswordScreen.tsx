@@ -226,7 +226,9 @@ export default function ForgotPasswordScreen({ navigation }: any) {
                   {otp.map((digit, index) => (
                     <TextInput
                       key={index}
-                      ref={(ref) => (otpRefs.current[index] = ref)}
+                      ref={(ref) => {
+                        otpRefs.current[index] = ref;
+                      }}
                       style={dynamicStyles.codeInput}
                       maxLength={1}
                       keyboardType="number-pad"

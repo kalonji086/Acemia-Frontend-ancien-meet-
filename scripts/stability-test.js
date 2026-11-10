@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * Script de test de stabilité pour l'application Meet Me
+ * Script de test de stabilité pour l'application Acemia
  * Ce script vérifie les problèmes courants qui pourraient causer des crashs
  */
 

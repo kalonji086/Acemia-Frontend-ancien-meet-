@@ -1,13 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, ActivityIndicator, Dimensions, Alert, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, ActivityIndicator, Alert, StatusBar } from 'react-native';
 import { colors, normalize } from '../styles/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useRoute, useNavigation, CommonActions } from '@react-navigation/native';
 import apiService from '../services/api.service';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
-
-const { width, height } = Dimensions.get('window');
 
 const LegalAcceptanceScreen = () => {
   const route = useRoute();

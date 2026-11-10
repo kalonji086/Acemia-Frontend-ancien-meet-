@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AppNavigator from './src/navigation/AppNavigator';
@@ -7,9 +7,12 @@ import { ThemeProvider } from './src/context/ThemeContext';
 import { LanguageProvider } from './src/context/LanguageContext';
 import { UserProvider } from './src/context/UserContext';
 import * as Device from 'expo-device';
-import { Platform, Alert } from 'react-native';
+import { Platform, Alert, View, Text, ActivityIndicator, StyleSheet } from 'react-native';
 import ErrorBoundary from './src/components/ErrorBoundary';
 import ErrorScreen from './src/screens/ErrorScreen';
+
+// Empêcher le splash screen de se cacher automatiquement
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
 // Polyfill/Shim pour le Web
 if (Platform.OS === 'web') {
@@ -66,49 +69,120 @@ if (Platform.OS === 'web') {
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import WebResponsiveWrapper from './src/components/WebResponsiveWrapper';
 
+// Composant de chargement minimal pour éviter les écrans blancs
+const MinimalLoader = () => (
+  <View style={styles.loader}>
+    <ActivityIndicator size="large" color="#673AB7" />
+    <Text style={styles.loaderText}>Chargement...</Text>
+  </View>
+);
+
 export default function App() {
+  const [isReady, setIsReady] = useState(false);
+  const [hasError, setHasError] = useState(false);
+
   useEffect(() => {
-    const hideSplash = async () => {
+    const prepare = async () => {
       try {
-        // Un petit délai pour laisser le temps au moteur de rendu de s'initialiser
-        setTimeout(async () => {
+        // Petit délai pour s'assurer que tout est initialisé
+        await new Promise(resolve => setTimeout(resolve, 100));
+        setIsReady(true);
+      } catch (error) {
+        console.error('App preparation error:', error);
+        setHasError(true);
+      } finally {
+        // Cacher le splash screen une fois prêt
+        try {
           await SplashScreen.hideAsync();
-        }, 1000);
-      } catch (hideError) {
-        // console.log('Splash hide error');
+        } catch (e) {
+          console.log('SplashScreen already hidden');
+        }
       }
     };
 
-    // On cache le splash screen le plus tôt possible pour éviter le blocage
-    const splashTimer = setTimeout(() => {
-      hideSplash();
-    }, 500);
+    prepare();
 
-    return () => {
-      clearTimeout(splashTimer);
-    };
-  }, []);
+    // Fallback de sécurité - forcer le chargement après 3 secondes max
+    const fallbackTimer = setTimeout(() => {
+      if (!isReady) {
+        console.log('App fallback triggered - forcing ready state');
+        setIsReady(true);
+        SplashScreen.hideAsync().catch(() => {});
+      }
+    }, 3000);
+
+    return () => clearTimeout(fallbackTimer);
+  }, [isReady]);
 
   const handleError = (error: Error, errorInfo: React.ErrorInfo) => {
     console.error('Global error caught:', error, errorInfo);
+    setHasError(true);
   };
+
+  // En cas d'erreur critique, afficher un écran d'erreur
+  if (hasError) {
+    return (
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorText}>Une erreur est survenue</Text>
+        <Text style={styles.errorSubtext}>Veuillez redémarrer l'application</Text>
+      </View>
+    );
+  }
+
+  // Afficher un loader minimal pendant l'initialisation
+  if (!isReady) {
+    return <MinimalLoader />;
+  }
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <LanguageProvider>
-        <UserProvider>
-          <ThemeProvider>
-            <SafeAreaProvider>
-              <ErrorBoundary onError={handleError}>
+      <ErrorBoundary onError={handleError} fallback={<ErrorScreen />}>
+        <LanguageProvider>
+          <UserProvider>
+            <ThemeProvider>
+              <SafeAreaProvider>
                 <WebResponsiveWrapper>
                   {Platform.OS !== 'web' && <StatusBar style="auto" />}
                   <AppNavigator />
                 </WebResponsiveWrapper>
-              </ErrorBoundary>
-            </SafeAreaProvider>
-          </ThemeProvider>
-        </UserProvider>
-      </LanguageProvider>
+              </SafeAreaProvider>
+            </ThemeProvider>
+          </UserProvider>
+        </LanguageProvider>
+      </ErrorBoundary>
     </GestureHandlerRootView>
   );
 }
+
+const styles = StyleSheet.create({
+  loader: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#673AB7',
+  },
+  loaderText: {
+    marginTop: 10,
+    color: '#fff',
+    fontSize: 16,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    padding: 20,
+  },
+  errorText: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  errorSubtext: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+  },
+});

@@ -1,16 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TextInput,
   TouchableOpacity,
-  SafeAreaView,
   StatusBar,
   ActivityIndicator,
   Alert,
   ScrollView,
   Linking,
+  useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
@@ -23,6 +23,8 @@ import { CheckCircle, Share2 } from 'lucide-react-native';
 export default function AddContactScreen({ navigation }: any) {
   const { colors, normalize, isDark } = useTheme();
   const { language } = useLanguage();
+  const { width, height } = useWindowDimensions();
+  const styles = createStyles(normalize, width);
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [phone, setPhone] = useState('');
@@ -32,99 +34,107 @@ export default function AddContactScreen({ navigation }: any) {
   const [checkingPhone, setCheckingPhone] = useState(false);
   const [foundUser, setFoundUser] = useState<any>(null);
   const [showInvite, setShowInvite] = useState(false);
+  const [lookupError, setLookupError] = useState(false);
 
   const [callingCode, setCallingCode] = useState('243');
   const [countryFlag, setCountryFlag] = useState('🇨🇩');
   const [showCountryPicker, setShowCountryPicker] = useState(false);
+  const lookupRequestId = useRef(0);
+  const nationalDigits = phone.replace(/\D/g, '');
+  const normalizedNationalNumber = nationalDigits.replace(/^0+/, '');
+  const fullPhone = `+${callingCode.replace(/\D/g, '')}${normalizedNationalNumber}`;
+  const fullPhoneDigits = fullPhone.replace(/\D/g, '');
+  const isPhoneValid = fullPhoneDigits.length >= 7 && fullPhoneDigits.length <= 15;
 
   useEffect(() => {
-    if (phone.length > 5) {
-      const timer = setTimeout(async () => {
-        checkPhoneNumber();
-      }, 800);
-      return () => clearTimeout(timer);
-    } else {
-      setFoundUser(null);
-      setShowInvite(false);
-    }
-  }, [phone, callingCode]);
+    const requestId = ++lookupRequestId.current;
+    setFoundUser(null);
+    setShowInvite(false);
+    setLookupError(false);
 
-  const checkPhoneNumber = async () => {
-    setCheckingPhone(true);
-    try {
-      const fullPhone = `+${callingCode.replace('+', '')}${phone.replace(/^0+/, '')}`;
-      const res = await apiService.checkUserByPhone(fullPhone);
-
-      if (res.success && res.data?.found) {
-        setFoundUser(res.data.user);
-        setShowInvite(false);
-      } else {
-        setFoundUser(null);
-        if (phone.length >= 7) setShowInvite(true);
-      }
-    } catch (e) {
-      console.log('Phone check error', e);
-    } finally {
+    if (!isPhoneValid) {
       setCheckingPhone(false);
+      return;
     }
-  };
+
+    const timer = setTimeout(async () => {
+      setCheckingPhone(true);
+      try {
+        const res = await apiService.checkUserByPhone(fullPhone);
+        if (requestId !== lookupRequestId.current) return;
+        if (res.success && res.data?.found) {
+          setFoundUser(res.data.user);
+        } else {
+          setShowInvite(true);
+        }
+      } catch (error) {
+        if (requestId === lookupRequestId.current) {
+          console.error('Phone check error:', error);
+          setLookupError(true);
+        }
+      } finally {
+        if (requestId === lookupRequestId.current) setCheckingPhone(false);
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [fullPhone, isPhoneValid]);
 
   const handleInvite = () => {
-    const fullPhone = `+${callingCode.replace('+', '')}${phone.replace(/^0+/, '')}`;
-    const message = `Salut ! Rejoins-moi sur Meet Me, l'application de messagerie avec traduction instantanée. Télécharge-la ici : https://play.google.com/store/apps/details?id=com.deve.meetapp`;
+    const invitePhone = fullPhone;
+    const message = `Salut ! Rejoins-moi sur Acemia, l'application de messagerie avec traduction instantanée. Télécharge-la ici : https://play.google.com/store/apps/details?id=com.deve.meetapp`;
 
     Alert.alert(
       "Inviter un ami",
       "Comment souhaitez-vous inviter cette personne ?",
       [
-        { text: "SMS", onPress: () => Linking.openURL(`sms:${fullPhone}?body=${encodeURIComponent(message)}`) },
-        { text: "WhatsApp", onPress: () => Linking.openURL(`whatsapp://send?phone=${fullPhone}&text=${encodeURIComponent(message)}`) },
+        { text: "SMS", onPress: () => Linking.openURL(`sms:${invitePhone}?body=${encodeURIComponent(message)}`) },
+        { text: "WhatsApp", onPress: () => Linking.openURL(`whatsapp://send?phone=${invitePhone}&text=${encodeURIComponent(message)}`) },
         { text: "Annuler", style: "cancel" }
       ]
     );
   };
 
   const handleSaveContact = async () => {
-    if (!firstName || !phone) {
-      Alert.alert('Erreur', 'Le prénom et le numéro sont obligatoires');
+    if (!firstName.trim() || !isPhoneValid) {
+      Alert.alert('Erreur', 'Saisissez un prénom et un numéro valide avec son indicatif.');
       return;
     }
 
     setLoading(true);
     try {
-      // 1. Enregistrement dans le répertoire réel du téléphone
+      const phoneCheck = await apiService.checkUserByPhone(fullPhone);
+      if (!phoneCheck.success) throw new Error('Impossible de vérifier ce numéro.');
+      const contactUser = phoneCheck.data?.found ? phoneCheck.data.user : null;
       const { status } = await Contacts.requestPermissionsAsync();
-      const fullPhone = `+${callingCode.replace('+', '')}${phone.replace(/^0+/, '')}`;
-
-      if (status === 'granted') {
-        const contact = {
-          [Contacts.Fields.FirstName]: firstName,
-          [Contacts.Fields.LastName]: lastName,
-          [Contacts.Fields.PhoneNumbers]: [{ label: 'mobile', number: fullPhone }],
-        };
-        await Contacts.addContactAsync(contact as any);
+      if (status !== 'granted') {
+        Alert.alert('Autorisation requise', 'Autorisez l’accès aux contacts pour enregistrer ce numéro dans votre répertoire.');
+        return;
       }
 
-      // 2. Si l'utilisateur a déjà été trouvé lors du check temps réel
-      if (foundUser) {
-        // Ajouter à la liste des contacts internes
-        await apiService.addContact(foundUser.id);
+      await Contacts.addContactAsync({
+        [Contacts.Fields.FirstName]: firstName.trim(),
+        [Contacts.Fields.LastName]: lastName.trim(),
+        [Contacts.Fields.PhoneNumbers]: [{ label: 'mobile', number: fullPhone }],
+      } as any);
+
+      if (contactUser) {
+        await apiService.addContact(contactUser.id);
 
         Alert.alert(
           'Contact ajouté',
-          `${firstName} utilise Meet Me ! Voulez-vous démarrer une discussion ?`,
+          `${firstName.trim()} utilise Acemia ! Voulez-vous démarrer une discussion ?`,
           [
             { text: 'Plus tard', onPress: () => navigation.canGoBack() ? navigation.goBack() : navigation.navigate('ChatList') },
             {
               text: 'Discuter',
               onPress: async () => {
-                const chatRes = await apiService.createChat([foundUser.id]);
+                const chatRes = await apiService.createChat([contactUser.id]);
                 if (chatRes.success) {
                   navigation.navigate('Chat', {
                     chatId: chatRes.data.id,
-                    name: foundUser.full_name,
-                    avatar: foundUser.avatar_url,
-                    peerUserId: foundUser.id
+                    name: contactUser.full_name,
+                    avatar: contactUser.avatar_url,
+                    peerUserId: contactUser.id
                   });
                 }
               }
@@ -134,7 +144,7 @@ export default function AddContactScreen({ navigation }: any) {
       } else {
         Alert.alert(
           'Enregistré',
-          'Le contact a été ajouté à votre téléphone, mais il n\'a pas encore de compte Meet Me.',
+          'Le contact a été ajouté à votre téléphone, mais il n’a pas encore de compte Acemia.',
           [
             { text: "Inviter", onPress: handleInvite },
             { text: 'OK', onPress: () => navigation.canGoBack() ? navigation.goBack() : navigation.navigate('ChatList') }
@@ -143,7 +153,7 @@ export default function AddContactScreen({ navigation }: any) {
       }
     } catch (error) {
       console.error(error);
-      Alert.alert('Erreur', 'Impossible d\'enregistrer le contact.');
+      Alert.alert('Erreur', 'Impossible d’enregistrer le contact.');
     } finally {
       setLoading(false);
     }
@@ -160,14 +170,14 @@ export default function AddContactScreen({ navigation }: any) {
         <Text style={[styles.headerTitle, { color: colors.text.primary }]}>Nouveau contact</Text>
         <TouchableOpacity
           onPress={handleSaveContact}
-          disabled={loading || !firstName || !phone}
+          disabled={loading || !firstName.trim() || !isPhoneValid}
           style={styles.saveButton}
         >
           {loading ? <ActivityIndicator size="small" color={colors.primary} /> : <Text style={[styles.saveButtonText, { color: colors.primary }]}>ENREGISTRER</Text>}
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.form} keyboardShouldPersistTaps="handled">
+      <ScrollView style={styles.form} contentContainerStyle={styles.formContent} keyboardShouldPersistTaps="handled">
         <View style={styles.inputGroup}>
           <Ionicons name="person-outline" size={24} color={colors.primary} style={styles.icon} />
           <View style={styles.inputs}>
@@ -194,43 +204,62 @@ export default function AddContactScreen({ navigation }: any) {
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <TouchableOpacity
                     style={[styles.countryBtn, { borderColor: colors.border }]}
-                    onPress={() => setShowCountryPicker(true)}
+                  onPress={() => setShowCountryPicker(true)}
                 >
-                    <Text style={{ fontSize: 18 }}>{countryFlag}</Text>
-                    <Text style={{ color: colors.text.primary, marginLeft: 5, fontWeight: 'bold' }}>+{callingCode}</Text>
+                  <Text style={{ fontSize: 18 }}>{countryFlag}</Text>
+                  <Text style={{ color: colors.text.primary, marginLeft: 5, fontWeight: 'bold' }}>+{callingCode}</Text>
                 </TouchableOpacity>
 
                 <TextInput
-                    style={[styles.input, { flex: 1, borderBottomColor: colors.primary, color: colors.text.primary }]}
-                    placeholder="Téléphone"
-                    placeholderTextColor={colors.text.disabled}
-                    value={phone}
-                    onChangeText={setPhone}
-                    keyboardType="phone-pad"
+                  style={[styles.input, { flex: 1, borderBottomColor: colors.primary, color: colors.text.primary }]}
+                  placeholder="Téléphone"
+                  placeholderTextColor={colors.text.disabled}
+                  value={phone}
+                  onChangeText={(value) => setPhone(value.replace(/[^\d]/g, ''))}
+                  keyboardType="phone-pad"
+                  maxLength={15}
                 />
 
                 {checkingPhone && <ActivityIndicator size="small" color={colors.primary} style={{ marginLeft: 10 }} />}
                 {foundUser && <CheckCircle size={20} color="#2ecc71" style={{ marginLeft: 10 }} />}
             </View>
 
+            {!!phone && !isPhoneValid && (
+              <Text style={{ color: '#d93025', fontSize: normalize(12), marginTop: 8 }}>
+                Entrez un numéro international valide (7 à 15 chiffres avec l’indicatif).
+              </Text>
+            )}
+
             {foundUser && (
                 <View style={[styles.foundBox, { backgroundColor: '#2ecc7115', borderColor: '#2ecc71' }]}>
-                    <Text style={{ color: '#2ecc71', fontWeight: 'bold', fontSize: 12 }}>Utilisateur Meet Me trouvé !</Text>
+                    <Text style={{ color: '#2ecc71', fontWeight: 'bold', fontSize: 12 }}>Utilisateur Acemia trouvé !</Text>
                     <Text style={{ color: colors.text.primary, fontSize: 11 }}>{foundUser.full_name} (@{foundUser.username})</Text>
                 </View>
+            )}
+
+            {lookupError && !checkingPhone && (
+              <Text style={{ color: '#d93025', fontSize: normalize(12), marginTop: 10 }}>
+                Vérification impossible pour le moment. Vous pouvez réessayer dans un instant.
+              </Text>
+            )}
+
+            {showInvite && !foundUser && !checkingPhone && (
+              <Text style={{ color: colors.text.secondary, fontSize: normalize(12), marginTop: 10 }}>
+                Aucun compte Acemia n’utilise ce numéro.
+              </Text>
             )}
 
             {showInvite && !foundUser && !checkingPhone && (
                 <TouchableOpacity onPress={handleInvite} style={[styles.inviteBtn, { backgroundColor: colors.primary + '15', borderColor: colors.primary }]}>
                     <Share2 size={16} color={colors.primary} />
-                    <Text style={{ color: colors.primary, fontWeight: 'bold', marginLeft: 10, fontSize: 13 }}>Inviter sur Meet Me</Text>
+                    <Text style={{ color: colors.primary, fontWeight: 'bold', marginLeft: 10, fontSize: 13 }}>Inviter sur Acemia</Text>
                 </TouchableOpacity>
             )}
           </View>
         </View>
 
         <Text style={[styles.infoText, { color: colors.text.secondary }]}>
-          Le contact sera enregistré dans votre répertoire téléphonique et synchronisé avec Meet Me.
+          Le numéro sera ajouté au répertoire de votre téléphone. Si cette personne utilise Acemia, elle sera aussi ajoutée à vos contacts dans l’application.
         </Text>
       </ScrollView>
 
@@ -244,7 +273,7 @@ export default function AddContactScreen({ navigation }: any) {
         }}
         onBackdropPress={() => setShowCountryPicker(false)}
         style={{
-          modal: { height: 500, backgroundColor: isDark ? '#1E1E1E' : '#FFFFFF' },
+          modal: { height: Math.min(500, height * 0.75), backgroundColor: isDark ? '#1E1E1E' : '#FFFFFF' },
           countryName: { color: colors.text.primary },
           dialCode: { color: colors.text.secondary },
         }}
@@ -253,54 +282,56 @@ export default function AddContactScreen({ navigation }: any) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1 },
+const createStyles = (normalize: (size: number) => number, width: number) => StyleSheet.create({
+  container: { flex: 1, width: '100%', maxWidth: 720, alignSelf: 'center' as const },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 15,
-    paddingVertical: 15,
+    paddingHorizontal: normalize(width < 360 ? 10 : 15),
+    paddingVertical: normalize(12),
     borderBottomWidth: 0.5,
   },
-  headerTitle: { fontSize: 18, fontWeight: 'bold', flex: 1, marginLeft: 20 },
-  saveButtonText: { fontWeight: 'bold', fontSize: 14 },
-  form: { padding: 20 },
-  inputGroup: { flexDirection: 'row', marginBottom: 30, alignItems: 'flex-start' },
-  icon: { marginRight: 20, marginTop: 10 },
+  headerTitle: { fontSize: normalize(18), fontWeight: 'bold', flex: 1, marginLeft: normalize(width < 360 ? 8 : 20) },
+  saveButtonText: { fontWeight: 'bold', fontSize: normalize(14) },
+  form: { flex: 1, width: '100%' },
+  formContent: { width: '100%', maxWidth: 640, alignSelf: 'center' as const, padding: normalize(width < 360 ? 14 : 20), paddingBottom: normalize(36) },
+  inputGroup: { flexDirection: 'row', marginBottom: normalize(26), alignItems: 'flex-start' },
+  icon: { marginRight: normalize(width < 360 ? 10 : 20), marginTop: normalize(10) },
   inputs: { flex: 1 },
   input: {
-    fontSize: 16,
-    paddingVertical: 12,
+    fontSize: normalize(16),
+    paddingVertical: normalize(12),
     borderBottomWidth: 1,
+    minWidth: 0,
   },
   countryBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
     borderRadius: 10,
-    paddingHorizontal: 10,
-    height: 45,
-    marginRight: 10,
-    marginTop: 5
+    paddingHorizontal: normalize(8),
+    minHeight: normalize(45),
+    marginRight: normalize(8),
+    marginTop: normalize(5)
   },
   foundBox: {
-    marginTop: 10,
-    padding: 10,
-    borderRadius: 10,
+    marginTop: normalize(10),
+    padding: normalize(10),
+    borderRadius: normalize(10),
     borderWidth: 1,
     borderStyle: 'dashed'
   },
   inviteBtn: {
-    marginTop: 15,
-    padding: 12,
-    borderRadius: 10,
+    marginTop: normalize(15),
+    padding: normalize(12),
+    borderRadius: normalize(10),
     borderWidth: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center'
   },
-  infoText: { fontSize: 12, textAlign: 'center', marginTop: 20, paddingHorizontal: 30, lineHeight: 18 },
-  closeButton: { padding: 5 },
-  saveButton: { padding: 5 }
+  infoText: { fontSize: normalize(12), textAlign: 'center', marginTop: normalize(20), paddingHorizontal: normalize(width < 360 ? 10 : 30), lineHeight: normalize(18) },
+  closeButton: { padding: normalize(5) },
+  saveButton: { padding: normalize(5) }
 });

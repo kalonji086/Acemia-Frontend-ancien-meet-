@@ -11,10 +11,10 @@ import {
   Alert,
   SafeAreaView,
   StatusBar,
-  Dimensions,
   KeyboardAvoidingView,
   Platform,
   Linking,
+  useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
@@ -37,13 +37,13 @@ export default function BusinessRegistrationScreen({ navigation }: any) {
   const { colors, normalize, isDark, fontSizeFactor } = useTheme();
   const { t } = useLanguage();
   const insets = useSafeAreaInsets();
+  const { width: screenWidth } = useWindowDimensions();
 
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [uploadingField, setUploadingField] = useState<string | null>(null);
 
-  const screenWidth = Dimensions.get('window').width;
-  const isTablet = screenWidth > 768;
+  const isTablet = screenWidth >= 720;
   const contentWidth = isTablet ? 600 : screenWidth;
 
   const styles = createStyles(colors, normalize, fontSizeFactor, isDark);
@@ -132,7 +132,7 @@ export default function BusinessRegistrationScreen({ navigation }: any) {
 
   const handleSubmit = async () => {
     if (!formData.acceptedTerms) {
-      return Alert.alert('Info', 'Veuillez accepter les conditions de Meet Me');
+      return Alert.alert('Info', 'Veuillez accepter les conditions d’Acemia');
     }
 
     setLoading(true);
@@ -350,7 +350,7 @@ export default function BusinessRegistrationScreen({ navigation }: any) {
       <View style={styles.finalBox}>
         <Ionicons name="shield-checkmark" size={normalize(80)} color={colors.primary} />
         <Text style={[styles.finalText, { color: colors.text.primary, fontSize: normalize(16, fontSizeFactor) }]}>
-          En soumettant ce formulaire, vous acceptez les conditions d'utilisation du Market Meet Me.
+          En soumettant ce formulaire, vous acceptez les conditions d'utilisation du Market Acemia.
           Votre compte sera audité par notre équipe de sécurité sous 24h à 48h.
         </Text>
 
@@ -363,7 +363,7 @@ export default function BusinessRegistrationScreen({ navigation }: any) {
             size={normalize(24)}
             color={formData.acceptedTerms ? colors.primary : colors.text.disabled}
           />
-          <Text style={[styles.termsText, { color: colors.text.secondary, fontSize: normalize(14, fontSizeFactor) }]}>J'accepte les conditions de Meet Me</Text>
+          <Text style={[styles.termsText, { color: colors.text.secondary, fontSize: normalize(14, fontSizeFactor) }]}>J'accepte les conditions d’Acemia</Text>
         </TouchableOpacity>
       </View>
 

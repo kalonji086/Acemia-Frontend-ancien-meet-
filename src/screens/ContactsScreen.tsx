@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -30,9 +30,11 @@ export default function ContactsScreen({ navigation }: any) {
   const [meetMeContacts, setMeetMeContacts] = useState<any[]>([]);
   const [phoneContacts, setPhoneContacts] = useState<any[]>([]);
   const [globalSearchResults, setGlobalSearchResults] = useState<any[]>([]);
+  const [searchError, setSearchError] = useState('');
   const [loading, setLoading] = useState(true);
   const [searching, setSearching] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const searchRequestId = useRef(0);
 
   const getFullUrl = (url: string) => {
     if (!url || url === 'null') return null;
@@ -100,22 +102,30 @@ export default function ContactsScreen({ navigation }: any) {
 
   const handleSearch = async (text: string) => {
     setSearchQuery(text);
-    if (text.length > 2) {
+    const query = text.trim();
+    const requestId = ++searchRequestId.current;
+    if (query.length > 2) {
       setSearching(true);
+      setGlobalSearchResults([]);
+      setSearchError('');
       try {
-        const response = await apiService.searchUsers(text);
-        if (response.success) {
-          const existingIds = new Set(meetMeContacts.map(c => c.id));
-          const results = response.data.filter((u: any) => !existingIds.has(u.id));
-          setGlobalSearchResults(results);
+        const response = await apiService.searchUsers(query);
+        if (requestId === searchRequestId.current) {
+          if (response.success) setGlobalSearchResults(response.data);
+          else setSearchError(response.error || 'La recherche est momentanément indisponible.');
         }
       } catch (e) {
-        console.error(e);
+        if (requestId === searchRequestId.current) {
+          console.error(e);
+          setSearchError('La recherche est momentanément indisponible.');
+        }
       } finally {
-        setSearching(false);
+        if (requestId === searchRequestId.current) setSearching(false);
       }
     } else {
       setGlobalSearchResults([]);
+      setSearchError('');
+      setSearching(false);
     }
   };
 
@@ -138,7 +148,7 @@ export default function ContactsScreen({ navigation }: any) {
   const onInvite = async (name: string) => {
     try {
       await Share.share({
-        message: `Salut ${name}, rejoins-moi sur Meet Me ! C'est une application de messagerie géniale. Télécharge-la ici : https://meet-me.app`,
+        message: `Salut ${name}, rejoins-moi sur Acemia ! C'est une application de messagerie géniale. Télécharge-la ici : https://meet-me.app`,
       });
     } catch (error) {
       console.error('Error sharing:', error);
@@ -193,9 +203,12 @@ export default function ContactsScreen({ navigation }: any) {
 
       <FlatList
         data={[
-          ...globalSearchResults.map(i => ({...i, section: 'global'})),
-          ...meetMeContacts.map(i => ({...i, section: 'meetme'})),
-          ...phoneContacts.map(i => ({...i, section: 'phone'}))
+          ...(searchQuery.trim().length > 0
+            ? globalSearchResults.map(i => ({ ...i, section: 'global' }))
+            : [
+                ...meetMeContacts.map(i => ({ ...i, section: 'meetme' })),
+                ...phoneContacts.map(i => ({ ...i, section: 'phone' })),
+              ])
         ]}
         renderItem={({item}) => {
           if (item.section === 'phone') {
@@ -235,14 +248,19 @@ export default function ContactsScreen({ navigation }: any) {
               <Text style={[styles.actionText, { color: themeColors.text.primary }]}>Ajouter aux contacts téléphone</Text>
             </TouchableOpacity>
 
-            {globalSearchResults.length > 0 && <Text style={[styles.sectionTitle, { color: themeColors.text.secondary, backgroundColor: isDark ? '#222' : '#F8F9FA' }]}>Résultats de recherche globale</Text>}
-            {meetMeContacts.length > 0 && globalSearchResults.length === 0 && <Text style={[styles.sectionTitle, { color: themeColors.text.secondary, backgroundColor: isDark ? '#222' : '#F8F9FA' }]}>Contacts utilisant Meet Me</Text>}
+            {searchQuery.trim().length > 0 && globalSearchResults.length > 0 && <Text style={[styles.sectionTitle, { color: themeColors.text.secondary, backgroundColor: isDark ? '#222' : '#F8F9FA' }]}>Résultats correspondants sur Acemia</Text>}
+            {searchQuery.trim().length === 0 && meetMeContacts.length > 0 && <Text style={[styles.sectionTitle, { color: themeColors.text.secondary, backgroundColor: isDark ? '#222' : '#F8F9FA' }]}>Contacts utilisant Acemia</Text>}
           </>
         }
         ListEmptyComponent={
-          !loading && searchQuery.length > 0 && globalSearchResults.length === 0 ? (
+          !loading && !searching && searchQuery.trim().length > 0 && searchQuery.trim().length <= 2 ? (
             <View style={styles.emptyContainer}>
-              <Text style={[styles.emptyText, { color: themeColors.text.secondary }]}>Aucun utilisateur trouvé sur Meet Me.</Text>
+              <Text style={[styles.emptyText, { color: themeColors.text.secondary }]}>Saisissez au moins 3 caractères pour rechercher un compte.</Text>
+            </View>
+          ) : !loading && !searching && searchQuery.trim().length > 2 && globalSearchResults.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <Text style={[styles.emptyText, { color: themeColors.text.secondary }]}>{searchError || `Aucun compte Acemia ne correspond à « ${searchQuery.trim()} ».`}</Text>
+              {!searchError && <Text style={[styles.emptyText, { color: themeColors.text.secondary, marginTop: 8 }]}>Vérifiez le pseudo, le numéro ou l’adresse email et réessayez.</Text>}
             </View>
           ) : null
         }

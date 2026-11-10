@@ -224,7 +224,7 @@ export default function EmployerRequestScreen({ navigation }: any) {
               <Text style={[styles.reviewValue, { color: colors.text.primary, fontSize: normalize(18) }]}>{formData.industry}</Text>
             </View>
             <Text style={[styles.note, { color: colors.text.secondary, fontSize: normalize(13) }]}>
-              En soumettant cette demande, vous acceptez que l'administration de Meet Me vérifie vos informations professionnelles.
+              En soumettant cette demande, vous acceptez que l'administration d’Acemia vérifie vos informations professionnelles.
             </Text>
           </View>
         );

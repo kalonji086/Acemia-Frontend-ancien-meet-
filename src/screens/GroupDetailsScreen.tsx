@@ -11,28 +11,28 @@ import {
   Alert,
   ActivityIndicator,
   ScrollView,
-  Switch,
   FlatList,
+  useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import apiService from '../services/api.service';
 import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '../context/ThemeContext';
 import { SOCKET_URL } from '../utils/constants';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function GroupDetailsScreen({ navigation, route }: any) {
   const { participants } = route.params;
   const { colors, isDark, normalize } = useTheme();
+  const { width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const styles = createStyles(normalize, width);
 
   const [groupName, setGroupName] = useState('');
   const [description, setDescription] = useState('');
   const [groupImage, setGroupImage] = useState<string | null>(null);
   const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-
-  // Paramètres avancés (Style WhatsApp)
-  const [disappearingMessages, setDisappearingMessages] = useState(false);
-  const [onlyAdminsCanEdit, setOnlyAdminsCanEdit] = useState(false);
 
   const getFullUrl = (url: string) => {
     if (!url || url === 'null') return null;
@@ -96,8 +96,6 @@ export default function GroupDetailsScreen({ navigation, route }: any) {
     try {
       const participantIds = participants.map((p: any) => p.id);
 
-      // On peut passer les paramètres avancés dans la description ou des métadonnées si le backend le supporte
-      // Pour l'instant on reste sur les champs standard
       const res = await apiService.createChat(
         participantIds,
         'group',
@@ -135,7 +133,7 @@ export default function GroupDetailsScreen({ navigation, route }: any) {
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         <View style={[styles.imageSection, { backgroundColor: colors.surface }]}>
           <TouchableOpacity style={styles.imagePicker} onPress={handlePickImage}>
             {groupImage ? (
@@ -179,34 +177,6 @@ export default function GroupDetailsScreen({ navigation, route }: any) {
           />
         </View>
 
-        <View style={[styles.section, { backgroundColor: colors.surface }]}>
-          <View style={styles.settingRow}>
-            <View style={styles.settingInfo}>
-              <Ionicons name="timer-outline" size={22} color={colors.text.secondary} />
-              <Text style={[styles.settingText, { color: colors.text.primary }]}>Messages éphémères</Text>
-            </View>
-            <Switch
-              value={disappearingMessages}
-              onValueChange={setDisappearingMessages}
-              trackColor={{ false: colors.divider, true: colors.primaryLight }}
-              thumbColor={disappearingMessages ? colors.primary : '#f4f3f4'}
-            />
-          </View>
-
-          <View style={[styles.settingRow, { borderTopWidth: 0.5, borderTopColor: colors.divider }]}>
-            <View style={styles.settingInfo}>
-              <Ionicons name="settings-outline" size={22} color={colors.text.secondary} />
-              <Text style={[styles.settingText, { color: colors.text.primary }]}>Seuls les admins modifient l'info</Text>
-            </View>
-            <Switch
-              value={onlyAdminsCanEdit}
-              onValueChange={setOnlyAdminsCanEdit}
-              trackColor={{ false: colors.divider, true: colors.primaryLight }}
-              thumbColor={onlyAdminsCanEdit ? colors.primary : '#f4f3f4'}
-            />
-          </View>
-        </View>
-
         <View style={[styles.section, { backgroundColor: colors.surface, paddingBottom: 15 }]}>
           <Text style={[styles.sectionLabel, { color: colors.primary }]}>PARTICIPANTS : {participants.length}</Text>
           <FlatList
@@ -231,7 +201,7 @@ export default function GroupDetailsScreen({ navigation, route }: any) {
       </ScrollView>
 
       <TouchableOpacity
-        style={[styles.fab, { backgroundColor: colors.primary }, (loading || !groupName.trim()) && { opacity: 0.6 }]}
+        style={[styles.fab, { backgroundColor: colors.primary, bottom: Math.max(normalize(20), insets.bottom + normalize(12)) }, (loading || !groupName.trim()) && { opacity: 0.6 }]}
         onPress={handleCreateGroup}
         disabled={loading || !groupName.trim()}
       >
@@ -241,30 +211,27 @@ export default function GroupDetailsScreen({ navigation, route }: any) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', padding: 15, height: 65 },
-  backButton: { padding: 5 },
-  headerTitle: { fontSize: 18, fontWeight: 'bold', color: '#fff' },
-  headerSubtitle: { fontSize: 13, color: '#fff', opacity: 0.9 },
-  scrollContent: { paddingBottom: 100 },
-  imageSection: { padding: 25, alignItems: 'center', marginBottom: 10 },
-  imagePicker: { position: 'relative', marginBottom: 25 },
-  groupAvatar: { width: 140, height: 140, borderRadius: 70 },
-  placeholderAvatar: { width: 140, height: 140, borderRadius: 70, justifyContent: 'center', alignItems: 'center' },
-  editIcon: { position: 'absolute', bottom: 5, right: 5, width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center', borderWidth: 3, borderColor: '#fff' },
-  inputWrapper: { width: '100%', flexDirection: 'row', alignItems: 'center', borderBottomWidth: 2, borderBottomColor: '#008069' },
-  input: { flex: 1, fontSize: 18, paddingVertical: 10 },
-  inputExtras: { flexDirection: 'row', alignItems: 'center' },
-  charCount: { marginLeft: 10, color: '#999', fontSize: 12 },
-  section: { padding: 20, marginBottom: 10 },
-  sectionLabel: { fontSize: 12, fontWeight: 'bold', marginBottom: 10 },
-  descriptionInput: { fontSize: 16, minHeight: 60, textAlignVertical: 'top' },
-  settingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12 },
-  settingInfo: { flexDirection: 'row', alignItems: 'center' },
-  settingText: { marginLeft: 15, fontSize: 15 },
-  participantItem: { alignItems: 'center', marginRight: 15, width: 60 },
-  participantAvatar: { width: 45, height: 45, borderRadius: 22.5 },
-  participantName: { fontSize: 11, marginTop: 5, textAlign: 'center' },
-  fab: { position: 'absolute', bottom: 30, right: 25, width: 64, height: 64, borderRadius: 32, justifyContent: 'center', alignItems: 'center', elevation: 5 }
+const createStyles = (normalize: (size: number) => number, width: number) => StyleSheet.create({
+  container: { flex: 1, width: '100%', maxWidth: 760, alignSelf: 'center' as const },
+  header: { flexDirection: 'row' as const, alignItems: 'center' as const, paddingHorizontal: normalize(15), paddingVertical: normalize(12), minHeight: normalize(65) },
+  backButton: { padding: normalize(5) },
+  headerTitle: { fontSize: normalize(18), fontWeight: 'bold' as const, color: '#fff' },
+  headerSubtitle: { fontSize: normalize(13), color: '#fff', opacity: 0.9 },
+  scrollContent: { paddingBottom: normalize(100) },
+  imageSection: { padding: normalize(width < 360 ? 16 : 25), alignItems: 'center' as const, marginBottom: normalize(10) },
+  imagePicker: { position: 'relative' as const, marginBottom: normalize(25) },
+  groupAvatar: { width: normalize(width < 360 ? 112 : 140), height: normalize(width < 360 ? 112 : 140), borderRadius: normalize(width < 360 ? 56 : 70) },
+  placeholderAvatar: { width: normalize(width < 360 ? 112 : 140), height: normalize(width < 360 ? 112 : 140), borderRadius: normalize(width < 360 ? 56 : 70), justifyContent: 'center' as const, alignItems: 'center' as const },
+  editIcon: { position: 'absolute' as const, bottom: normalize(5), right: normalize(5), width: normalize(36), height: normalize(36), borderRadius: normalize(18), justifyContent: 'center' as const, alignItems: 'center' as const, borderWidth: 3, borderColor: '#fff' },
+  inputWrapper: { width: '100%', flexDirection: 'row' as const, alignItems: 'center' as const, borderBottomWidth: 2, borderBottomColor: '#008069' },
+  input: { flex: 1, minWidth: 0, fontSize: normalize(width < 360 ? 16 : 18), paddingVertical: normalize(10) },
+  inputExtras: { flexDirection: 'row' as const, alignItems: 'center' as const },
+  charCount: { marginLeft: normalize(10), color: '#999', fontSize: normalize(12) },
+  section: { padding: normalize(width < 360 ? 14 : 20), marginBottom: normalize(10) },
+  sectionLabel: { fontSize: normalize(12), fontWeight: 'bold' as const, marginBottom: normalize(10) },
+  descriptionInput: { fontSize: normalize(16), minHeight: normalize(60), textAlignVertical: 'top' as const },
+  participantItem: { alignItems: 'center' as const, marginRight: normalize(15), width: normalize(60) },
+  participantAvatar: { width: normalize(45), height: normalize(45), borderRadius: normalize(22.5) },
+  participantName: { fontSize: normalize(11), marginTop: normalize(5), textAlign: 'center' as const },
+  fab: { position: 'absolute' as const, bottom: normalize(30), right: normalize(25), width: normalize(64), height: normalize(64), borderRadius: normalize(32), justifyContent: 'center' as const, alignItems: 'center' as const, elevation: 5 }
 });

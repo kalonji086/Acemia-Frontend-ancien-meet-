@@ -1,17 +1,14 @@
 import React, { useEffect } from 'react';
-import { View, StyleSheet, Text, StatusBar } from 'react-native';
+import { View, StyleSheet, Image, StatusBar } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
-  withRepeat,
-  withSequence,
   withTiming,
   Easing,
 } from 'react-native-reanimated';
 import { useNavigation, CommonActions } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { colors, normalize } from '../styles/theme';
-import { MessageSquare, Heart } from 'lucide-react-native';
+import { normalize } from '../styles/theme';
 import apiService from '../services/api.service';
 import { APP_VERSION } from '../utils/constants';
 
@@ -19,14 +16,13 @@ const SplashScreen = () => {
   const navigation = useNavigation();
   const opacity = useSharedValue(0);
   const scale = useSharedValue(0.8);
-  const dot1 = useSharedValue(0);
-  const dot2 = useSharedValue(0);
-  const dot3 = useSharedValue(0);
+  const progress = useSharedValue(0);
   const hasNavigated = React.useRef(false);
 
   const safeNavigate = (routeName: string, params?: any) => {
     if (hasNavigated.current) return;
     hasNavigated.current = true;
+    progress.value = withTiming(1, { duration: 300 });
 
     try {
       navigation.dispatch(CommonActions.reset({
@@ -57,22 +53,10 @@ const SplashScreen = () => {
     if (hasNavigated.current) return;
 
     try {
-      try {
-        // Augmentation des timeouts pour laisser le temps au serveur Render de se "réveiller"
-        const response = await withTimeout(
-          fetch('https://www.google.com', { method: 'HEAD' }),
-          3000,
-          'network-check'
-        );
+      // Skip network check entirely to avoid blocking on slow networks
+      // The API calls will fail gracefully if there's no network
 
-        if (!response.ok) {
-          console.log('No internet connection');
-        }
-      } catch (netErr) {
-        console.log('Network check failed, continuing startup:', netErr);
-      }
-
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      await new Promise((resolve) => setTimeout(resolve, 300));
 
       const token = await AsyncStorage.getItem('auth_token');
       const userString = await AsyncStorage.getItem('user');
@@ -87,7 +71,7 @@ const SplashScreen = () => {
       if (!token || !userObj) {
         // Même si non connecté, on vérifie si une acceptation légale est forcée pour les nouveaux utilisateurs
         try {
-          const legalRes = await withTimeout(apiService.getLegalDocs(), 2500, 'legal-check-guest') as any;
+          const legalRes = await withTimeout(apiService.getLegalDocs(), 4000, 'legal-check-guest') as any;
           if (legalRes && legalRes.success) {
             const docs = legalRes.data || [];
             // Pour les invités, on vérifie par rapport à une version stockée localement
@@ -99,17 +83,19 @@ const SplashScreen = () => {
               return;
             }
           }
-        } catch (e) { console.log('Guest legal check failed'); }
+        } catch (e) {
+          console.log('Guest legal check failed, continuing to login');
+        }
 
         safeNavigate('Login');
         return;
       }
 
       try {
-        // Temps plus long pour le check update (Render wake up)
+        // Check update avec timeout plus long
         const updateRes = (await withTimeout(
           apiService.checkUpdate(APP_VERSION, userObj?.id),
-          5000,
+          8000,
           'update-check'
         )) as any;
 
@@ -124,12 +110,13 @@ const SplashScreen = () => {
         }
       } catch (updateErr) {
         console.error('Update check failed:', updateErr);
+        // Continue even if update check fails
       }
 
       let checkRes: any;
       try {
-        // Temps plus long pour le check user (Render wake up)
-        checkRes = await withTimeout(apiService.getMe(), 6000, 'user-check') as any;
+        // Check user avec timeout plus long pour Render
+        checkRes = await withTimeout(apiService.getMe(), 10000, 'user-check') as any;
       } catch (err) {
         console.error('User check failed:', err);
         // En cas d'erreur de connexion, on tente quand même d'aller sur l'écran principal
@@ -153,7 +140,7 @@ const SplashScreen = () => {
       const user = checkRes?.data || userObj;
 
       try {
-        const legalRes = await withTimeout(apiService.getLegalDocs(), 2500, 'legal-check') as any;
+        const legalRes = await withTimeout(apiService.getLegalDocs(), 4000, 'legal-check') as any;
 
         if (legalRes && legalRes.success) {
           const docs = legalRes.data || [];
@@ -171,6 +158,7 @@ const SplashScreen = () => {
         }
       } catch (legalErr) {
         console.error('Legal check failed:', legalErr);
+        // Continue even if legal check fails
       }
 
       const lastLogin = user?.last_login_at ? new Date(user.last_login_at).getTime() : Date.now();
@@ -206,13 +194,7 @@ const SplashScreen = () => {
     opacity.value = withTiming(1, { duration: 1000 });
     scale.value = withTiming(1, { duration: 1000, easing: Easing.out(Easing.back(1.5)) });
 
-    const dotAnim = (val: any, delay: number) => {
-      val.value = withSequence(
-        withTiming(0, { duration: delay }),
-        withRepeat(withSequence(withTiming(1, { duration: 400 }), withTiming(0, { duration: 400 })), -1, true)
-      );
-    };
-    dotAnim(dot1, 0); dotAnim(dot2, 200); dotAnim(dot3, 400);
+    progress.value = withTiming(0.9, { duration: 8000, easing: Easing.out(Easing.quad) });
 
     const timer = setTimeout(() => {
       try {
@@ -223,16 +205,18 @@ const SplashScreen = () => {
       }
     }, 1500);
 
+    // Fallback plus court pour les vrais appareils - 8 secondes max
     const fallbackTimer = setTimeout(() => {
       console.log('Splash fallback triggered');
       safeNavigate('Login');
-    }, 12000); // 12 secondes de sécurité totale
+    }, 8000);
 
     return () => {
       clearTimeout(timer);
       clearTimeout(fallbackTimer);
       opacity.value = 0;
       scale.value = 0.8;
+      progress.value = 0;
     };
   }, []);
 
@@ -241,39 +225,34 @@ const SplashScreen = () => {
     transform: [{ scale: scale.value }],
   }));
 
-  const getDotStyle = (val: any) => useAnimatedStyle(() => ({
-    opacity: val.value,
-    transform: [{ translateY: -val.value * 10 }],
+  const progressStyle = useAnimatedStyle(() => ({
+    width: `${progress.value * 100}%`,
   }));
 
   return (
     <View style={styles.container}>
       <StatusBar hidden />
       <Animated.View style={[styles.logoContainer, animatedLogoStyle]}>
-        <View style={styles.iconStack}>
-          <MessageSquare size={normalize(80)} color="#fff" style={styles.backIcon} />
-          <Heart size={normalize(35)} color={colors.secondary} style={styles.frontIcon} />
-        </View>
-        <Text style={styles.appName}>Meet</Text>
+        <Image
+          source={require('../../assets/AcemiaLogo.png')}
+          style={styles.logoImage}
+          resizeMode="contain"
+          accessibilityLabel="Acemia"
+        />
       </Animated.View>
-      <View style={styles.loader}>
-        <Animated.View style={[styles.dot, getDotStyle(dot1)]} />
-        <Animated.View style={[styles.dot, getDotStyle(dot2)]} />
-        <Animated.View style={[styles.dot, getDotStyle(dot3)]} />
+      <View style={styles.progressTrack} accessibilityRole="progressbar">
+        <Animated.View style={[styles.progressFill, progressStyle]} />
       </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center' },
+  container: { flex: 1, backgroundColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center' },
   logoContainer: { alignItems: 'center' },
-  iconStack: { position: 'relative', width: normalize(80), height: normalize(80), justifyContent: 'center', alignItems: 'center', marginBottom: 20 },
-  backIcon: { opacity: 0.9 },
-  frontIcon: { position: 'absolute', top: normalize(20) },
-  appName: { fontSize: normalize(42), fontWeight: 'bold', color: '#FFFFFF', letterSpacing: 3, textShadowColor: 'rgba(0, 0, 0, 0.2)', textShadowOffset: { width: 1, height: 1 }, textShadowRadius: 5 },
-  loader: { flexDirection: 'row', marginTop: 50 },
-  dot: { width: normalize(10), height: normalize(10), borderRadius: 5, backgroundColor: '#FFFFFF', marginHorizontal: 5 },
+  logoImage: { width: normalize(250), height: normalize(250) },
+  progressTrack: { width: normalize(220), height: 5, marginTop: 20, overflow: 'hidden', borderRadius: 3, backgroundColor: '#E8EAF0' },
+  progressFill: { height: '100%', borderRadius: 3, backgroundColor: '#673AB7' },
 });
 
 export default SplashScreen;

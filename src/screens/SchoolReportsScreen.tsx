@@ -152,7 +152,7 @@ export default function SchoolReportsScreen({ navigation }: any) {
               </table>
               ${(exportResponse.data || []).length > 50 ? `<p>... et ${(exportResponse.data || []).length - 50} autres enregistrements</p>` : ''}
               <div class="footer">
-                <p>© ${new Date().getFullYear()} Meet Me - Module École</p>
+                <p>© ${new Date().getFullYear()} Acemia - Module École</p>
               </div>
             </body>
           </html>

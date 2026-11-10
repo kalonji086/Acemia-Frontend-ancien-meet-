@@ -81,16 +81,21 @@ export default function AppNavigator() {
   };
 
   useEffect(() => {
-    // S'assurer que le socket est initialisé dès le démarrage si on a un token
+    // Le socket sera initialisé uniquement quand l'utilisateur sera authentifié
+    // et sur l'écran principal (ChatList), pas au démarrage pour éviter les blocages
     const initSocketEarly = async () => {
-      const token = await AsyncStorage.getItem('auth_token');
-      if (token) {
-        await socketService.initialize();
-        await socketService.connect();
-        await socketService.authenticate();
+      try {
+        const token = await AsyncStorage.getItem('auth_token');
+        // On ne connecte le socket que si on a un token ET qu'on est actif
+        // L'initialisation réelle se fera dans MainScreen
+        if (token) {
+          console.log('AppNavigator: Token found, socket will be initialized when needed');
+        }
+      } catch (error) {
+        console.error('AppNavigator: Error checking token:', error);
       }
     };
-    initSocketEarly();
+    initSocketEarly().catch(err => console.error('Socket init error:', err));
 
     const onLegalUpdate = async (data: any) => {
       console.log('AppNavigator: Received real-time legal_update', data);

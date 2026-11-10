@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, Dimensions } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 
 interface SimpleChartProps {
@@ -14,8 +14,6 @@ export default function SimpleChart({ title, data, labels, color, height = 150 }
   const { colors, normalize } = useTheme();
   const chartColor = color || colors.primary;
   const maxValue = Math.max(...data, 1);
-  const chartWidth = Dimensions.get('window').width - 40;
-
   return (
     <View style={[styles.container, { backgroundColor: colors.surface, borderColor: colors.border }]}>
       <Text style={[styles.title, { color: colors.text.primary }]}>{title}</Text>

@@ -10,7 +10,6 @@ import {
   ActivityIndicator,
   Alert,
   Image,
-  Dimensions,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
@@ -18,7 +17,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../styles/theme';
 import apiService from '../services/api.service';
 
-const { width } = Dimensions.get('window');
 const BACKGROUND_COLORS = ['#673AB7', '#9162e4', '#74676a', '#6e257e', '#c1a03f', '#d3396d', '#1d62ce'];
 
 export default function CreateStatusScreen({ navigation, route }: any) {

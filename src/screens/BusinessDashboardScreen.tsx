@@ -8,7 +8,6 @@ import {
   SafeAreaView,
   StatusBar,
   ActivityIndicator,
-  Dimensions,
   Image,
   TextInput,
   Alert,
@@ -28,8 +27,6 @@ import { SOCKET_URL } from '../utils/constants';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
-
-const { width } = Dimensions.get('window');
 
 export default function BusinessDashboardScreen({ navigation }: any) {
   const { colors, normalize, isDark, fontSizeFactor } = useTheme();

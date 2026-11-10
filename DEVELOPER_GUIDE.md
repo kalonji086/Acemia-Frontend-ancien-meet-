@@ -1,4 +1,4 @@
-# Guide du Développeur - Meet Me Frontend
+# Guide du Développeur - Acemia Frontend
 
 ## 🚀 Démarrage Rapide
 

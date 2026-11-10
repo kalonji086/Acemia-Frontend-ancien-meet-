@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, Platform, useWindowDimensions, Image } from 'react-native';
+import { View, StyleSheet, Platform, useWindowDimensions } from 'react-native';
 
 interface WebResponsiveWrapperProps {
   children: React.ReactNode;
@@ -13,23 +13,16 @@ const WebResponsiveWrapper: React.FC<WebResponsiveWrapperProps> = ({ children })
   const { width } = useWindowDimensions();
   const isWeb = Platform.OS === 'web';
 
-  // Sur Desktop (largeur > 1024), on limite la largeur à 1024px
-  // Sur Tablette (largeur > 768), on limite à 768px
-  // Sinon plein écran
-  const maxContainerWidth = width > 1024 ? 1024 : width > 768 ? 768 : '100%';
+  const maxContainerWidth = Math.min(width, 1440);
+
+  // Sur mobile, on retourne directement les children sans wrapper pour optimiser les performances
+  if (!isWeb) {
+    return <>{children}</>;
+  }
 
   return (
     <View style={styles.outerContainer}>
-      {/* Fond Cyber-Design animé pour le Web */}
-      <View style={StyleSheet.absoluteFill}>
-        <Image
-          source={{ uri: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1924&auto=format&fit=crop' }}
-          style={{ width: '100%', height: '100%', opacity: 0.15 }}
-          blurRadius={5}
-        />
-        {/* Vous pourriez ajouter une vidéo ici plus tard si nécessaire */}
-      </View>
-      <View style={[styles.innerContainer, { maxWidth: maxContainerWidth as any }]}>
+      <View style={[styles.innerContainer, { maxWidth: maxContainerWidth }]}>
         {children}
       </View>
     </View>

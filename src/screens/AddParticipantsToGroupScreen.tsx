@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -6,31 +6,33 @@ import {
   TouchableOpacity,
   StyleSheet,
   Image,
-  SafeAreaView,
   StatusBar,
   ActivityIndicator,
   TextInput,
   Alert,
   SectionList,
+  useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import apiService from '../services/api.service';
 import { SOCKET_URL } from '../utils/constants';
 import { useTheme } from '../context/ThemeContext';
-import { useLanguage } from '../context/LanguageContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function AddParticipantsToGroupScreen({ navigation, route }: any) {
   const { chatId, existingParticipants = [] } = route.params;
   const { colors, isDark, normalize } = useTheme();
-  const { t } = useLanguage();
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+  const styles = createStyles(normalize, width);
 
   const [contacts, setContacts] = useState<any[]>([]);
   const [selectedParticipants, setSelectedParticipants] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchError, setSearchError] = useState('');
+  const searchRequestId = useRef(0);
 
   const getFullUrl = (url: string) => {
     if (!url || url === 'null') return null;
@@ -40,26 +42,40 @@ export default function AddParticipantsToGroupScreen({ navigation, route }: any)
     return `${baseUrl}${path}`;
   };
 
-  useEffect(() => {
-    fetchContacts();
-  }, []);
-
   const fetchContacts = async (query = '') => {
+    const requestId = ++searchRequestId.current;
+    setLoading(true);
+    setSearchError('');
     try {
       const response = await apiService.searchUsers(query, 50, true); // true = onlyContacts
+      if (requestId !== searchRequestId.current) return;
       if (response.success) {
         // Filtrer les contacts déjà présents dans le groupe
         const filtered = response.data.filter((c: any) => !existingParticipants.includes(c.id));
         setContacts(filtered);
+      } else {
+        setContacts([]);
+        setSearchError(response.error || 'Impossible de charger les contacts.');
       }
-    } catch (e) { console.error(e); }
-    finally { setLoading(false); }
+    } catch (error) {
+      if (requestId === searchRequestId.current) {
+        console.error(error);
+        setContacts([]);
+        setSearchError('Impossible de charger les contacts.');
+      }
+    } finally {
+      if (requestId === searchRequestId.current) setLoading(false);
+    }
   };
 
   useEffect(() => {
+    searchRequestId.current += 1;
+    setLoading(true);
+    setContacts([]);
+    setSearchError('');
     const timer = setTimeout(() => {
       fetchContacts(searchQuery);
-    }, 500);
+    }, 300);
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
@@ -94,12 +110,8 @@ export default function AddParticipantsToGroupScreen({ navigation, route }: any)
   };
 
   const memoizedSections = useMemo(() => {
-    const filtered = contacts.filter(c =>
-      c.full_name.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-
     const groups: { [key: string]: any[] } = {};
-    filtered.forEach(contact => {
+    contacts.forEach(contact => {
       const firstLetter = contact.full_name.charAt(0).toUpperCase();
       if (!groups[firstLetter]) groups[firstLetter] = [];
       groups[firstLetter].push(contact);
@@ -111,7 +123,7 @@ export default function AddParticipantsToGroupScreen({ navigation, route }: any)
         title: letter,
         data: groups[letter].sort((a, b) => a.full_name.localeCompare(b.full_name))
       }));
-  }, [contacts, searchQuery]);
+  }, [contacts]);
 
   const renderContact = ({ item }: any) => {
     const isSelected = selectedParticipants.some(p => p.id === item.id);
@@ -215,12 +227,17 @@ export default function AddParticipantsToGroupScreen({ navigation, route }: any)
           )}
           contentContainerStyle={styles.listContent}
           stickySectionHeadersEnabled={true}
+          ListEmptyComponent={
+            <Text style={[styles.emptyText, { color: colors.text.secondary }]}>
+              {searchError || (searchQuery.trim() ? 'Aucun contact correspondant.' : 'Aucun contact disponible à ajouter.')}
+            </Text>
+          }
         />
       )}
 
       {selectedParticipants.length > 0 && (
         <TouchableOpacity
-          style={[styles.fab, { backgroundColor: colors.primary }]}
+          style={[styles.fab, { backgroundColor: colors.primary, bottom: Math.max(normalize(20), insets.bottom + normalize(12)) }]}
           onPress={handleAdd}
           disabled={saving}
           activeOpacity={0.8}
@@ -232,31 +249,32 @@ export default function AddParticipantsToGroupScreen({ navigation, route }: any)
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', padding: 15, height: 65 },
-  backButton: { padding: 5 },
-  headerTitleContainer: { flex: 1, marginLeft: 20 },
-  headerTitle: { fontSize: 18, fontWeight: 'bold', color: '#fff' },
-  headerSubtitle: { fontSize: 13, color: '#fff', opacity: 0.9 },
-  searchBox: { paddingHorizontal: 20, paddingVertical: 10, borderBottomWidth: 1 },
-  searchInput: { fontSize: 16, height: 40 },
-  selectedListContainer: { paddingVertical: 12, borderBottomWidth: 1 },
-  selectedItem: { width: 70, alignItems: 'center', marginRight: 10 },
-  selectedAvatarWrapper: { position: 'relative' },
-  selectedAvatar: { width: 50, height: 50, borderRadius: 25 },
-  removeChip: { position: 'absolute', bottom: 0, right: 0, backgroundColor: '#666', width: 20, height: 20, borderRadius: 10, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: '#fff' },
-  selectedName: { fontSize: 11, marginTop: 5, textAlign: 'center' },
-  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  listContent: { paddingBottom: 100 },
-  sectionHeader: { paddingHorizontal: 20, paddingVertical: 5 },
-  sectionTitle: { fontSize: 13, fontWeight: 'bold' },
-  userItem: { flexDirection: 'row', paddingHorizontal: 20, paddingVertical: 12, alignItems: 'center' },
-  avatarContainer: { position: 'relative' },
-  avatar: { width: 50, height: 50, borderRadius: 25 },
-  checkIcon: { position: 'absolute', bottom: 0, right: 0, width: 20, height: 20, borderRadius: 10, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: '#fff' },
-  userInfo: { flex: 1, marginLeft: 15, borderBottomWidth: 0.5, borderBottomColor: 'rgba(0,0,0,0.05)', paddingBottom: 10 },
-  userName: { fontSize: 16, fontWeight: '600' },
-  userStatus: { fontSize: 14, marginTop: 2 },
-  fab: { position: 'absolute', bottom: 30, right: 25, width: 60, height: 60, borderRadius: 30, justifyContent: 'center', alignItems: 'center', elevation: 5, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 3.84 },
+const createStyles = (normalize: (size: number) => number, width: number) => StyleSheet.create({
+  container: { flex: 1, width: '100%', maxWidth: 760, alignSelf: 'center' as const },
+  header: { flexDirection: 'row' as const, alignItems: 'center' as const, paddingHorizontal: normalize(15), paddingVertical: normalize(12), minHeight: normalize(65) },
+  backButton: { padding: normalize(5) },
+  headerTitleContainer: { flex: 1, marginLeft: normalize(20) },
+  headerTitle: { fontSize: normalize(18), fontWeight: 'bold' as const, color: '#fff' },
+  headerSubtitle: { fontSize: normalize(13), color: '#fff', opacity: 0.9 },
+  searchBox: { paddingHorizontal: normalize(width < 360 ? 12 : 20), paddingVertical: normalize(10), borderBottomWidth: 1 },
+  searchInput: { fontSize: normalize(16), minHeight: normalize(40) },
+  selectedListContainer: { paddingVertical: normalize(12), borderBottomWidth: 1 },
+  selectedItem: { width: normalize(70), alignItems: 'center' as const, marginRight: normalize(10) },
+  selectedAvatarWrapper: { position: 'relative' as const },
+  selectedAvatar: { width: normalize(50), height: normalize(50), borderRadius: normalize(25) },
+  removeChip: { position: 'absolute' as const, bottom: 0, right: 0, backgroundColor: '#666', width: normalize(20), height: normalize(20), borderRadius: normalize(10), justifyContent: 'center' as const, alignItems: 'center' as const, borderWidth: 2, borderColor: '#fff' },
+  selectedName: { fontSize: normalize(11), marginTop: normalize(5), textAlign: 'center' as const },
+  loadingContainer: { flex: 1, justifyContent: 'center' as const, alignItems: 'center' as const },
+  listContent: { paddingBottom: normalize(100) },
+  sectionHeader: { paddingHorizontal: normalize(20), paddingVertical: normalize(5) },
+  sectionTitle: { fontSize: normalize(13), fontWeight: 'bold' as const },
+  userItem: { flexDirection: 'row' as const, paddingHorizontal: normalize(width < 360 ? 12 : 20), paddingVertical: normalize(12), alignItems: 'center' as const },
+  avatarContainer: { position: 'relative' as const },
+  avatar: { width: normalize(50), height: normalize(50), borderRadius: normalize(25) },
+  checkIcon: { position: 'absolute' as const, bottom: 0, right: 0, width: normalize(20), height: normalize(20), borderRadius: normalize(10), justifyContent: 'center' as const, alignItems: 'center' as const, borderWidth: 2, borderColor: '#fff' },
+  userInfo: { flex: 1, marginLeft: normalize(15), borderBottomWidth: 0.5, borderBottomColor: 'rgba(0,0,0,0.05)', paddingBottom: normalize(10) },
+  userName: { fontSize: normalize(16), fontWeight: '600' as const },
+  userStatus: { fontSize: normalize(14), marginTop: normalize(2) },
+  emptyText: { padding: normalize(28), textAlign: 'center' as const, fontSize: normalize(14) },
+  fab: { position: 'absolute' as const, bottom: normalize(25), right: normalize(20), width: normalize(60), height: normalize(60), borderRadius: normalize(30), justifyContent: 'center' as const, alignItems: 'center' as const, elevation: 5, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 3.84 },
 });

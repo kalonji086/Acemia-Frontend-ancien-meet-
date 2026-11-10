@@ -127,7 +127,7 @@ Date: ${deviceInfo.timestamp}
     if (isAvailable) {
       await MailComposer.composeAsync({
         recipients: ['support@meetme.app'],
-        subject: `[Meet Me Feedback] ${title}`,
+        subject: `[Acemia Feedback] ${title}`,
         body: emailBody,
       });
       

@@ -1,4 +1,4 @@
-# Améliorations de Stabilité - Meet Me Frontend
+# Améliorations de Stabilité - Acemia Frontend
 
 ## Résumé des Corrections Implémentées
 

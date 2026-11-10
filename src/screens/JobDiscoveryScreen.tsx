@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import type { LucideIcon } from 'lucide-react-native';
 import {
   View, Text, StyleSheet, SafeAreaView, FlatList,
   TouchableOpacity, Image, TextInput, ActivityIndicator, Alert,
@@ -9,19 +10,18 @@ import { useTheme } from '../context/ThemeContext';
 import apiService from '../services/api.service';
 import { SOCKET_URL } from '../utils/constants';
 
-const CATEGORIES = [
-  { id: 'all', name: 'Tous', icon: <LayoutGrid size={16} /> },
-  { id: 'tech', name: 'Tech', icon: <Monitor size={16} /> },
-  { id: 'sales', name: 'Vente', icon: <Zap size={16} /> },
-  { id: 'health', name: 'Santé', icon: <HeartPulse size={16} /> },
-  { id: 'manual', name: 'Artisan', icon: <Hammer size={16} /> },
+const CATEGORIES: { id: string; name: string; icon: LucideIcon }[] = [
+  { id: 'all', name: 'Tous', icon: LayoutGrid },
+  { id: 'tech', name: 'Tech', icon: Monitor },
+  { id: 'sales', name: 'Vente', icon: Zap },
+  { id: 'health', name: 'Santé', icon: HeartPulse },
+  { id: 'manual', name: 'Artisan', icon: Hammer },
 ];
 
 export default function JobDiscoveryScreen({ navigation }: any) {
   const { colors, normalize, isDark } = useTheme();
   const { width: windowWidth } = useWindowDimensions();
-  const isTablet = windowWidth > 768;
-  const numColumns = isTablet ? 2 : 1;
+  const numColumns = windowWidth >= 1200 ? 3 : windowWidth >= 720 ? 2 : 1;
 
   const [loading, setLoading] = useState(true);
   const [jobs, setJobs] = useState<any[]>([]);
@@ -65,7 +65,7 @@ export default function JobDiscoveryScreen({ navigation }: any) {
         style={[
           styles.jobCard,
           { backgroundColor: colors.surface, borderColor: colors.border },
-          isTablet && { width: (windowWidth - normalize(60)) / 2, marginHorizontal: 5 }
+          { width: numColumns === 1 ? '100%' : numColumns === 2 ? '48%' : '31.5%' }
         ]}
         onPress={() => navigation.navigate('JobDetails', { jobId: item.id })}
       >
@@ -108,7 +108,7 @@ export default function JobDiscoveryScreen({ navigation }: any) {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={[styles.header, { backgroundColor: colors.surface, paddingHorizontal: isTablet ? '5%' : 20 }]}>
+      <View style={[styles.header, { backgroundColor: colors.surface, paddingHorizontal: windowWidth >= 1200 ? 48 : 20 }]}>
         <View style={styles.headerTop}>
            <TouchableOpacity onPress={() => navigation.goBack()}>
              <ArrowLeft size={24} color={colors.text.primary} />
@@ -139,7 +139,7 @@ export default function JobDiscoveryScreen({ navigation }: any) {
               ]}
               onPress={() => setActiveCategory(cat.id)}
             >
-              {React.cloneElement(cat.icon as React.ReactElement, { color: activeCategory === cat.id ? '#fff' : colors.text.secondary })}
+              <cat.icon size={16} color={activeCategory === cat.id ? '#fff' : colors.text.secondary} />
               <Text style={[styles.categoryText, { color: activeCategory === cat.id ? '#fff' : colors.text.secondary, fontSize: normalize(13) }]}>{cat.name}</Text>
             </TouchableOpacity>
           ))}
@@ -152,12 +152,13 @@ export default function JobDiscoveryScreen({ navigation }: any) {
         </View>
       ) : (
         <FlatList
-          key={isTablet ? 'tablet' : 'phone'}
+          key={`jobs-${numColumns}`}
           data={filteredJobs}
           renderItem={renderJobItem}
           keyExtractor={item => item.id}
-          contentContainerStyle={[styles.listContent, { paddingHorizontal: isTablet ? '5%' : 20 }]}
+          contentContainerStyle={styles.listContent}
           numColumns={numColumns}
+          columnWrapperStyle={numColumns > 1 ? styles.jobRow : undefined}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
@@ -188,7 +189,8 @@ const styles = StyleSheet.create({
   categoriesScroll: { flexDirection: 'row' },
   categoryBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 15, paddingVertical: 8, borderRadius: 20, borderWidth: 1, marginRight: 10, height: 40 },
   categoryText: { marginLeft: 8, fontWeight: '600' },
-  listContent: { paddingVertical: 20 },
+  listContent: { paddingVertical: 20, paddingHorizontal: 20 },
+  jobRow: { justifyContent: 'space-between' },
   jobCard: {
     padding: 20,
     borderRadius: 24,
@@ -230,4 +232,3 @@ const styles = StyleSheet.create({
   timePosted: { fontWeight: '600' },
   emptyContainer: { alignItems: 'center', marginTop: 100 }
 });
-

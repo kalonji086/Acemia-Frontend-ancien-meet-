@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -11,12 +11,12 @@ import {
   Image,
   Alert,
   ActivityIndicator,
-  Dimensions,
   Modal,
   FlatList,
+  useWindowDimensions,
 } from 'react-native';
 import {
-  ArrowLeft, MessageSquare, Heart, Clock, AtSign,
+  ArrowLeft, Clock, AtSign,
   Mail, Lock, EyeOff, Eye, User as UserIcon,
   Globe, ChevronDown, MapPin, Camera, Plus, Square as SquareIcon,
   CheckCircle as CheckCircleIcon, Check, Landmark, Map as MapIcon, Calendar as CalendarIcon
@@ -32,19 +32,16 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { APP_VERSION } from '../utils/constants';
 import { RDC_PROVINCES, GENDERS } from '../utils/locations';
 
-const { width } = Dimensions.get('window');
-
-const createStyles = (colors: any, normalize: any, isDark: boolean) => StyleSheet.create({
+const createStyles = (colors: any, normalize: any, isDark: boolean, width: number) => StyleSheet.create({
   container: { flex: 1 },
-  scrollContainer: { flexGrow: 1, padding: normalize(20) },
-  backButton: { marginBottom: 10, alignSelf: 'flex-start' },
-  header: { alignItems: 'center', marginBottom: 20 },
-  logoStack: { width: normalize(60), height: normalize(60), borderRadius: normalize(30), justifyContent: 'center', alignItems: 'center', marginBottom: 15, elevation: 3 },
-  heartIcon: { position: 'absolute', bottom: normalize(15) },
-  title: { fontSize: normalize(22, 1), fontWeight: 'bold', marginBottom: 5 },
+  scrollContainer: { flexGrow: 1, width: '100%', alignItems: 'center', paddingHorizontal: width < 360 ? 14 : 22, paddingVertical: 18 },
+  backButton: { width: '100%', maxWidth: 620, marginBottom: 10, alignSelf: 'center', paddingVertical: 6, paddingHorizontal: 2 },
+  header: { width: '100%', maxWidth: 620, alignItems: 'center', marginBottom: 18 },
+  logoImage: { width: normalize(170), height: normalize(128), marginBottom: 8 },
+  title: { fontSize: normalize(23, 1), fontWeight: '800', marginBottom: 5, letterSpacing: -0.3 },
   subtitle: { fontSize: normalize(13), textAlign: 'center' },
-  stepIndicatorContainer: { flexDirection: 'row', marginTop: 15 },
-  stepDot: { width: 10, height: 10, borderRadius: 5, marginHorizontal: 5 },
+  stepIndicatorContainer: { flexDirection: 'row', marginTop: 16 },
+  stepDot: { width: 42, height: 5, borderRadius: 3, marginHorizontal: 3 },
   blockedBanner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 10, borderRadius: 12, marginTop: 10, borderWidth: 1, borderColor: 'rgba(255,59,48,0.2)' },
   blockedText: { fontSize: normalize(12), fontWeight: 'bold', marginLeft: 8 },
   animateStep: { width: '100%' },
@@ -54,33 +51,40 @@ const createStyles = (colors: any, normalize: any, isDark: boolean) => StyleShee
   placeholderImage: { width: normalize(110), height: normalize(110), borderRadius: normalize(55), justifyContent: 'center', alignItems: 'center' },
   imageNote: { fontSize: normalize(11), textAlign: 'center', marginTop: 10, paddingHorizontal: 20 },
   addIcon: { position: 'absolute', bottom: 5, right: 5, width: 30, height: 30, borderRadius: 15, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: isDark ? colors.background : '#fff' },
-  formContainer: { width: '100%', paddingHorizontal: width > 600 ? '15%' : 0 },
-  inputWrapper: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 15, borderRadius: 12, marginBottom: 15, height: normalize(50), borderWidth: 1 },
+  formContainer: { width: '100%', maxWidth: 620, alignSelf: 'center', padding: width < 360 ? 16 : 24, backgroundColor: colors.surface, borderRadius: 24, borderWidth: 1, borderColor: colors.border, shadowColor: '#17152B', shadowOpacity: isDark ? 0 : 0.07, shadowRadius: 22, shadowOffset: { width: 0, height: 8 }, elevation: isDark ? 0 : 2 },
+  wideFormContainer: { padding: 30 },
+  formHeading: { fontSize: normalize(19), fontWeight: '800', letterSpacing: -0.3 },
+  formDescription: { fontSize: normalize(12), lineHeight: normalize(18), marginTop: 4, marginBottom: 20 },
+  backgroundOrb: { position: 'absolute', borderRadius: 999 },
+  backgroundOrbTop: { width: 250, height: 250, top: -145, right: -90 },
+  backgroundOrbBottom: { width: 300, height: 300, bottom: -180, left: -150 },
+  inputWrapper: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, borderRadius: 13, marginBottom: 13, height: normalize(50), borderWidth: 1 },
   input: { flex: 1, height: '100%', fontSize: normalize(14), marginLeft: 10 },
   strengthBarContainer: { height: 4, backgroundColor: '#E5E5EA', borderRadius: 2, marginBottom: 15, marginHorizontal: 15, overflow: 'hidden' },
   strengthBar: { height: '100%', borderRadius: 2 },
   hintText: { fontSize: 10, marginTop: -12, marginBottom: 15, marginLeft: 15 },
   inputText: { flex: 1, fontSize: normalize(14), marginLeft: 10, textAlignVertical: 'center' },
-  phoneRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 15 },
-  countryPickerBtn: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 12, height: normalize(50), paddingHorizontal: 12, marginRight: 10 },
+  phoneRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 13 },
+  countryPickerBtn: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 13, height: normalize(50), paddingHorizontal: 10, marginRight: 8 },
   errorText: { color: colors.danger, fontSize: 12, marginTop: -10, marginBottom: 10, marginLeft: 5 },
-  privacyContainer: { flexDirection: 'row', alignItems: 'center', marginTop: 10, paddingHorizontal: 5, marginBottom: 10 },
+  privacyContainer: { flexDirection: 'row', alignItems: 'flex-start', marginTop: 10, paddingHorizontal: 2, marginBottom: 10 },
   checkbox: { marginRight: 10 },
   privacyTextContainer: { flexDirection: 'row', flexWrap: 'wrap', flex: 1 },
   privacyText: { fontSize: normalize(13) },
   privacyLink: { fontSize: normalize(13), fontWeight: 'bold', textDecorationLine: 'underline' },
-  signupButton: { borderRadius: 25, height: normalize(50), justifyContent: 'center', alignItems: 'center', marginTop: 20, elevation: 2 },
+  signupButton: { borderRadius: 14, height: normalize(52), justifyContent: 'center', alignItems: 'center', marginTop: 18, elevation: 2 },
   disabledButton: { opacity: 0.5 },
   signupButtonText: { color: '#fff', fontSize: normalize(14), fontWeight: 'bold', letterSpacing: 1 },
-  loginLink: { marginTop: 30, alignItems: 'center', paddingBottom: 20 },
+  loginLink: { marginTop: 22, alignItems: 'center', paddingBottom: 4 },
   loginLinkText: { fontSize: normalize(14) },
   labelSmall: { fontSize: normalize(11), fontWeight: '700', marginBottom: 5, marginLeft: 5, textTransform: 'uppercase' },
-  genderRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 25 },
+  genderRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
   genderBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', height: normalize(45), borderWidth: 1, borderColor: colors.border, borderRadius: 12, marginHorizontal: 5, backgroundColor: isDark ? '#333' : '#f9f9f9' },
   genderText: { marginLeft: 8, fontSize: normalize(14), fontWeight: '600', color: colors.text.secondary },
   provincesList: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 20 },
   provinceChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, backgroundColor: isDark ? '#333' : '#f0f0f0', margin: 4, borderWidth: 1, borderColor: colors.border },
   provinceChipText: { fontSize: normalize(12), fontWeight: '500' },
+  locationRow: { flexDirection: width < 360 ? 'column' : 'row', justifyContent: 'space-between' },
   birthDateContainer: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
   birthInput: { flex: 1, height: normalize(50), borderWidth: 1, borderRadius: 12, marginHorizontal: 5, textAlign: 'center', fontSize: normalize(16), fontWeight: 'bold' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
@@ -94,16 +98,9 @@ const createStyles = (colors: any, normalize: any, isDark: boolean) => StyleShee
 
 export default function SignupScreen({ navigation }: any) {
   const { colors, normalize, isDark } = useTheme();
+  const { width } = useWindowDimensions();
   const { t, language } = useLanguage();
   const { setUser } = useUser();
-
-  if (!colors || !normalize) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#673AB7' }}>
-        <ActivityIndicator size="large" color="#ffffff" />
-      </View>
-    );
-  }
 
   const [step, setStep] = useState(1);
   const [fullName, setFullName] = useState('');
@@ -126,6 +123,7 @@ export default function SignupScreen({ navigation }: any) {
 
   const [countryFlag, setCountryFlag] = useState('🇨🇩');
   const [callingCode, setCallingCode] = useState('243');
+  const [countryCode, setCountryCode] = useState('CD');
 
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -138,97 +136,181 @@ export default function SignupScreen({ navigation }: any) {
   const [nameError, setNameError] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [passwordStrength, setPasswordStrength] = useState(0); // 0 to 3
+  const [emailTaken, setEmailTaken] = useState(false);
+  const [phoneTaken, setPhoneTaken] = useState(false);
+  const [pseudoTaken, setPseudoTaken] = useState(false);
 
   const [failCount, setFailCount] = useState(0);
   const [blockUntil, setBlockUntil] = useState<number | null>(null);
+  const emailInputRef = useRef<TextInput>(null);
+  const passwordInputRef = useRef<TextInput>(null);
 
   const insets = useSafeAreaInsets();
 
   useEffect(() => {
     const checkBlock = async () => {
-      const blocked = await AsyncStorage.getItem('signup_blocked_until');
-      if (blocked) {
-        const time = parseInt(blocked);
-        if (time > Date.now()) {
-          setBlockUntil(time);
+      try {
+        const blocked = await AsyncStorage.getItem('signup_blocked_until');
+        if (blocked) {
+          const time = Number.parseInt(blocked, 10);
+          if (Number.isFinite(time) && time > Date.now()) {
+            setBlockUntil(time);
+          } else {
+            await AsyncStorage.removeItem('signup_blocked_until');
+          }
         }
+      } catch (error) {
+        console.warn('Signup: Unable to restore registration lock', error);
       }
     };
-    checkBlock();
+    void checkBlock();
   }, []);
 
   // Vérifier la disponibilité en temps réel
   useEffect(() => {
+    let active = true;
+    const value = email.trim().toLowerCase();
+    setEmailTaken(false);
+    if (!value) {
+      setEmailError('');
+      return () => { active = false; };
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+      setEmailError('Adresse email invalide');
+      return () => { active = false; };
+    }
+    setEmailError('');
     const timer = setTimeout(async () => {
-      if (email.includes('@')) {
-        const res: any = await apiService.checkAvailability({ email });
-        setEmailError(res.available ? '' : 'Cette adresse email est déjà utilisée');
+      try {
+        const res = await apiService.checkAvailability({ email: value });
+        if (!active) return;
+        if (!res.success) {
+          setEmailError('Vérification indisponible. Le serveur contrôlera cette adresse à la création.');
+          return;
+        }
+        if (typeof res.available !== 'boolean') {
+          setEmailError('Réponse de vérification invalide. Le serveur contrôlera cette adresse à la création.');
+          return;
+        }
+        const taken = res.available === false;
+        setEmailTaken(taken);
+        setEmailError(taken ? 'Cette adresse email est déjà utilisée' : '');
+      } catch (error) {
+        if (active) {
+          console.warn('Signup: Email availability check failed', error);
+          setEmailError('Vérification indisponible. Le serveur contrôlera cette adresse à la création.');
+        }
       }
     }, 800);
-    return () => clearTimeout(timer);
+    return () => { active = false; clearTimeout(timer); };
   }, [email]);
 
   useEffect(() => {
+    let active = true;
+    const cleanPhone = phone.replace(/\D/g, '');
+    setPhoneTaken(false);
+    if (cleanPhone !== phone) {
+      setPhone(cleanPhone);
+      return () => { active = false; };
+    }
+    if (!cleanPhone) {
+      setPhoneError('');
+      return () => { active = false; };
+    }
+    const dialDigits = callingCode.replace(/\D/g, '');
+    if (cleanPhone.length + dialDigits.length > 15) {
+      setPhoneError('Le numéro dépasse la longueur maximale autorisée.');
+      return () => { active = false; };
+    }
+    if (countryCode === 'CD' && cleanPhone.length >= 6 &&
+      (cleanPhone.length !== 9 || !/^[89]/.test(cleanPhone))) {
+      setPhoneError('Un numéro mobile RDC doit contenir 9 chiffres et commencer par 8 ou 9.');
+      return () => { active = false; };
+    }
+    setPhoneError('');
     const timer = setTimeout(async () => {
-      if (phone.length > 5) {
-        const cleanPhone = phone.replace(/[^0-9]/g, '');
-        if (cleanPhone !== phone) {
-            setPhone(cleanPhone);
-            return;
-        }
-
-        if (phone.length > 10) {
-            setPhoneError('Maximum 10 chiffres autorisés');
-            return;
-        }
-
-        const fullPhone = `${callingCode}${phone}`.startsWith('+') ? `${callingCode}${phone}` : `+${callingCode}${phone}`;
-        const res: any = await apiService.checkAvailability({ phone_number: fullPhone });
-
-        // Vérifier si le numéro semble valide pour l'indicatif (logique simple)
-        if (callingCode === '243' && phone.length > 0 && !phone.startsWith('8') && !phone.startsWith('9')) {
-            setPhoneError('Numéro RDC invalide (doit commencer par 8 ou 9)');
-        } else {
-            setPhoneError(res.available ? '' : 'Ce numéro est déjà utilisé');
-        }
-      } else {
-        setPhoneError('');
-      }
-    }, 800);
-    return () => clearTimeout(timer);
-  }, [phone, callingCode]);
-
-  useEffect(() => {
-    const timer = setTimeout(async () => {
-      if (pseudo.length > 2) {
-        // Validation format pseudo (lettres, chiffres, underscores, points)
-        if (!/^[a-z0-9_.]+$/.test(pseudo.toLowerCase())) {
-          setPseudoError('Pseudo invalide (lettres, chiffres, . _ uniquement)');
+      try {
+        const fullPhone = `+${dialDigits}${cleanPhone}`;
+        const res = await apiService.checkAvailability({ phone_number: fullPhone });
+        if (!active) return;
+        if (!res.success) {
+          setPhoneError('Vérification indisponible. Le serveur contrôlera ce numéro à la création.');
           return;
         }
-        const res: any = await apiService.checkAvailability({ username: pseudo });
-        setPseudoError(res.available ? '' : 'Identifiant non disponible. Veuillez en choisir un autre.');
-      } else {
-        setPseudoError('');
+        if (typeof res.available !== 'boolean') {
+          setPhoneError('Réponse de vérification invalide. Le serveur contrôlera ce numéro à la création.');
+          return;
+        }
+        const taken = res.available === false;
+        setPhoneTaken(taken);
+        setPhoneError(taken ? 'Ce numéro est déjà utilisé' : '');
+      } catch (error) {
+        if (active) {
+          console.warn('Signup: Phone availability check failed', error);
+          setPhoneError('Vérification indisponible. Le serveur contrôlera ce numéro à la création.');
+        }
       }
     }, 800);
-    return () => clearTimeout(timer);
+    return () => { active = false; clearTimeout(timer); };
+  }, [phone, callingCode, countryCode]);
+
+  useEffect(() => {
+    let active = true;
+    const value = pseudo.trim().toLowerCase();
+    setPseudoTaken(false);
+    if (!value) {
+      setPseudoError('');
+      return () => { active = false; };
+    }
+    if (value.length < 3 || !/^[a-z0-9_.]+$/.test(value)) {
+      setPseudoError('Pseudo invalide (3 caractères minimum : lettres, chiffres, . _ uniquement)');
+      return () => { active = false; };
+    }
+    setPseudoError('');
+    const timer = setTimeout(async () => {
+      try {
+        const res = await apiService.checkAvailability({ username: value });
+        if (!active) return;
+        if (!res.success) {
+          setPseudoError('Vérification indisponible. Le serveur contrôlera ce pseudo à la création.');
+          return;
+        }
+        if (typeof res.available !== 'boolean') {
+          setPseudoError('Réponse de vérification invalide. Le serveur contrôlera ce pseudo à la création.');
+          return;
+        }
+        const taken = res.available === false;
+        setPseudoTaken(taken);
+        setPseudoError(taken ? 'Identifiant non disponible. Veuillez en choisir un autre.' : '');
+      } catch (error) {
+        if (active) {
+          console.warn('Signup: Username availability check failed', error);
+          setPseudoError('Vérification indisponible. Le serveur contrôlera ce pseudo à la création.');
+        }
+      }
+    }, 800);
+    return () => { active = false; clearTimeout(timer); };
   }, [pseudo]);
 
   const handlePickImage = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Permission requise', 'Accès aux photos refusé.');
-      return;
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.7,
-    });
-    if (!result.canceled) {
-      setProfileImage(result.assets[0].uri);
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission requise', 'Accès aux photos refusé.');
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.7,
+      });
+      if (!result.canceled) {
+        setProfileImage(result.assets[0].uri);
+      }
+    } catch (error: any) {
+      console.error('Signup: Unable to choose profile image', error);
+      Alert.alert('Photo de profil', error?.message || 'Impossible d’accéder à la galerie.');
     }
   };
 
@@ -241,15 +323,37 @@ export default function SignupScreen({ navigation }: any) {
 
     let hasError = false;
     if (step === 1) {
-      if (!pseudo) { Alert.alert('Erreur', 'L\'identifiant est requis'); return; }
-      if (!email) { Alert.alert('Erreur', 'L\'adresse email est requise'); return; }
+      const normalizedEmail = email.trim().toLowerCase();
+      const normalizedPseudo = pseudo.trim();
+      if (!normalizedPseudo) { Alert.alert('Erreur', 'L\'identifiant est requis'); return; }
+      if (!email.trim()) { Alert.alert('Erreur', 'L\'adresse email est requise'); return; }
       if (!password) { Alert.alert('Erreur', 'Le mot de passe est requis'); return; }
-      if (emailError || pseudoError || passwordError) hasError = true;
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+        Alert.alert('Erreur', 'Veuillez saisir une adresse email valide.');
+        return;
+      }
+      if (normalizedPseudo.length < 3 || !/^[a-z0-9_.]+$/i.test(normalizedPseudo)) {
+        Alert.alert('Erreur', 'Le pseudo doit contenir au moins 3 caractères : lettres, chiffres, point ou soulignement.');
+        return;
+      }
+      if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])/.test(password) || password.length < 8) {
+        Alert.alert('Erreur', 'Le mot de passe doit contenir au moins 8 caractères, une majuscule, une minuscule et un chiffre.');
+        return;
+      }
+      if (emailTaken || pseudoTaken) hasError = true;
     } else if (step === 2) {
-      if (!fullName) { Alert.alert('Erreur', 'Le nom complet est requis'); return; }
-      if (!phone) { Alert.alert('Erreur', 'Le numéro de téléphone est requis'); return; }
+      if (!fullName.trim()) { Alert.alert('Erreur', 'Le nom complet est requis'); return; }
+      if (fullName.trim().length < 2) { Alert.alert('Erreur', 'Le nom complet doit contenir au moins 2 caractères.'); return; }
+      const phoneDigits = phone.replace(/\D/g, '');
+      const dialDigits = callingCode.replace(/\D/g, '');
+      if (phoneDigits.length < 6) { Alert.alert('Erreur', 'Veuillez saisir un numéro de téléphone valide.'); return; }
+      if (phoneDigits.length + dialDigits.length > 15) { Alert.alert('Erreur', 'Le numéro dépasse la longueur maximale autorisée.'); return; }
+      if (countryCode === 'CD' && (phoneDigits.length !== 9 || !/^[89]/.test(phoneDigits))) {
+        Alert.alert('Erreur', 'Un numéro mobile RDC doit contenir 9 chiffres et commencer par 8 ou 9.');
+        return;
+      }
       if (!gender) { Alert.alert('Erreur', 'Veuillez sélectionner votre sexe'); return; }
-      if (phoneError || nameError) hasError = true;
+      if (phoneTaken || nameError) hasError = true;
     }
 
     if (hasError) {
@@ -261,7 +365,11 @@ export default function SignupScreen({ navigation }: any) {
         const blockDuration = newFailCount === 3 ? 3600000 : 7200000;
         const until = Date.now() + blockDuration;
         setBlockUntil(until);
-        await AsyncStorage.setItem('signup_blocked_until', until.toString());
+        try {
+          await AsyncStorage.setItem('signup_blocked_until', until.toString());
+        } catch (storageError) {
+          console.warn('Signup: Unable to persist registration lock', storageError);
+        }
         Alert.alert('Sécurité', `Trop d'erreurs détectées. Le formulaire est bloqué pour ${blockDuration / 3600000} heure(s).`);
       } else {
         Alert.alert('Attention', `Ces informations sont déjà utilisées ou invalides. Tentatives avant blocage : ${3 - newFailCount}`);
@@ -274,15 +382,19 @@ export default function SignupScreen({ navigation }: any) {
     } else if (step === 2) {
       setStep(3);
     } else if (step === 3) {
-      if (!country || !province || !city || !birthDate.day || !birthDate.month || !birthDate.year) {
+      if (!countryCode || !country || !province || !city || !birthDate.day || !birthDate.month || !birthDate.year) {
         Alert.alert('Erreur', 'Veuillez remplir tous les champs de localisation et votre date de naissance');
         return;
       }
-      // Validation date de naissance simple
-      const d = parseInt(birthDate.day);
-      const m = parseInt(birthDate.month);
-      const y = parseInt(birthDate.year);
-      if (isNaN(d) || isNaN(m) || isNaN(y) || d < 1 || d > 31 || m < 1 || m > 12 || y < 1920 || y > new Date().getFullYear() - 10) {
+      const d = Number.parseInt(birthDate.day, 10);
+      const m = Number.parseInt(birthDate.month, 10);
+      const y = Number.parseInt(birthDate.year, 10);
+      const date = new Date(Date.UTC(y, m - 1, d));
+      const today = new Date();
+      let age = today.getFullYear() - y;
+      if (today.getMonth() + 1 < m || (today.getMonth() + 1 === m && today.getDate() < d)) age -= 1;
+      if (!Number.isFinite(date.getTime()) || date.getUTCDate() !== d || date.getUTCMonth() + 1 !== m ||
+        y < 1920 || age < 10) {
         Alert.alert('Erreur', 'Date de naissance invalide');
         return;
       }
@@ -304,22 +416,31 @@ export default function SignupScreen({ navigation }: any) {
     setLoading(true);
 
     try {
-      const fullPhone = `${callingCode}${phone}`.startsWith('+') ? `${callingCode}${phone}` : `+${callingCode}${phone}`;
-
-      const deviceInfo = await apiService.getDeviceInfo();
+      const fullPhone = `+${callingCode.replace(/\D/g, '')}${phone.replace(/\D/g, '')}`;
 
       const formattedBirthDate = (birthDate.day && birthDate.month && birthDate.year)
         ? `${birthDate.year}-${birthDate.month.padStart(2, '0')}-${birthDate.day.padStart(2, '0')}`
         : null;
 
+      const [deviceInfo, legalResponse] = await Promise.all([
+        apiService.getDeviceInfo(),
+        apiService.getLegalDocs(),
+      ]);
+      const legalDocs = Array.isArray(legalResponse.data) ? legalResponse.data : [];
+      const tosVersion = legalDocs.find((doc: any) => doc.type === 'tos')?.version;
+      const privacyVersion = legalDocs.find((doc: any) => doc.type === 'privacy')?.version;
+      if (!legalResponse.success || !tosVersion || !privacyVersion) {
+        throw new Error('Impossible de vérifier les versions des conditions et de la politique de confidentialité.');
+      }
+
       console.log('Signup: Attempting registration...');
 
       const response = await apiService.register({
-        name: fullName,
-        email,
+        name: fullName.trim(),
+        email: email.trim().toLowerCase(),
         password,
         phone_number: fullPhone,
-        username: pseudo || undefined,
+        username: pseudo.trim() || undefined,
         gender,
         country,
         province,
@@ -327,7 +448,10 @@ export default function SignupScreen({ navigation }: any) {
         commune,
         birth_date: formattedBirthDate,
         device_info: deviceInfo,
-        appVersion: APP_VERSION
+        appVersion: APP_VERSION,
+        accepted_legal_version: tosVersion,
+        accepted_tos_version: tosVersion,
+        accepted_privacy_version: privacyVersion,
       });
 
       if (!response || !response.success) {
@@ -336,8 +460,15 @@ export default function SignupScreen({ navigation }: any) {
 
       console.log('Signup: Registration success, setting user context...');
 
-      // Mettre à jour le contexte utilisateur
-      if (response.data && response.data.user) await setUser(response.data.user);
+      let registeredUser = response.data?.user;
+      if (!registeredUser) {
+        const profileResponse = await apiService.getMe();
+        if (!profileResponse.success || !profileResponse.data) {
+          throw new Error('Compte créé, mais le profil n’a pas pu être chargé. Connectez-vous pour continuer.');
+        }
+        registeredUser = profileResponse.data;
+      }
+      await setUser(registeredUser);
 
       if (profileImage) {
         try {
@@ -357,8 +488,10 @@ export default function SignupScreen({ navigation }: any) {
         }
       }
 
-      const profileRes = await apiService.getMe();
-      if (profileRes.success && profileRes.data) await setUser(profileRes.data);
+      const refreshedProfile = await apiService.getMe();
+      if (refreshedProfile.success && refreshedProfile.data) {
+        await setUser(refreshedProfile.data);
+      }
 
       // Enregistrer le premier temps d'ouverture pour la logique des 2 jours
       try {
@@ -381,9 +514,8 @@ export default function SignupScreen({ navigation }: any) {
           text: 'DÉMARRER',
           onPress: () => {
             setTimeout(() => {
-              if (navigation && navigation.reset) {
-                navigation.reset({ index: 0, routes: [{ name: 'ChatList' }] });
-              }
+              if (navigation?.reset) navigation.reset({ index: 0, routes: [{ name: 'ChatList' }] });
+              else navigation.navigate('ChatList');
             }, 200);
           }
         }]);
@@ -401,7 +533,7 @@ export default function SignupScreen({ navigation }: any) {
     }
   };
 
-  const styles = createStyles(colors, normalize, isDark);
+  const styles = createStyles(colors, normalize, isDark, width);
 
   const renderStepIndicators = () => (
     <View style={styles.stepIndicatorContainer}>
@@ -418,35 +550,33 @@ export default function SignupScreen({ navigation }: any) {
   );
 
   const isWide = width > 1024;
+  const stepTitles = ['Compte', 'Profil', 'Localisation', 'Finalisation'];
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
-      {isWide && (
-        <View style={StyleSheet.absoluteFill}>
-          <Image
-            source={{ uri: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1924&auto=format&fit=crop' }}
-            style={{ width: '100%', height: '100%', opacity: 0.1 }}
-            blurRadius={50}
-          />
-        </View>
-      )}
+    <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom, backgroundColor: colors.background }]}>
+      <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+        <View style={[styles.backgroundOrb, styles.backgroundOrbTop, { backgroundColor: colors.primary + '12' }]} />
+        <View style={[styles.backgroundOrb, styles.backgroundOrbBottom, { backgroundColor: colors.secondary + '10' }]} />
+      </View>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
-        <ScrollView contentContainerStyle={[styles.scrollContainer, isWide && { alignSelf: 'center', width: 600, marginTop: 50, marginBottom: 50, backgroundColor: colors.surface, borderRadius: 40, elevation: 10, shadowColor: colors.primary, shadowOpacity: 0.2, shadowRadius: 20 }]} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+        <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           <TouchableOpacity onPress={handlePrevStep} style={styles.backButton}>
             <ArrowLeft size={24} color={colors.primary} />
           </TouchableOpacity>
 
           <View style={styles.header}>
-                <View style={[styles.logoStack, { backgroundColor: colors.primary }]}>
-                  <MessageSquare size={normalize(30)} color="#fff" />
-                  <Heart size={normalize(12)} color={colors.secondary} style={styles.heartIcon} />
-                </View>
+            <Image
+              source={require('../../assets/AcemiaLogo.png')}
+              style={styles.logoImage}
+              resizeMode="contain"
+              accessibilityLabel="Acemia"
+            />
             <Text style={[styles.title, { color: colors.primary }]}>Inscription</Text>
-            <Text style={[styles.subtitle, { color: colors.text.secondary }]}>Étape {step} sur 4</Text>
+            <Text style={[styles.subtitle, { color: colors.text.secondary }]}>Étape {step} sur 4 · {stepTitles[step - 1]}</Text>
 
             {blockUntil && Date.now() < blockUntil && (
               <View style={[styles.blockedBanner, { backgroundColor: colors.danger + '15' }]}>
@@ -460,7 +590,13 @@ export default function SignupScreen({ navigation }: any) {
             {renderStepIndicators()}
           </View>
 
-          <View style={styles.formContainer}>
+          <View style={[styles.formContainer, isWide && styles.wideFormContainer]}>
+            <Text style={[styles.formHeading, { color: colors.text.primary }]}>
+              {['Vos identifiants', 'Votre profil', 'Où vous trouver ?', 'Presque terminé'][step - 1]}
+            </Text>
+            <Text style={[styles.formDescription, { color: colors.text.secondary }]}>
+              {['Créez un identifiant et protégez votre compte.', 'Ajoutez vos informations pour personnaliser votre profil.', 'Indiquez votre localisation et votre année de naissance.', 'Ajoutez une photo et acceptez les conditions pour terminer.'][step - 1]}
+            </Text>
             {step === 1 && (
               <View style={styles.animateStep}>
                 <View style={[styles.inputWrapper, { backgroundColor: isDark ? '#333' : '#f9f9f9', borderColor: colors.border }]}>
@@ -472,6 +608,12 @@ export default function SignupScreen({ navigation }: any) {
                     value={pseudo}
                     onChangeText={setPseudo}
                     autoCapitalize="none"
+                    autoCorrect={false}
+                    autoComplete="username"
+                    textContentType="username"
+                    returnKeyType="next"
+                    onSubmitEditing={() => emailInputRef.current?.focus()}
+                    accessibilityLabel="Identifiant"
                   />
                 </View>
                 {pseudoError ? <Text style={styles.errorText}>{pseudoError}</Text> : null}
@@ -482,10 +624,17 @@ export default function SignupScreen({ navigation }: any) {
                     style={[styles.input, { color: colors.text.primary }]}
                     placeholder="Adresse Email"
                     placeholderTextColor={colors.text.disabled}
+                    ref={emailInputRef}
                     value={email}
                     onChangeText={setEmail}
                     keyboardType="email-address"
                     autoCapitalize="none"
+                    autoCorrect={false}
+                    autoComplete="email"
+                    textContentType="emailAddress"
+                    returnKeyType="next"
+                    onSubmitEditing={() => passwordInputRef.current?.focus()}
+                    accessibilityLabel="Adresse email"
                   />
                 </View>
                 {emailError ? <Text style={styles.errorText}>{emailError}</Text> : null}
@@ -493,7 +642,8 @@ export default function SignupScreen({ navigation }: any) {
                 <View style={[styles.inputWrapper, { backgroundColor: isDark ? '#333' : '#f9f9f9', borderColor: passwordError ? colors.danger : colors.border }]}>
                   <Lock size={20} color={colors.text.secondary} />
                   <TextInput
-                    style={[styles.input, { color: colors.text.primary }]}
+                  ref={passwordInputRef}
+                  style={[styles.input, { color: colors.text.primary }]}
                     placeholder="Mot de passe"
                     placeholderTextColor={colors.text.disabled}
                     value={password}
@@ -514,6 +664,11 @@ export default function SignupScreen({ navigation }: any) {
                       }
                     }}
                     secureTextEntry={!showPassword}
+                    autoCapitalize="none"
+                    autoComplete="new-password"
+                    textContentType="newPassword"
+                    returnKeyType="done"
+                    accessibilityLabel="Mot de passe"
                   />
                   <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
                     {showPassword ? <EyeOff size={20} color={colors.text.secondary} /> : <Eye size={20} color={colors.text.secondary} />}
@@ -527,7 +682,7 @@ export default function SignupScreen({ navigation }: any) {
                       styles.strengthBar,
                       {
                         width: `${(passwordStrength / 3) * 100}%`,
-                        backgroundColor: passwordStrength === 1 ? '#FF3B30' : (passwordStrength === 2 ? '#FF9500' : '#4CD964')
+                        backgroundColor: passwordStrength === 1 ? '#FF3B30' : (passwordStrength === 2 ? '#FF9500' : (passwordStrength === 3 ? '#4CD964' : colors.danger))
                       }
                     ]} />
                   </View>
@@ -554,12 +709,16 @@ export default function SignupScreen({ navigation }: any) {
                     value={fullName}
                     onChangeText={(text) => {
                       setFullName(text);
-                      if (text && !/^[a-zA-ZÀ-ÿ\s'-]+$/.test(text)) {
+                      if (text.trim() && !/^[a-zA-ZÀ-ÿ\s'-]+$/.test(text)) {
                         setNameError('Le nom ne doit contenir que des lettres');
                       } else {
                         setNameError('');
                       }
                     }}
+                    autoCapitalize="words"
+                    autoComplete="name"
+                    textContentType="name"
+                    returnKeyType="next"
                   />
                 </View>
                 {nameError ? <Text style={styles.errorText}>{nameError}</Text> : null}
@@ -580,8 +739,13 @@ export default function SignupScreen({ navigation }: any) {
                       placeholder="812345678"
                       placeholderTextColor={colors.text.disabled}
                       value={phone}
-                      onChangeText={setPhone}
+                      onChangeText={(value) => setPhone(value.replace(/\D/g, '').slice(0, Math.max(0, 15 - callingCode.replace(/\D/g, '').length)))}
                       keyboardType="phone-pad"
+                      maxLength={Math.max(1, 15 - callingCode.replace(/\D/g, '').length)}
+                      autoComplete="tel-national"
+                      textContentType="telephoneNumber"
+                      returnKeyType="done"
+                      accessibilityLabel="Numéro de téléphone"
                     />
                   </View>
                 </View>
@@ -625,7 +789,7 @@ export default function SignupScreen({ navigation }: any) {
 
                 <View style={[styles.inputWrapper, { backgroundColor: isDark ? '#333' : '#f9f9f9', borderColor: colors.border }, !country && { opacity: 0.5 }]}>
                   <MapPin size={20} color={colors.text.secondary} />
-                  {country === 'République Démocratique du Congo' ? (
+                  {countryCode === 'CD' ? (
                     <TouchableOpacity
                       style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}
                       onPress={() => setProvinceModalVisible(true)}
@@ -647,10 +811,10 @@ export default function SignupScreen({ navigation }: any) {
                   )}
                 </View>
 
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                  <View style={[styles.inputWrapper, { flex: 1, backgroundColor: isDark ? '#333' : '#f9f9f9', borderColor: colors.border, marginRight: 5 }, !province && { opacity: 0.5 }]}>
+                <View style={styles.locationRow}>
+                  <View style={[styles.inputWrapper, { flex: 1, backgroundColor: isDark ? '#333' : '#f9f9f9', borderColor: colors.border, marginRight: width < 360 ? 0 : 5 }, !province && { opacity: 0.5 }]}>
                     <Landmark size={20} color={colors.text.secondary} />
-                    {country === 'République Démocratique du Congo' ? (
+                    {countryCode === 'CD' ? (
                       <TouchableOpacity
                         style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}
                         onPress={() => province && setCityModalVisible(true)}
@@ -672,9 +836,9 @@ export default function SignupScreen({ navigation }: any) {
                     )}
                   </View>
 
-                  <View style={[styles.inputWrapper, { flex: 1, backgroundColor: isDark ? '#333' : '#f9f9f9', borderColor: colors.border, marginLeft: 5 }, !city && { opacity: 0.5 }]}>
+                  <View style={[styles.inputWrapper, { flex: 1, backgroundColor: isDark ? '#333' : '#f9f9f9', borderColor: colors.border, marginLeft: width < 360 ? 0 : 5 }, !city && { opacity: 0.5 }]}>
                     <MapIcon size={20} color={colors.text.secondary} />
-                    {country === 'République Démocratique du Congo' ? (
+                    {countryCode === 'CD' ? (
                       <TouchableOpacity
                         style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}
                         onPress={() => city && setCommuneModalVisible(true)}
@@ -772,6 +936,7 @@ export default function SignupScreen({ navigation }: any) {
         pickerButtonOnPress={(item) => {
           setCountry(item.name[language as keyof typeof item.name] || item.name.en);
           setCountryFlag(item.flag);
+          setCountryCode(item.code);
           setCallingCode(item.dial_code);
           setShowCountryPicker(false);
           setProvince(''); setCity(''); setCommune('');
@@ -790,7 +955,7 @@ export default function SignupScreen({ navigation }: any) {
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Sélectionnez la province</Text>
             <FlatList
-              data={country === 'République Démocratique du Congo' ? RDC_PROVINCES : []}
+              data={countryCode === 'CD' ? RDC_PROVINCES : []}
               keyExtractor={(item) => item.name}
               renderItem={({ item }) => (
                 <TouchableOpacity style={styles.statusItem} onPress={() => { setProvince(item.name); setProvinceModalVisible(false); setCity(''); setCommune(''); }}>
@@ -866,4 +1031,3 @@ export default function SignupScreen({ navigation }: any) {
     </View>
   );
 }
-

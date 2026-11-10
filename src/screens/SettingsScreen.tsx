@@ -28,33 +28,23 @@ import { LanguageCode } from '../i18n/translations';
 import { useFeedback } from '../components/FeedbackSystem';
 import Constants from 'expo-constants';
 import * as Device from 'expo-device';
-import { Platform, Dimensions } from 'react-native';
+import { Platform, useWindowDimensions } from 'react-native';
 import EditProfileScreen from './EditProfileScreen';
 import SecurityPrivacyScreen from './SecurityPrivacyScreen';
 import PrivacyPolicyScreen from './PrivacyPolicyScreen';
 import HelpdeskScreen from './HelpdeskScreen';
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export default function SettingsScreen({ navigation }: any) {
   const { isDark, colors, toggleTheme, setTheme, primaryColor, setPrimaryColor, fontSizeFactor, setFontSizeFactor, normalize } = useTheme();
   const { language, setLanguage, t, autoTranslate, setAutoTranslate } = useLanguage();
   const { user, loading: userLoading } = useUser();
   const { showFeedbackModal, FeedbackModal } = useFeedback();
+  const { width: screenWidth } = useWindowDimensions();
 
   const [langModalVisible, setLangModalVisible] = useState(false);
   const [colorModalVisible, setColorModalVisible] = useState(false);
   const [appearanceModalVisible, setAppearanceModalVisible] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>('profile');
-  const [screenWidth, setScreenWidth] = useState(SCREEN_WIDTH);
-
-  useEffect(() => {
-    const subscription = Dimensions.addEventListener('change', ({ window }) => {
-      setScreenWidth(window.width);
-    });
-    return () => subscription.remove();
-  }, []);
-
   const isTablet = screenWidth > 768;
 
   const notifyChange = async (message: string) => {

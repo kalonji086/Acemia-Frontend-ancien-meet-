@@ -19,7 +19,7 @@ import SchoolSideMenu from '../components/SchoolSideMenu';
 export default function SchoolDashboardScreen({ navigation }: any) {
   const { colors, normalize } = useTheme();
   const { width: windowWidth } = useWindowDimensions();
-  const isTablet = windowWidth > 768;
+  const isWide = windowWidth >= 1200;
 
   const [loading, setLoading] = useState(true);
   const [hasRequest, setHasRequest] = useState(false);
@@ -75,7 +75,7 @@ export default function SchoolDashboardScreen({ navigation }: any) {
     <View style={[
       styles.statCard,
       { backgroundColor: colors.surface, borderColor: colors.border },
-      isTablet && { width: '23%', marginBottom: 0 }
+      isWide && { width: '23%', marginBottom: 0 }
     ]}>
       <View style={[styles.statIcon, { backgroundColor: color + '15' }]}>
         {React.cloneElement(icon, { color, size: normalize(24) })}
@@ -214,7 +214,7 @@ export default function SchoolDashboardScreen({ navigation }: any) {
       </Modal>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={[styles.statsGrid, isTablet && styles.tabletRow]}>
+        <View style={[styles.statsGrid, isWide && styles.tabletRow]}>
           {renderStatCard('Élèves', stats.totalStudents || 0, <Users />, colors.primary)}
           {renderStatCard('Enseignants', stats.totalTeachers || 0, <GraduationCap />, '#4CAF50')}
           {renderStatCard('Classes', stats.totalClasses || 0, <BookOpen />, '#2196F3')}
@@ -224,23 +224,23 @@ export default function SchoolDashboardScreen({ navigation }: any) {
         <Text style={[styles.sectionTitle, { color: colors.text.primary, fontSize: normalize(16) }]}>
           Outils de gestion disponibles
         </Text>
-        <View style={[styles.menuGrid, isTablet && styles.tabletRow]}>
-          <TouchableOpacity style={[styles.menuCard, { backgroundColor: colors.surface, borderColor: colors.border }, isTablet && { flex: 1, marginRight: 10 }]} onPress={() => navigation.navigate('SchoolStudents')}>
+        <View style={[styles.menuGrid, isWide && styles.tabletRow]}>
+          <TouchableOpacity style={[styles.menuCard, { backgroundColor: colors.surface, borderColor: colors.border }, isWide && { flex: 1, marginRight: 10 }]} onPress={() => navigation.navigate('SchoolStudents')}>
             <Users size={28} color={colors.primary} />
             <Text style={[styles.menuText, { color: colors.text.primary }]}>Inscriptions & Élèves</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={[styles.menuCard, { backgroundColor: colors.surface, borderColor: colors.border }, isTablet && { flex: 1, marginRight: 10 }]} onPress={() => navigation.navigate('SchoolClasses')}>
+          <TouchableOpacity style={[styles.menuCard, { backgroundColor: colors.surface, borderColor: colors.border }, isWide && { flex: 1, marginRight: 10 }]} onPress={() => navigation.navigate('SchoolClasses')}>
             <GraduationCap size={28} color={colors.primary} />
             <Text style={[styles.menuText, { color: colors.text.primary }]}>Gestion des Classes</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={[styles.menuCard, { backgroundColor: colors.surface, borderColor: colors.border }, isTablet && { flex: 1, marginRight: 10 }]} onPress={() => navigation.navigate('SchoolSchedule')}>
+          <TouchableOpacity style={[styles.menuCard, { backgroundColor: colors.surface, borderColor: colors.border }, isWide && { flex: 1, marginRight: 10 }]} onPress={() => navigation.navigate('SchoolSchedule')}>
             <BookOpen size={28} color={colors.primary} />
             <Text style={[styles.menuText, { color: colors.text.primary }]}>Horaires & Cours</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={[styles.menuCard, { backgroundColor: colors.surface, borderColor: colors.border }, isTablet && { flex: 1 }]} onPress={() => navigation.navigate('SchoolFees')}>
+          <TouchableOpacity style={[styles.menuCard, { backgroundColor: colors.surface, borderColor: colors.border }, isWide && { flex: 1 }]} onPress={() => navigation.navigate('SchoolFees')}>
             <DollarSign size={28} color={colors.primary} />
             <Text style={[styles.menuText, { color: colors.text.primary }]}>Frais Scolaires</Text>
           </TouchableOpacity>
@@ -270,7 +270,7 @@ const styles = StyleSheet.create({
   actionButtonText: { color: '#fff', fontWeight: 'bold' },
   refreshButton: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 12, borderWidth: 1 },
   refreshButtonText: { fontWeight: 'bold' },
-  scrollContent: { padding: 20 },
+  scrollContent: { padding: 20, width: '100%', maxWidth: 1280, alignSelf: 'center' },
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 25 },
   statCard: {
     width: '48%',

@@ -9,7 +9,7 @@ import {
   SafeAreaView,
   StatusBar,
   ActivityIndicator,
-  Dimensions,
+  useWindowDimensions,
   FlatList,
   TextInput,
   Alert,
@@ -24,11 +24,10 @@ import apiService from '../services/api.service';
 import socketService from '../services/socket.service';
 import { SOCKET_URL } from '../utils/constants';
 
-const { width, height } = Dimensions.get('window');
-
 export default function BusinessPublicProfileScreen({ navigation, route }: any) {
   const { businessId } = route.params;
   const { colors, normalize, isDark, fontSizeFactor } = useTheme();
+  const { height } = useWindowDimensions();
   const [loading, setLoading] = useState(true);
   const [business, setBusiness] = useState<any>(null);
   const [posts, setPosts] = useState<any[]>([]);
@@ -43,7 +42,7 @@ export default function BusinessPublicProfileScreen({ navigation, route }: any) 
   const [newComment, setNewComment] = useState('');
   const [loadingComments, setLoadingComments] = useState(false);
 
-  const styles = createStyles(colors, normalize, fontSizeFactor, isDark);
+  const styles = createStyles(colors, normalize, fontSizeFactor, isDark, height);
 
   useEffect(() => {
     fetchBusinessDetails();
@@ -234,7 +233,7 @@ export default function BusinessPublicProfileScreen({ navigation, route }: any) 
             <TouchableOpacity onPress={() => Linking.openURL('https://www.linkedin.com/company/together-tech-solutions')}><Ionicons name="logo-linkedin" size={24} color="#fff" /></TouchableOpacity>
           </View>
           <TouchableOpacity onPress={() => navigation.navigate('PrivacyPolicy')}><Text style={styles.footerLinkText}>Politique de confidentialité</Text></TouchableOpacity>
-          <Text style={styles.copyrightText}>© 2026 Meet Me - TOGETHE Tech Solutions</Text>
+          <Text style={styles.copyrightText}>© 2026 Acemia - TOGETHE Tech Solutions</Text>
         </View>
         <View style={{ height: 20 }} />
       </ScrollView>
@@ -286,7 +285,7 @@ export default function BusinessPublicProfileScreen({ navigation, route }: any) 
   );
 }
 
-function createStyles(colors: any, normalize: any, factor: number, isDark: boolean) {
+function createStyles(colors: any, normalize: any, factor: number, isDark: boolean, height: number) {
   return StyleSheet.create({
   container: { flex: 1 }, centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   bannerContainer: { height: normalize(200), width: '100%', position: 'relative' }, banner: { width: '100%', height: '100%' },

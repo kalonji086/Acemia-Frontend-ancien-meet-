@@ -15,6 +15,22 @@ export interface ApiResponse<T = any> {
   statusCode?: number;
 }
 
+export interface AvailabilityResponse extends ApiResponse {
+  available?: boolean;
+}
+
+interface PhoneLookupResult {
+  found: boolean;
+  user?: {
+    id: string;
+    full_name: string;
+    avatar_url?: string | null;
+    username?: string;
+    is_verified?: boolean;
+  };
+  isSelf?: boolean;
+}
+
 interface SchoolCodeLoginResponse {
   type: 'staff' | 'student';
   role: string;
@@ -31,7 +47,7 @@ class ApiService {
   private constructor() {
     this.api = axios.create({
       baseURL: API_BASE_URL,
-      timeout: 60000,
+      timeout: 30000, // 30 secondes pour les connexions lentes
       headers: { 'Content-Type': 'application/json' },
     });
 
@@ -76,13 +92,18 @@ class ApiService {
 
   private setupInterceptors(): void {
     this.api.interceptors.request.use(async (config) => {
-      config.timeout = 60000;
-      config.timeoutErrorMessage = 'Request timeout';
+      // Timeout dynamique plus court pour les requêtes non-critiques
+      config.timeout = config.timeout || 30000;
+      config.timeoutErrorMessage = 'Request timeout - check your connection';
       config.headers['X-Request-ID'] = Date.now().toString(36) + Math.random().toString(36).substr(2);
 
       const token = await this.getAuthToken();
       if (token) config.headers.Authorization = `Bearer ${token}`;
       return config;
+    }, (error) => {
+      // Gestion d'erreur de requête
+      console.error('Request interceptor error:', error);
+      return Promise.reject(error);
     });
 
     this.api.interceptors.response.use(
@@ -192,7 +213,7 @@ class ApiService {
     } catch (e: any) { return this.handleError(e); }
   }
 
-  async checkAvailability(params: any): Promise<ApiResponse> {
+  async checkAvailability(params: any): Promise<AvailabilityResponse> {
     try {
       const res = await this.api.get('/auth/check-availability', { params });
       return res.data;
@@ -257,10 +278,18 @@ class ApiService {
     } catch (e: any) { return this.handleError(e); }
   }
 
-  async checkUserByPhone(phone: string): Promise<ApiResponse> {
+  async checkUserByPhone(phone: string): Promise<ApiResponse<PhoneLookupResult>> {
     try {
       const res = await this.api.get(`/users/check-phone/${encodeURIComponent(phone)}`);
-      return res.data;
+      return {
+        success: res.data.success,
+        data: {
+          found: res.data.found,
+          user: res.data.user,
+          isSelf: res.data.isSelf,
+        },
+        error: res.data.error,
+      };
     } catch (e: any) { return this.handleError(e); }
   }
 
@@ -301,7 +330,7 @@ class ApiService {
 
   async updatePrivacySettings(settings: any): Promise<ApiResponse> {
     try {
-      const res = await this.api.put('/users/privacy-settings', { settings });
+      const res = await this.api.put('/users/privacy', { privacySettings: settings });
       return res.data;
     } catch (e: any) { return this.handleError(e); }
   }

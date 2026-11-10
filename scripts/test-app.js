@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * Script de test automatique pour l'application Meet Me
+ * Script de test automatique pour l'application Acemia
  * Teste le backend, le frontend et l'intégration
  */
 
@@ -16,7 +16,7 @@ const rl = readline.createInterface({
   output: process.stdout,
 });
 
-console.log('🧪 Test de l\'application Meet Me\n');
+console.log('🧪 Test de l\'application Acemia\n');
 
 // Configuration
 const BACKEND_URL = 'http://localhost:3000';
@@ -187,7 +187,7 @@ class AppTester {
         name: 'Documentation API',
         test: async () => {
           const response = await axios.get(`${BACKEND_URL}/api/docs`);
-          return response.data.name === 'Meet Me';
+          return response.data.name === 'Acemia';
         },
       },
       {
@@ -364,7 +364,7 @@ class AppTester {
 
     if (passedTests === totalTests) {
       console.log('\n🎉 Tous les tests ont réussi !');
-      console.log('L\'application Meet Me est prête à être utilisée.');
+      console.log('L\'application Acemia est prête à être utilisée.');
     } else {
       console.log('\n⚠️  Certains tests ont échoué.');
       console.log('Vérifiez la configuration et réessayez.');

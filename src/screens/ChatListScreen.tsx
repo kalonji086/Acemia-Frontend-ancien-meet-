@@ -220,6 +220,20 @@ export default function ChatListScreen({ navigation, route, onChatSelect, select
 
   const dynamicStyles = createStyles(themeColors, isDark, normalize, fontSizeFactor);
 
+  const openChat = (chat: any) => {
+    if (onChatSelect) {
+      onChatSelect(chat);
+      return;
+    }
+
+    navigation.navigate('Chat', {
+      chatId: chat.id,
+      name: chat.name,
+      avatar: chat.avatar,
+      peerUserId: chat.otherUserId
+    });
+  };
+
   const renderChatItem = ({ item }: any) => {
     if (!item || !item.id) return null;
     return (
@@ -228,18 +242,7 @@ export default function ChatListScreen({ navigation, route, onChatSelect, select
           dynamicStyles.chatItem,
           selectedChatId === item.id && { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }
         ]}
-        onPress={() => {
-          if (onChatSelect) {
-            onChatSelect(item);
-          } else {
-            navigation.navigate('Chat', {
-              chatId: item.id,
-              name: item.name,
-              avatar: item.avatar,
-              peerUserId: item.otherUserId
-            });
-          }
-        }}
+        onPress={() => openChat(item)}
         onLongPress={() => handleLongPress(item)}
       >
         <View style={dynamicStyles.avatarContainer}>
@@ -291,11 +294,11 @@ export default function ChatListScreen({ navigation, route, onChatSelect, select
     try {
       const res = await apiService.createChat([currentUser.id]);
       if (res.success) {
-        navigation.navigate('Chat', {
-          chatId: res.data.id,
+        openChat({
+          id: res.data.id,
           name: t('profile'),
           avatar: getFullUrl(currentUser.avatar_url || currentUser.avatar),
-          otherUserId: currentUser.id
+          otherUserId: currentUser.id,
         });
       }
     } catch (e) { console.error(e); }
@@ -350,7 +353,7 @@ export default function ChatListScreen({ navigation, route, onChatSelect, select
             )}
           </View>
           <View style={dynamicStyles.headerCenter}>
-            <Text style={dynamicStyles.headerTitle}>{isArchivedView ? "Archivées" : "Meet Me"}</Text>
+            <Text style={dynamicStyles.headerTitle}>{isArchivedView ? "Archivées" : "Acemia"}</Text>
           </View>
           <View style={dynamicStyles.headerRight}>
             {!isArchivedView && (
@@ -392,12 +395,7 @@ export default function ChatListScreen({ navigation, route, onChatSelect, select
               <TouchableOpacity
                 key={`fav-${chat.id}`}
                 style={dynamicStyles.favoriteItem}
-                onPress={() => navigation.navigate('Chat', {
-                  chatId: chat.id,
-                  name: chat.name,
-                  avatar: chat.avatar,
-                  peerUserId: chat.otherUserId
-                })}
+                onPress={() => openChat(chat)}
               >
                 <View style={dynamicStyles.favAvatarContainer}>
                   <Image source={{ uri: chat.avatar }} style={dynamicStyles.favAvatar} />

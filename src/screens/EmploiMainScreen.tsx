@@ -101,7 +101,7 @@ export default function EmploiMainScreen({ navigation }: any) {
         <TouchableOpacity onPress={() => navigation.navigate('ChatList')} style={styles.backButton}>
           <ArrowLeft size={24} color={colors.text.primary} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text.primary }]}>Meet Emploi</Text>
+        <Text style={[styles.headerTitle, { color: colors.text.primary }]}>Acemia Emploi</Text>
         <View style={{ width: 40 }} />
       </View>
 

@@ -62,9 +62,9 @@ export default function MarketScreen() {
             source={{ uri: 'https://cdn-icons-png.flaticon.com/512/3081/3081559.png' }}
             style={[styles.promoImage, isWide && { width: 250, height: 250 }]}
           />
-          <Text style={[styles.title, { color: colors.text.primary }, isWide && { fontSize: 40 }]}>Bienvenue sur Meet Market</Text>
+          <Text style={[styles.title, { color: colors.text.primary }, isWide && { fontSize: 40 }]}>Bienvenue sur Acemia Market</Text>
           <Text style={[styles.subtitle, { color: colors.text.secondary }, isWide && { fontSize: 20 }]}>
-            Développez votre activité, trouvez des clients et gérez vos ventes directement depuis Meet Me.
+            Développez votre activité, trouvez des clients et gérez vos ventes directement depuis Acemia.
           </Text>
 
           <TouchableOpacity

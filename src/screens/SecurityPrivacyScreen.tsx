@@ -69,12 +69,18 @@ export default function SecurityPrivacyScreen({ navigation, isComponent = false 
   };
 
   const updateSetting = async (key: string, value: any) => {
+    const previousSettings = settings;
     const newSettings = { ...settings, [key]: value };
     setSettings(newSettings);
     try {
-      await apiService.updatePrivacySettings(newSettings);
-    } catch (e) {
-      Alert.alert('Erreur', 'Impossible de mettre à jour les paramètres');
+      const response = await apiService.updatePrivacySettings(newSettings);
+      if (!response.success) {
+        throw new Error(response.error || 'Impossible de mettre à jour les paramètres');
+      }
+      if (response.data) setSettings(response.data);
+    } catch (error) {
+      setSettings(previousSettings);
+      Alert.alert('Erreur', error instanceof Error ? error.message : 'Impossible de mettre à jour les paramètres');
     }
   };
 

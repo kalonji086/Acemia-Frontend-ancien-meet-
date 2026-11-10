@@ -7,7 +7,6 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
-  Dimensions,
   useWindowDimensions,
   Alert,
   Modal
@@ -37,8 +36,6 @@ import PieChart from '../components/PieChart';
 import SideMenu from '../components/SideMenu';
 import { SOCKET_URL } from '../utils/constants';
 import { Image } from 'react-native';
-
-const { width: screenWidth } = Dimensions.get('window');
 
 export default function NewEmployerDashboard({ navigation }: any) {
   const { colors, normalize, isDark } = useTheme();

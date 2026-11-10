@@ -1,17 +1,10 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { useColorScheme, Dimensions, PixelRatio } from 'react-native';
+import { useColorScheme, PixelRatio, useWindowDimensions } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors as defaultColors, darkColors as defaultDarkColors } from '../styles/theme';
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-
 // Guideline sizes are based on standard ~5" screen mobile device
 const guidelineBaseWidth = 375;
-const guidelineBaseHeight = 812;
-
-const scale = (size: number) => (SCREEN_WIDTH / guidelineBaseWidth) * size;
-const verticalScale = (size: number) => (SCREEN_HEIGHT / guidelineBaseHeight) * size;
-const moderateScale = (size: number, factor = 0.5) => size + (scale(size) - size) * factor;
 
 type ThemeType = 'light' | 'dark';
 
@@ -42,6 +35,7 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const systemColorScheme = useColorScheme();
+  const { width: windowWidth } = useWindowDimensions();
   const [theme, setThemeState] = useState<ThemeType>('light');
   const [colorId, setColorId] = useState('purple');
   const [fontSizeFactor, setFontSizeFactorState] = useState(1);
@@ -100,15 +94,11 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const normalize = useCallback((size: number, factor: number = 1) => {
-    // Amélioration de la responsivité pour Samsung et autres appareils
-    // On utilise un ratio qui combine largeur et hauteur pour une meilleure adaptation
-    const widthRatio = SCREEN_WIDTH / guidelineBaseWidth;
-    const heightRatio = SCREEN_HEIGHT / guidelineBaseHeight;
-    const avgRatio = (widthRatio + heightRatio) / 2;
-
-    const newSize = size * avgRatio * fontSizeFactor * factor;
+    const widthRatio = Math.min(Math.max(windowWidth / guidelineBaseWidth, 0.85), 1.2);
+    const responsiveScale = 1 + (widthRatio - 1) * 0.5;
+    const newSize = size * responsiveScale * fontSizeFactor * factor;
     return Math.round(PixelRatio.roundToNearestPixel(newSize));
-  }, [fontSizeFactor]);
+  }, [fontSizeFactor, windowWidth]);
 
   const selectedColorSet = APP_COLORS.find(c => c.id === colorId) || APP_COLORS[0];
 

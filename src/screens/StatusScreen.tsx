@@ -3,7 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  FlatList,
   Image,
   TouchableOpacity,
   SafeAreaView,
@@ -11,26 +10,21 @@ import {
   ActivityIndicator,
   RefreshControl,
   Alert,
-  Platform,
   ScrollView,
-  Dimensions,
+  useWindowDimensions,
 } from 'react-native';
-import { Plus, Pencil, Camera as CameraIcon } from 'lucide-react-native';
+import { Pencil, Camera as CameraIcon, Eye, CirclePlus } from 'lucide-react-native';
 import apiService from '../services/api.service';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
-import * as ExpoCamera from 'expo-camera';
 import { SOCKET_URL } from '../utils/constants';
 import { useTheme } from '../context/ThemeContext';
-import { useLanguage } from '../context/LanguageContext';
 import SocketService from '../services/socket.service';
-
-const { width } = Dimensions.get('window');
 
 export default function StatusScreen() {
   const { colors: themeColors, isDark, normalize } = useTheme();
-  const { t } = useLanguage();
+  const { width } = useWindowDimensions();
   const navigation = useNavigation<any>();
   const [userStatuses, setUserStatuses] = useState<any[]>([]);
   const [myStatuses, setMyStatuses] = useState<any[]>([]);
@@ -89,8 +83,8 @@ export default function StatusScreen() {
           statuses: (u.statuses || []).filter((s: any) => (now.getTime() - new Date(s.created_at).getTime()) <= 86400000)
         })).filter((u: any) => u.statuses.length > 0);
         
-        setUserStatuses(filtered.filter((s: any) => s.user_id !== user?.id));
-        const mine = filtered.find((s: any) => s.user_id === user?.id);
+        setUserStatuses(filtered.filter((s: any) => String(s.user_id) !== String(user?.id)));
+        const mine = filtered.find((s: any) => String(s.user_id) === String(user?.id));
         setMyStatuses(mine ? mine.statuses : []);
       }
     } catch (error) { console.error(error); }
@@ -132,36 +126,59 @@ export default function StatusScreen() {
     return 'Hier';
   };
 
-  const renderStatusItem = (item: any, isMine = false) => {
+  const renderStatusCard = (item: any, isMine = false) => {
     if (!item) return null;
     const statuses = item.statuses || [];
     const lastStatus = statuses.length > 0 ? statuses[statuses.length - 1] : null;
-    const hasUnread = !isMine && statuses.some((s: any) => !s.is_viewed);
+    const hasUnread = !isMine && statuses.some((s: any) => s.is_viewed !== true && s.is_viewed !== 'true');
+    const statusImage = lastStatus?.media_url || lastStatus?.mediaUrl || lastStatus?.image_url;
+    const statusColor = lastStatus?.background_color || themeColors.primary;
 
     return (
       <TouchableOpacity
         key={item.user_id || 'mine'}
-        style={styles.statusItem}
+        style={[
+          styles.statusCard,
+          { width: statusCardSize, height: statusCardSize, backgroundColor: statusColor },
+          hasUnread && styles.unreadStatusCard,
+          statuses.length > 0 && !hasUnread && !isMine && styles.readStatusCard,
+        ]}
         onPress={() => isMine && statuses.length === 0 ? navigation.navigate('CreateStatus') : navigation.navigate('ViewStatus', { userStatus: item })}
+        accessibilityRole="button"
+        accessibilityLabel={isMine ? (statuses.length > 0 ? 'Voir mon statut' : 'Ajouter un statut') : `Voir le statut de ${item.full_name || 'Utilisateur'}${hasUnread ? ', non lu' : ', lu'}`}
       >
-        <View style={styles.avatarWrapper}>
-          <View style={[
-            styles.avatarCircle,
-            { borderColor: statuses.length > 0 ? (hasUnread ? '#25D366' : '#ccc') : 'transparent' }
-          ]}>
+        {lastStatus?.type === 'image' && statusImage ? (
+          <Image source={{ uri: getFullUrl(statusImage) || undefined }} style={styles.statusCardImage} resizeMode="cover" />
+        ) : (
+          <View style={[styles.statusCardColor, { backgroundColor: statusColor }]} />
+        )}
+        <View style={styles.statusCardScrim} />
+        <View style={styles.statusCardTop}>
+          <View style={[styles.statusCardAvatarRing, hasUnread && styles.unreadAvatarRing, statuses.length > 0 && !hasUnread && !isMine && styles.readAvatarRing]}>
             <Image
-              source={{ uri: getFullUrl(item.avatar_url) || `https://ui-avatars.com/api/?name=${item.full_name || 'User'}&background=random` }}
-              style={styles.statusAvatar}
+              source={{ uri: getFullUrl(item.avatar_url) || `https://ui-avatars.com/api/?name=${encodeURIComponent(item.full_name || 'User')}&background=random` }}
+              style={styles.statusCardAvatar}
             />
           </View>
-          {isMine && statuses.length === 0 && (
-            <View style={[styles.addIcon, { backgroundColor: '#25D366' }]}><Plus size={14} color="#fff" /></View>
+          {isMine && (
+            <View style={styles.statusCardAdd}>
+              <CirclePlus size={24} color="#fff" fill="#00A884" />
+            </View>
+          )}
+          {!isMine && statuses.length > 0 && (
+            <View style={[styles.statusReadBadge, hasUnread ? styles.unreadBadge : styles.readBadge]}>
+              <Eye size={11} color="#fff" />
+              <Text style={styles.statusReadText}>{hasUnread ? 'Nouveau' : 'Lu'}</Text>
+            </View>
           )}
         </View>
-        <View style={styles.statusInfo}>
-          <Text style={[styles.statusName, { color: themeColors.text.primary }]}>{isMine ? 'Mon statut' : (item.full_name || 'Utilisateur')}</Text>
-          <Text style={[styles.statusTime, { color: themeColors.text.secondary }]}>
-            {statuses.length > 0 ? formatTime(lastStatus.created_at) : 'Appuyez pour ajouter un statut'}
+        <View style={styles.statusCardBottom}>
+          {statusCardSize >= 125 && lastStatus?.type === 'text' && lastStatus?.content ? (
+            <Text style={styles.statusPreview} numberOfLines={2}>{lastStatus.content}</Text>
+          ) : null}
+          <Text style={styles.statusCardName} numberOfLines={1}>{isMine ? 'Mon statut' : (item.full_name || 'Utilisateur')}</Text>
+          <Text style={styles.statusCardTime} numberOfLines={1}>
+            {statuses.length > 0 ? formatTime(lastStatus.created_at) : 'Ajouter un statut'}
           </Text>
         </View>
       </TouchableOpacity>
@@ -197,47 +214,76 @@ export default function StatusScreen() {
   if (loading && !refreshing) return <View style={styles.centered}><ActivityIndicator size="large" color={themeColors.primary} /></View>;
 
   const isWide = width > 1024;
+  const statusCardSize = Math.max(108, Math.min(isWide ? 156 : 136, (width - 48) / 2.45));
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]}>
-      <View style={{ height: insets.top, backgroundColor: themeColors.primary }} />
+      <View style={{ height: insets.top, backgroundColor: themeColors.surface }} />
       <StatusBar backgroundColor={themeColors.primary} barStyle="light-content" />
 
       <ScrollView
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[themeColors.primary]} />}
         contentContainerStyle={{ flexGrow: 1 }}
       >
-        <View style={[styles.content, isWide && { paddingHorizontal: '10%', paddingTop: 30 }]}>
-          {/* Section Statuts Style WhatsApp - Grid on Desktop */}
-          <View style={isWide ? { flexDirection: 'row', flexWrap: 'wrap', gap: 20 } : {}}>
-            {renderStatusItem({ user_id: currentUser?.id, full_name: 'Moi', statuses: myStatuses, avatar_url: currentUser?.avatar_url || currentUser?.avatar }, true)}
-
-            {isWide && userStatuses.map((item) => (
-              <View key={item.user_id} style={{ width: '30%', minWidth: 250 }}>
-                {renderStatusItem(item)}
-              </View>
-            ))}
+        <View style={[styles.content, isWide && styles.wideContent]}>
+          <View style={styles.statusHeader}>
+            <View style={styles.statusHeaderCopy}>
+              <Text style={[styles.screenTitle, { color: themeColors.text.primary }]}>Statuts</Text>
+              <Text style={[styles.screenSubtitle, { color: themeColors.text.secondary }]}>Partagez un moment avec vos contacts</Text>
+            </View>
+            <View style={styles.statusHeaderActions}>
+              <TouchableOpacity
+                style={[styles.headerAction, { backgroundColor: themeColors.surface }]}
+                onPress={() => navigation.navigate('CreateStatus')}
+                accessibilityRole="button"
+                accessibilityLabel="Créer un statut texte"
+              >
+                <Pencil size={20} color={themeColors.primary} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.headerAction, { backgroundColor: themeColors.primary }]}
+                onPress={handlePickStatusImage}
+                accessibilityRole="button"
+                accessibilityLabel="Créer un statut photo"
+              >
+                <CameraIcon size={20} color="#fff" />
+              </TouchableOpacity>
+            </View>
           </View>
 
-          {!isWide && (
-            <>
-              <View style={[styles.listHeader, { backgroundColor: isDark ? '#222' : '#f0f2f5' }]}>
-                <Text style={[styles.listHeaderText, { color: themeColors.text.secondary }]}>Mises à jour récentes</Text>
-              </View>
+          <View style={styles.sectionHeading}>
+            <View>
+              <Text style={[styles.sectionTitle, { color: themeColors.text.primary }]}>Mises à jour récentes</Text>
+              <Text style={[styles.sectionSubtitle, { color: themeColors.text.secondary }]}>Les statuts disparaissent après 24 h</Text>
+            </View>
+          </View>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.statusCarousel}
+            accessibilityLabel="Carrousel des statuts récents"
+          >
+            {renderStatusCard({
+              user_id: currentUser?.id,
+              full_name: 'Moi',
+              statuses: myStatuses,
+              avatar_url: currentUser?.avatar_url || currentUser?.avatar,
+            }, true)}
+            {userStatuses.map((item) => renderStatusCard(item))}
+          </ScrollView>
 
-              {userStatuses.length > 0 ? (
-                userStatuses.map((item) => renderStatusItem(item))
-              ) : (
-                <View style={styles.emptyRecent}>
-                  <Text style={{ color: themeColors.text.disabled, fontSize: 13 }}>Aucune mise à jour récente à afficher.</Text>
-                </View>
-              )}
-            </>
+          {userStatuses.length === 0 && (
+            <View style={styles.emptyRecent}>
+              <Text style={{ color: themeColors.text.disabled, fontSize: 13 }}>Aucun statut récent pour le moment.</Text>
+            </View>
           )}
 
           {/* Section Market Feed */}
-          <View style={[styles.listHeader, { backgroundColor: isDark ? '#222' : '#f0f2f5', marginTop: 20 }]}>
-            <Text style={[styles.listHeaderText, { color: themeColors.text.secondary }]}>Découvertes Market</Text>
+          <View style={styles.sectionHeading}>
+            <View>
+              <Text style={[styles.sectionTitle, { color: themeColors.text.primary }]}>Découvertes Market</Text>
+              <Text style={[styles.sectionSubtitle, { color: themeColors.text.secondary }]}>Les entreprises à découvrir</Text>
+            </View>
           </View>
 
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.marketScroll, isWide && { paddingVertical: 30 }]}>
@@ -252,10 +298,6 @@ export default function StatusScreen() {
         </View>
       </ScrollView>
 
-      <TouchableOpacity style={[styles.fabEdit, isWide && { bottom: 100, right: 100 }]} onPress={() => navigation.navigate('CreateStatus')}><Pencil size={20} color="#455A64" /></TouchableOpacity>
-      <TouchableOpacity style={[styles.fabCamera, { backgroundColor: themeColors.primary }, isWide && { bottom: 30, right: 100 }]} onPress={handlePickStatusImage}>
-        <CameraIcon size={24} color="#fff" />
-      </TouchableOpacity>
     </SafeAreaView>
   );
 }
@@ -263,17 +305,38 @@ export default function StatusScreen() {
 const createStyles = (colors: any, normalize: any, isDark: boolean) => StyleSheet.create({
   container: { flex: 1 },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  content: { flex: 1 },
-  statusItem: { flexDirection: 'row', alignItems: 'center', padding: 15, borderBottomWidth: 0.5, borderBottomColor: isDark ? '#333' : '#eee' },
-  avatarWrapper: { position: 'relative' },
-  avatarCircle: { width: 56, height: 56, borderRadius: 28, borderWidth: 2.5, padding: 2, justifyContent: 'center', alignItems: 'center' },
-  statusAvatar: { width: '100%', height: '100%', borderRadius: 25 },
-  addIcon: { position: 'absolute', bottom: 0, right: 0, width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: '#fff', justifyContent: 'center', alignItems: 'center' },
-  statusInfo: { flex: 1, marginLeft: 15 },
-  statusName: { fontSize: 16, fontWeight: 'bold' },
-  statusTime: { fontSize: 13, marginTop: 2 },
-  listHeader: { paddingHorizontal: 15, paddingVertical: 8 },
-  listHeaderText: { fontSize: 13, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 0.5 },
+  content: { flex: 1, paddingBottom: 24 },
+  wideContent: { width: '100%', maxWidth: 1100, alignSelf: 'center', paddingHorizontal: 28 },
+  statusHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, paddingTop: 16, paddingBottom: 18 },
+  statusHeaderCopy: { flex: 1, paddingRight: 12 },
+  screenTitle: { fontSize: normalize(24), fontWeight: '800', letterSpacing: -0.5 },
+  screenSubtitle: { fontSize: normalize(13), marginTop: 4 },
+  statusHeaderActions: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  headerAction: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center', elevation: 1 },
+  sectionHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, paddingTop: 12, paddingBottom: 8 },
+  sectionTitle: { fontSize: normalize(16), fontWeight: '700' },
+  sectionSubtitle: { fontSize: normalize(12), marginTop: 3 },
+  statusCarousel: { paddingHorizontal: 16, paddingTop: 6, paddingBottom: 8, gap: 10 },
+  statusCard: { borderRadius: 18, overflow: 'hidden', justifyContent: 'space-between', borderWidth: 1.5, borderColor: 'transparent' },
+  unreadStatusCard: { borderColor: '#00A884' },
+  readStatusCard: { borderColor: isDark ? '#667085' : '#d0d5dd' },
+  statusCardImage: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%' },
+  statusCardColor: { ...StyleSheet.absoluteFillObject },
+  statusCardScrim: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.28)' },
+  statusCardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', padding: 8 },
+  statusCardAvatarRing: { width: 42, height: 42, borderRadius: 21, padding: 2, borderWidth: 2, borderColor: 'rgba(255,255,255,0.72)' },
+  unreadAvatarRing: { borderColor: '#00A884', borderWidth: 3 },
+  readAvatarRing: { borderColor: 'rgba(255,255,255,0.55)' },
+  statusCardAvatar: { width: '100%', height: '100%', borderRadius: 17 },
+  statusCardAdd: { position: 'absolute', top: 35, left: 34, width: 24, height: 24, borderRadius: 12, justifyContent: 'center', alignItems: 'center', backgroundColor: '#00A884', borderWidth: 2, borderColor: '#fff' },
+  statusReadBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 7, paddingVertical: 4, borderRadius: 12, gap: 3 },
+  unreadBadge: { backgroundColor: '#008f6f' },
+  readBadge: { backgroundColor: 'rgba(0,0,0,0.5)' },
+  statusReadText: { color: '#fff', fontSize: 9, fontWeight: '700' },
+  statusCardBottom: { paddingHorizontal: 9, paddingBottom: 10, paddingTop: 20 },
+  statusPreview: { color: '#fff', fontSize: normalize(12), lineHeight: normalize(16), marginBottom: 8, textShadowColor: 'rgba(0,0,0,0.35)', textShadowRadius: 4 },
+  statusCardName: { color: '#fff', fontSize: normalize(12), fontWeight: '700', textShadowColor: 'rgba(0,0,0,0.55)', textShadowRadius: 4 },
+  statusCardTime: { color: 'rgba(255,255,255,0.82)', fontSize: normalize(10), marginTop: 3 },
   emptyRecent: { padding: 30, alignItems: 'center' },
   marketScroll: { paddingHorizontal: 10, paddingVertical: 15 },
   marketCircleContainer: { alignItems: 'center', width: 90, marginRight: 5 },
@@ -282,7 +345,5 @@ const createStyles = (colors: any, normalize: any, isDark: boolean) => StyleShee
   marketCircleName: { fontSize: 10, fontWeight: 'bold', marginTop: 5, textAlign: 'center', width: '100%' },
   marketStatBadge: { position: 'absolute', top: -5, right: -5, backgroundColor: '#ff3b30', borderRadius: 8, paddingHorizontal: 4, paddingVertical: 1, minWidth: 16, alignItems: 'center' },
   marketStatBadgeText: { color: '#fff', fontSize: 8, fontWeight: '900' },
-  fabCamera: { position: 'absolute', bottom: normalize(25), right: normalize(20), width: 56, height: 56, borderRadius: 28, justifyContent: 'center', alignItems: 'center', elevation: 5, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 3.84 },
-  fabEdit: { position: 'absolute', bottom: normalize(100), right: normalize(25), width: 46, height: 46, borderRadius: 23, backgroundColor: isDark ? '#444' : '#e9edef', justifyContent: 'center', alignItems: 'center', elevation: 3, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.2, shadowRadius: 1.41 },
   footerSpacing: { height: 100 }
 });

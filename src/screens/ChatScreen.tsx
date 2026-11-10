@@ -17,6 +17,7 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import {
   ArrowLeft,
@@ -33,6 +34,7 @@ import {
   Play,
   Send,
   Image as ImageIcon,
+  Smile,
   Square,
 } from 'lucide-react-native';
 import { Audio } from 'expo-av';
@@ -181,10 +183,14 @@ const MessageItem = React.memo((props: any) => {
     downloadedFiles,
     currentUser,
     onLike,
+    maxMediaWidth = 260,
+    maxMessageWidth = 320,
   } = props;
 
   const normalized = dedupePayload(item);
   const [imageAspectRatio, setImageAspectRatio] = useState(1);
+  const imageWidth = Math.min(maxMediaWidth, 260 * Math.min(imageAspectRatio, 1));
+  const imageHeight = Math.min(260, imageWidth / imageAspectRatio);
   const mediaUrl = normalized.localUri || normalized.file_url || normalized.fileUrl || normalized.media_url || normalized.url || normalized.file?.url || normalized.file?.file_url || null;
   const mediaName = normalized.file_name || normalized.filename || normalized.name || (normalized.type === 'text' ? '' : normalized.content) || 'Document';
   const mimeType = normalized.mime_type || normalized.mimeType || normalized.file?.mime_type || normalized.file?.mimeType || normalized.metadata?.mimeType || normalized.metadata?.mime_type || '';
@@ -307,7 +313,7 @@ const MessageItem = React.memo((props: any) => {
 
   const renderVideoBubble = () => {
     return (
-      <TouchableOpacity onPress={() => downloadFile(normalized)} style={styles.videoContainer} activeOpacity={0.9}>
+      <TouchableOpacity onPress={() => downloadFile(normalized)} style={[styles.videoContainer, { width: maxMediaWidth }]} activeOpacity={0.9}>
         <View style={styles.videoThumbnail} />
         <View style={styles.videoOverlay}>
           <View style={styles.videoPlayButton}><Play size={18} color="#fff" fill="#fff" /></View>
@@ -326,7 +332,7 @@ const MessageItem = React.memo((props: any) => {
         <Image source={{ uri: resolveUrl(sender.avatar_url) || `https://ui-avatars.com/api/?name=${encodeURIComponent(sender.full_name || 'User')}` }} style={styles.msgAvatar} resizeMode="cover" />
       )}
 
-      <View style={{ maxWidth: '85%' }}>
+      <View style={{ maxWidth: maxMessageWidth }}>
         {!isMe && isGroup && sender && (
           <Text style={[styles.senderName, { color: themeColors.primary }]}>{sender.full_name}</Text>
         )}
@@ -338,12 +344,7 @@ const MessageItem = React.memo((props: any) => {
             <View style={styles.imageContainer}>
               <Image
                 source={{ uri: getFullUrl(downloadedFiles[normalized.id] || normalized.localUri || mediaUrl) || undefined }}
-                style={[
-                  styles.imageMsg,
-                  imageAspectRatio > 220 / 260
-                    ? { width: 220, height: 220 / imageAspectRatio }
-                    : { width: Math.max(110, 260 * imageAspectRatio), height: 260 },
-                ]}
+                style={[styles.imageMsg, { width: imageWidth, height: imageHeight }]}
                 resizeMode="contain"
                 onLoad={({ nativeEvent }) => {
                   const { width, height } = nativeEvent.source;
@@ -406,7 +407,7 @@ const MessageItem = React.memo((props: any) => {
   );
 });
 
-const createStyles = (colors: any, normalize: any, isDark: boolean) => StyleSheet.create({
+const createStyles = (colors: any, normalize: any, isDark: boolean, isCompact: boolean) => StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
   container: { flex: 1, backgroundColor: colors.background },
   header: {
@@ -428,14 +429,16 @@ const createStyles = (colors: any, normalize: any, isDark: boolean) => StyleShee
   headerTitle: { fontSize: normalize(18), fontWeight: '700', color: colors.text.primary },
   headerSubtitle: { fontSize: normalize(11), color: colors.text.secondary, marginTop: 2 },
   headerActions: { flexDirection: 'row', alignItems: 'center' },
-  headerBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', marginLeft: 8 },
+  headerBtn: { minWidth: 44, minHeight: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', marginLeft: 4 },
   avatar: { width: normalize(40), height: normalize(40), borderRadius: normalize(20), backgroundColor: '#E2E8F0', marginRight: normalize(10) },
   body: { flex: 1 },
-  wallpaper: { opacity: isDark ? 0.14 : 0.22 },
+  wallpaper: { opacity: isDark ? 0.18 : 0.28 },
   messagesList: { paddingHorizontal: 10, paddingTop: 8, paddingBottom: 12 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   messageRow: { flexDirection: 'row', marginVertical: 6 },
-  bubble: { maxWidth: '82%', borderRadius: 18, paddingHorizontal: 12, paddingVertical: 10, overflow: 'hidden' },
+  dateDivider: { alignSelf: 'center', marginVertical: 10, paddingHorizontal: 12, paddingVertical: 5, borderRadius: 12, backgroundColor: isDark ? 'rgba(40,50,48,0.92)' : 'rgba(255,255,255,0.88)', elevation: 1 },
+  dateDividerText: { color: colors.text.secondary, fontSize: normalize(11), fontWeight: '600' },
+  bubble: { maxWidth: '100%', borderRadius: 18, paddingHorizontal: 12, paddingVertical: 10, overflow: 'hidden' },
   msgText: { fontSize: normalize(15), lineHeight: normalize(22) },
   msgFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', marginTop: 6 },
   likeButton: { flexDirection: 'row', alignItems: 'center', marginRight: 7, minWidth: 18, minHeight: 18, justifyContent: 'center' },
@@ -446,7 +449,7 @@ const createStyles = (colors: any, normalize: any, isDark: boolean) => StyleShee
   imageContainer: { maxWidth: '100%', borderRadius: 12, overflow: 'hidden', backgroundColor: '#e5e7eb' },
   imageMsg: { borderRadius: 12 },
   downloadOverlay: { position: 'absolute', right: 8, bottom: 8, width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(0,0,0,0.36)', alignItems: 'center', justifyContent: 'center' },
-  fileMsg: { flexDirection: 'row', alignItems: 'center', minWidth: 210, maxWidth: 260, padding: 10 },
+  fileMsg: { flexDirection: 'row', alignItems: 'center', minWidth: isCompact ? 0 : 210, maxWidth: 260, padding: 10 },
   fileIcon: { width: 42, height: 42, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginRight: 10 },
   fileInfo: { flex: 1, paddingRight: 6 },
   fileName: { fontSize: normalize(14), fontWeight: '700' },
@@ -459,10 +462,10 @@ const createStyles = (colors: any, normalize: any, isDark: boolean) => StyleShee
   videoMeta: { paddingHorizontal: 10, paddingVertical: 8, backgroundColor: 'rgba(17,24,39,0.12)' },
   videoMetaText: { fontSize: normalize(12), color: '#fff', fontWeight: '600' },
   videoMetaSubText: { fontSize: normalize(10), color: 'rgba(255,255,255,0.75)', marginTop: 2 },
-  whatsappAudioContainer: { flexDirection: 'row', alignItems: 'center', minWidth: 200, maxWidth: 260 },
+  whatsappAudioContainer: { flexDirection: 'row', alignItems: 'center', minWidth: isCompact ? 0 : 200, maxWidth: 260 },
   audioAvatar: { width: 24, height: 24, borderRadius: 12, marginRight: 8, backgroundColor: '#e5e7eb' },
   playButtonCircle: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginRight: 8 },
-  audioWaveformContainer: { flex: 1, minWidth: 120 },
+  audioWaveformContainer: { flex: 1, minWidth: isCompact ? 48 : 120 },
   waveformTrack: { height: 24, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', overflow: 'hidden' },
   waveformBar: { width: 2, borderRadius: 1, marginHorizontal: 1 },
   audioInfoRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 5 },
@@ -470,7 +473,7 @@ const createStyles = (colors: any, normalize: any, isDark: boolean) => StyleShee
   composer: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    paddingHorizontal: 10,
+    paddingHorizontal: isCompact ? 6 : 10,
     paddingVertical: 8,
     borderTopWidth: 1,
     borderTopColor: colors.border,
@@ -488,7 +491,15 @@ const createStyles = (colors: any, normalize: any, isDark: boolean) => StyleShee
     marginRight: 8,
   },
   textInput: { flex: 1, fontSize: normalize(15), color: colors.text.primary, paddingVertical: 10 },
-  iconButton: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', marginHorizontal: 3 },
+  iconButton: { minWidth: 44, minHeight: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', marginHorizontal: 1 },
+  inlineIconButton: { width: 30, height: 40, alignItems: 'center', justifyContent: 'center', marginRight: 4 },
+  quickActionTray: { flexDirection: 'row', justifyContent: 'space-around', paddingHorizontal: 10, paddingVertical: 12, borderTopWidth: StyleSheet.hairlineWidth },
+  quickAction: { alignItems: 'center', justifyContent: 'center', minWidth: 78, minHeight: 72 },
+  quickActionIcon: { width: 44, height: 44, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
+  quickActionLabel: { fontSize: normalize(11), fontWeight: '600', marginTop: 5 },
+  emojiTray: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-around', paddingHorizontal: 8, paddingVertical: 7, borderTopWidth: StyleSheet.hairlineWidth },
+  emojiOption: { width: '12.5%', minWidth: 34, height: 40, alignItems: 'center', justifyContent: 'center' },
+  emojiText: { fontSize: 22 },
   recordingButton: { backgroundColor: '#d93025' },
   recordingTime: { color: '#d93025', fontSize: normalize(12), fontWeight: '700', marginHorizontal: 4 },
   sendButton: { width: normalize(46), height: normalize(46), borderRadius: normalize(23), backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
@@ -507,11 +518,12 @@ const createStyles = (colors: any, normalize: any, isDark: boolean) => StyleShee
 
 export default function ChatScreen({ navigation, route }: any) {
   const { colors, isDark, normalize } = useTheme();
+  const { width: windowWidth } = useWindowDimensions();
   const { t } = useLanguage();
   const { user: currentUser } = useUser();
   const insets = useSafeAreaInsets();
   const chatId = route?.params?.chatId || route?.params?.id;
-  const styles = createStyles(colors, normalize, isDark);
+  const styles = createStyles(colors, normalize, isDark, windowWidth < 380);
   const [messages, setMessages] = useState<any[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -523,6 +535,8 @@ export default function ChatScreen({ navigation, route }: any) {
   const [isChatFavorite, setIsChatFavorite] = useState(false);
   const [selectedMessage, setSelectedMessage] = useState<any>(null);
   const [isWallpaperPickerOpen, setIsWallpaperPickerOpen] = useState(false);
+  const [isAttachmentMenuOpen, setIsAttachmentMenuOpen] = useState(false);
+  const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
   const [wallpaperId, setWallpaperId] = useState('default');
   const [customWallpaperUri, setCustomWallpaperUri] = useState<string | null>(null);
   const [sound, setSound] = useState<Audio.Sound | null>(null);
@@ -1065,31 +1079,55 @@ export default function ChatScreen({ navigation, route }: any) {
     await loadMessages();
   }, [chatId, loadMessages]);
 
-  const renderItem = ({ item }: { item: any }) => {
+  const renderItem = ({ item, index }: { item: any; index: number }) => {
     const normalizedItem = dedupePayload(item);
+    const previousItem = index > 0 ? dedupePayload(messages[index - 1]) : null;
+    const messageDate = safeDate(normalizedItem.created_at);
+    const previousDate = previousItem ? safeDate(previousItem.created_at) : null;
+    const isNewDay = !previousDate || messageDate.toDateString() !== previousDate.toDateString();
+    const today = new Date();
+    const yesterday = new Date();
+    yesterday.setDate(today.getDate() - 1);
+    const dateLabel = messageDate.toDateString() === today.toDateString()
+      ? 'Aujourd’hui'
+      : messageDate.toDateString() === yesterday.toDateString()
+        ? 'Hier'
+        : messageDate.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' });
+    const isGroupChat = Boolean(route?.params?.isGroup || chatInfo?.type === 'group');
+    const maxMediaWidth = Math.max(100, Math.min(260, windowWidth - 48 - (isGroupChat ? 36 : 0)));
+    const maxMessageWidth = Math.max(0, Math.min(windowWidth - 36 - (isGroupChat ? 36 : 0), windowWidth * 0.86));
     return (
-      <MessageItem
-        item={normalizedItem}
-        isMe={String(normalizedItem.sender_id || normalizedItem.user_id || normalizedItem.author_id) === String(currentUser?.id)}
-        isGroup={Boolean(route?.params?.isGroup || chatInfo?.type === 'group')}
-        sender={normalizedItem.sender || normalizedItem.user || chatInfo?.participants?.find?.((p: any) => p.id !== currentUser?.id) || null}
-        currentUser={currentUser}
-      themeColors={colors}
-      isDark={isDark}
-      getFullUrl={getFullUrl}
-      handleMessageLongPress={handleMessageLongPress}
-      playAudio={playAudio}
-      playingId={playingId}
-      playbackStatus={playbackStatus}
-      downloadFile={downloadFile}
-      downloadProgress={downloadProgress}
-      downloadedFiles={downloadedFiles}
-      t={t}
-      onTranslate={() => Promise.resolve()}
-      onLike={likeMessage}
-      chatColor={colors.primary}
-      styles={styles}
-      />
+      <>
+        {isNewDay && (
+          <View style={styles.dateDivider}>
+            <Text style={styles.dateDividerText}>{dateLabel}</Text>
+          </View>
+        )}
+        <MessageItem
+          item={normalizedItem}
+          maxMediaWidth={maxMediaWidth}
+          maxMessageWidth={maxMessageWidth}
+          isMe={String(normalizedItem.sender_id || normalizedItem.user_id || normalizedItem.author_id) === String(currentUser?.id)}
+          isGroup={isGroupChat}
+          sender={normalizedItem.sender || normalizedItem.user || chatInfo?.participants?.find?.((p: any) => p.id !== currentUser?.id) || null}
+          currentUser={currentUser}
+          themeColors={colors}
+          isDark={isDark}
+          getFullUrl={getFullUrl}
+          handleMessageLongPress={handleMessageLongPress}
+          playAudio={playAudio}
+          playingId={playingId}
+          playbackStatus={playbackStatus}
+          downloadFile={downloadFile}
+          downloadProgress={downloadProgress}
+          downloadedFiles={downloadedFiles}
+          t={t}
+          onTranslate={() => Promise.resolve()}
+          onLike={likeMessage}
+          chatColor={colors.primary}
+          styles={styles}
+        />
+      </>
     );
   };
 
@@ -1132,7 +1170,11 @@ export default function ChatScreen({ navigation, route }: any) {
         </View>
       </View>
 
-      <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={insets.bottom + 8}>
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : Platform.OS === 'android' ? 'height' : undefined}
+        keyboardVerticalOffset={insets.bottom + 8}
+      >
         <ImageBackground source={wallpaperSource} style={styles.body} imageStyle={styles.wallpaper}>
           {isLoading && messages.length === 0 ? (
             <View style={styles.center}><ActivityIndicator size="small" color={colors.primary} /></View>
@@ -1148,13 +1190,62 @@ export default function ChatScreen({ navigation, route }: any) {
           )}
         </ImageBackground>
 
+        {isAttachmentMenuOpen && (
+          <View style={[styles.quickActionTray, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
+            <TouchableOpacity
+              style={styles.quickAction}
+              onPress={() => { setIsAttachmentMenuOpen(false); pickImage(); }}
+              accessibilityRole="button"
+              accessibilityLabel="Choisir une photo"
+            >
+              <View style={[styles.quickActionIcon, { backgroundColor: '#dceeff' }]}><ImageIcon size={20} color="#1683d8" /></View>
+              <Text style={[styles.quickActionLabel, { color: colors.text.primary }]}>Galerie</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.quickAction}
+              onPress={() => { setIsAttachmentMenuOpen(false); pickDocument(); }}
+              accessibilityRole="button"
+              accessibilityLabel="Joindre un document"
+            >
+              <View style={[styles.quickActionIcon, { backgroundColor: '#e8e4ff' }]}><Paperclip size={20} color="#6658c8" /></View>
+              <Text style={[styles.quickActionLabel, { color: colors.text.primary }]}>Document</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+        {isEmojiPickerOpen && (
+          <View style={[styles.emojiTray, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
+            {['❤️', '😂', '😮', '😢', '🙏', '👍', '😊', '🔥'].map((emoji) => (
+              <TouchableOpacity
+                key={emoji}
+                style={styles.emojiOption}
+                onPress={() => setInput((value) => `${value}${emoji}`)}
+                accessibilityRole="button"
+                accessibilityLabel={`Insérer ${emoji}`}
+              >
+                <Text style={styles.emojiText}>{emoji}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
         <View style={styles.composer}>
-          <TouchableOpacity style={styles.iconButton} onPress={pickImage} accessibilityRole="button" accessibilityLabel="Envoyer une photo">
-            <ImageIcon size={18} color={colors.primary} />
+          <TouchableOpacity
+            style={styles.iconButton}
+            onPress={() => { setIsAttachmentMenuOpen((open) => !open); setIsEmojiPickerOpen(false); }}
+            accessibilityRole="button"
+            accessibilityLabel={isAttachmentMenuOpen ? 'Fermer les pièces jointes' : 'Ajouter une pièce jointe'}
+          >
+            <Paperclip size={19} color={colors.primary} />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.iconButton} onPress={pickDocument}><Paperclip size={18} color={colors.primary} /></TouchableOpacity>
 
           <View style={styles.inputBox}>
+            <TouchableOpacity
+              style={styles.inlineIconButton}
+              onPress={() => { setIsEmojiPickerOpen((open) => !open); setIsAttachmentMenuOpen(false); }}
+              accessibilityRole="button"
+              accessibilityLabel="Choisir un emoji"
+            >
+              <Smile size={19} color={colors.text.secondary} />
+            </TouchableOpacity>
             <TextInput
               value={input}
               onChangeText={setInput}
