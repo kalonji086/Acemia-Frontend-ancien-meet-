@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "586234416344",
+    "project_id": "artisant-ec211",
+    "storage_bucket": "artisant-ec211.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:586234416344:android:d3e40ad9f0b4cadb555bad",
+        "android_client_info": {
+          "package_name": "com.artisants.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDq02bgUx8tHwYGSERKMljY8ZuZ43u5XoA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:586234416344:android:c4e4383b7ee718f3555bad",
+        "android_client_info": {
+          "package_name": "com.deve"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDq02bgUx8tHwYGSERKMljY8ZuZ43u5XoA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

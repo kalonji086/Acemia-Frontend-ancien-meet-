@@ -1,6 +1,7 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { NavigationContainer, CommonActions } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
+import * as Notifications from 'expo-notifications';
 
 // Screens
 import SplashScreen from '../screens/SplashScreen';
@@ -10,6 +11,7 @@ import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
 import MainScreen from '../screens/MainScreen';
 import ChatScreen from '../screens/ChatScreen';
 import SettingsScreen from '../screens/SettingsScreen';
+import AdminNotificationsScreen from '../screens/AdminNotificationsScreen';
 import ContactsScreen from '../screens/ContactsScreen';
 import CreateStatusScreen from '../screens/CreateStatusScreen';
 import ViewStatusScreen from '../screens/ViewStatusScreen';
@@ -67,6 +69,51 @@ export default function AppNavigator() {
   const { isDark, colors: themeColors } = useTheme();
   const navRef = useRef<any>(null);
   const wasBackground = useRef(false);
+  const pendingNotificationResponse = useRef<Notifications.NotificationResponse | null>(null);
+  const handledNotificationId = useRef<string | null>(null);
+
+  const openNotificationDestination = useCallback((response: Notifications.NotificationResponse) => {
+    const notificationId = response.notification.request.identifier;
+    if (handledNotificationId.current === notificationId) return;
+
+    if (!navRef.current?.isReady()) {
+      pendingNotificationResponse.current = response;
+      return;
+    }
+
+    handledNotificationId.current = notificationId;
+    pendingNotificationResponse.current = null;
+    const { chatId, type, adminNotificationId } = response.notification.request.content.data;
+    if (type === 'admin_message' || adminNotificationId) {
+      navRef.current.navigate('AdminNotifications');
+      Notifications.clearLastNotificationResponseAsync().catch(error => {
+        console.error('Unable to clear the handled notification response:', error);
+      });
+      return;
+    }
+    if (chatId !== undefined && chatId !== null) {
+      navRef.current.navigate('Chat', { chatId: String(chatId) });
+    } else {
+      navRef.current.navigate('ChatList');
+    }
+
+    Notifications.clearLastNotificationResponseAsync().catch(error => {
+      console.error('Unable to clear the handled notification response:', error);
+    });
+  }, []);
+
+  useEffect(() => {
+    const responseSubscription = Notifications.addNotificationResponseReceivedListener(openNotificationDestination);
+    Notifications.getLastNotificationResponseAsync()
+      .then(response => {
+        if (response) openNotificationDestination(response);
+      })
+      .catch(error => {
+        console.error('Unable to read the last notification response:', error);
+      });
+
+    return () => responseSubscription.remove();
+  }, [openNotificationDestination]);
 
   // Thème personnalisé pour React Navigation
   const navigationTheme = {
@@ -277,7 +324,16 @@ export default function AppNavigator() {
   };
 
   return (
-    <NavigationContainer ref={navRef} theme={navigationTheme} linking={Platform.OS === 'web' ? linking : undefined}>
+    <NavigationContainer
+      ref={navRef}
+      theme={navigationTheme}
+      linking={Platform.OS === 'web' ? linking : undefined}
+      onReady={() => {
+        if (pendingNotificationResponse.current) {
+          openNotificationDestination(pendingNotificationResponse.current);
+        }
+      }}
+    >
       <Stack.Navigator initialRouteName="Splash">
         <Stack.Screen
           name="Splash"
@@ -323,6 +379,11 @@ export default function AppNavigator() {
           name="Settings"
           component={SettingsScreen}
           options={{ headerTitle: 'Paramètres' }}
+        />
+        <Stack.Screen
+          name="AdminNotifications"
+          component={AdminNotificationsScreen}
+          options={{ headerShown: false }}
         />
         <Stack.Screen
           name="Contacts"

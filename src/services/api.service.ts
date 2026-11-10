@@ -154,7 +154,7 @@ class ApiService {
     if (config.method?.toLowerCase() !== 'get' || !config.url) return null;
 
     const path = config.url.split(/[?#]/, 1)[0];
-    const uncachedPath = /^\/auth(?:\/|$)|^\/me$|^\/users\/announcements$|^\/(chats|messages|statuses)(?:\/|$)|^\/users\/(?:search|check-phone|contacts\/check)(?:\/|$)|^\/market\/(?:chats|conversations)(?:\/|$)|^\/employer\/(?:applications|recent-chats|export)(?:\/|$)|^\/school\/(?:attendance|evaluations|export|portal)(?:\/|$)|^\/admin(?:\/|$)/;
+    const uncachedPath = /^\/auth(?:\/|$)|^\/me$|^\/users\/(?:announcements|badges)$|^\/(chats|messages|statuses)(?:\/|$)|^\/users\/(?:search|check-phone|contacts\/check)(?:\/|$)|^\/market\/(?:chats|conversations)(?:\/|$)|^\/employer\/(?:applications|recent-chats|export)(?:\/|$)|^\/school\/(?:attendance|evaluations|export|portal)(?:\/|$)|^\/admin(?:\/|$)/;
     if (uncachedPath.test(path)) return null;
 
     try {
@@ -403,6 +403,41 @@ class ApiService {
   async getAnnouncements(): Promise<ApiResponse> {
     try {
       const res = await this.api.get('/users/announcements');
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async updatePushToken(pushToken: string | null): Promise<ApiResponse> {
+    try {
+      const res = await this.api.put('/users/push-token', { pushToken });
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async getBadges(): Promise<ApiResponse<{ messages: number; notifications?: number; calls: number; status: number }>> {
+    try {
+      const res = await this.api.get('/users/badges');
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async getAdminNotifications(limit: number = 50, offset: number = 0): Promise<ApiResponse> {
+    try {
+      const res = await this.api.get('/admin/notifications', { params: { limit, offset } });
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async markAdminNotificationRead(notificationId: string): Promise<ApiResponse> {
+    try {
+      const res = await this.api.put(`/admin/notifications/${encodeURIComponent(notificationId)}/read`);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async markAllAdminNotificationsRead(): Promise<ApiResponse> {
+    try {
+      const res = await this.api.put('/admin/notifications/read-all');
       return res.data;
     } catch (e: any) { return this.handleError(e); }
   }

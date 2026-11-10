@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, StyleSheet, TouchableOpacity, Text, ActivityIndicator, Image, Platform, useWindowDimensions } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Text, ActivityIndicator, Image, Platform, useWindowDimensions, AppState } from 'react-native';
+import * as Notifications from 'expo-notifications';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   MessageSquare, Aperture, Phone, ShoppingCart, AlertCircle,
@@ -33,26 +34,58 @@ export default function MainScreen({ navigation, route }: any) {
   const [unreadTotal, setUnreadTotal] = useState(0);
 
   useEffect(() => {
+    let active = true;
+    if (!currentUser?.id) {
+      setUnreadTotal(0);
+      if (Platform.OS !== 'web') {
+        Notifications.setBadgeCountAsync(0).catch(error => {
+          console.error('Unable to clear the app icon badge:', error);
+        });
+      }
+      return () => { active = false; };
+    }
+
     const fetchUnreadCount = async () => {
       try {
-        const res = await apiService.getChats(1, 100);
-        if (res.success) {
-          const total = res.data.reduce((acc: number, chat: any) => acc + parseInt(chat.unread_count || 0), 0);
-          setUnreadTotal(total);
+        const res = await apiService.getBadges();
+        if (!res.success || !res.data) {
+          throw new Error(res.error || 'Impossible de récupérer le nombre de messages non lus.');
         }
-      } catch (e) {}
+
+        const messageCount = Number(res.data.messages) || 0;
+        const total = currentUser?.is_global_admin
+          ? Number(res.data.notifications) || 0
+          : messageCount;
+        if (active) setUnreadTotal(messageCount);
+        if (Platform.OS !== 'web') {
+          await Notifications.setBadgeCountAsync(total);
+        }
+      } catch (error) {
+        console.error('Unable to refresh unread message badge:', error);
+      }
     };
 
-    fetchUnreadCount();
-    const handleMsg = () => fetchUnreadCount();
+    void fetchUnreadCount();
+    const handleMsg = () => { void fetchUnreadCount(); };
     socketService.on('new_message', handleMsg);
     socketService.on('message_read', handleMsg);
+    socketService.on('admin_notification', handleMsg);
+    socketService.on('admin_notifications_read', handleMsg);
+    const notificationSubscription = Notifications.addNotificationReceivedListener(handleMsg);
+    const appStateSubscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') handleMsg();
+    });
 
     return () => {
+      active = false;
       socketService.off('new_message', handleMsg);
       socketService.off('message_read', handleMsg);
+      socketService.off('admin_notification', handleMsg);
+      socketService.off('admin_notifications_read', handleMsg);
+      notificationSubscription.remove();
+      appStateSubscription.remove();
     };
-  }, []);
+  }, [currentUser?.id, currentUser?.is_global_admin]);
 
   useEffect(() => {
     if (route.params?.screen && route.params.screen !== activeTab) {

@@ -159,6 +159,9 @@ export default function BusinessRegistrationScreen({ navigation }: any) {
       style={[styles.stepContainer, isTablet && { alignSelf: 'center', width: contentWidth }]}
       showsVerticalScrollIndicator={true}
       persistentScrollbar={true}
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+      contentContainerStyle={styles.stepScrollContent}
     >
       <View style={[styles.categoryCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         <View style={[styles.categoryIcon, { backgroundColor: colors.primary + '15' }]}>
@@ -189,6 +192,9 @@ export default function BusinessRegistrationScreen({ navigation }: any) {
       style={[styles.stepContainer, isTablet && { alignSelf: 'center', width: contentWidth }]}
       showsVerticalScrollIndicator={true}
       persistentScrollbar={true}
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+      contentContainerStyle={styles.stepScrollContent}
     >
       <Text style={[styles.stepTitle, { color: colors.text.primary, fontSize: normalize(24, fontSizeFactor) }]}>Détails du business</Text>
       <Text style={[styles.stepSubtitle, { color: colors.text.secondary, fontSize: normalize(14, fontSizeFactor) }]}>Les champs marqués d’un astérisque sont requis pour vérifier votre activité.</Text>
@@ -268,6 +274,9 @@ export default function BusinessRegistrationScreen({ navigation }: any) {
       style={[styles.stepContainer, isTablet && { alignSelf: 'center', width: contentWidth }]}
       showsVerticalScrollIndicator={true}
       persistentScrollbar={true}
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+      contentContainerStyle={styles.stepScrollContent}
     >
       <Text style={[styles.stepTitle, { color: colors.text.primary, fontSize: normalize(24, fontSizeFactor) }]}>Documents légaux</Text>
       <Text style={[styles.stepSubtitle, { color: colors.text.secondary, fontSize: normalize(14, fontSizeFactor) }]}>Nous avons besoin de vérifier votre identité pour la sécurité du market.</Text>
@@ -316,6 +325,9 @@ export default function BusinessRegistrationScreen({ navigation }: any) {
       style={[styles.stepContainer, isTablet && { alignSelf: 'center', width: contentWidth }]}
       showsVerticalScrollIndicator={true}
       persistentScrollbar={true}
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+      contentContainerStyle={styles.stepScrollContent}
     >
       <Text style={[styles.stepTitle, { color: colors.text.primary, fontSize: normalize(24, fontSizeFactor) }]}>Taille de l'entreprise</Text>
 
@@ -346,6 +358,9 @@ export default function BusinessRegistrationScreen({ navigation }: any) {
       style={[styles.stepContainer, isTablet && { alignSelf: 'center', width: contentWidth }]}
       showsVerticalScrollIndicator={true}
       persistentScrollbar={true}
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+      contentContainerStyle={styles.stepScrollContent}
     >
       <Text style={[styles.stepTitle, { color: colors.text.primary, fontSize: normalize(24, fontSizeFactor) }]}>Vérification & Envoi</Text>
       <View style={styles.finalBox}>
@@ -406,7 +421,7 @@ export default function BusinessRegistrationScreen({ navigation }: any) {
           <TouchableOpacity onPress={() => step > 1 ? setStep(step - 1) : navigation.goBack()} style={styles.backButton}>
             <Ionicons name="arrow-back" size={24} color={colors.text.primary} />
           </TouchableOpacity>
-          <Image source={require('../../assets/AcemiaLogo.png')} style={styles.brandLogo} resizeMode="contain" />
+          <Image source={require('../../assets/AcemiaLogo.png')} style={[styles.brandLogo, { backgroundColor: `${colors.primary}12` }]} resizeMode="contain" />
           <View style={styles.brandCopy}>
             <Text style={[styles.brandName, { color: colors.text.primary }]}>Acemia Market</Text>
             <Text style={[styles.headerTitle, { color: colors.text.secondary, fontSize: normalize(10, fontSizeFactor) }]}>INSCRIPTION · ÉTAPE {step}/5</Text>
@@ -480,7 +495,7 @@ export default function BusinessRegistrationScreen({ navigation }: any) {
         </Modal>
 
         {/* Footer Button */}
-        <View style={[styles.footer, isTablet && { alignSelf: 'center', width: contentWidth, borderTopWidth: 0 }]}>
+        <View style={[styles.footer, isTablet && { alignSelf: 'center', width: contentWidth, borderTopWidth: 0 }, { paddingBottom: Math.max(insets.bottom, 12) }]}>
           <TouchableOpacity
             style={[styles.mainBtn, { backgroundColor: colors.primary }, (loading || !!uploadingField) && { opacity: 0.7 }]}
             onPress={step === 5 ? handleSubmit : handleNext}
@@ -501,7 +516,7 @@ function createStyles(colors: any, normalize: any, factor: number, isDark: boole
   container: { flex: 1 },
   header: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 18, paddingVertical: 12 },
   backButton: { width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface },
-  brandLogo: { width: 42, height: 42 },
+  brandLogo: { width: 46, height: 46, borderRadius: 14 },
   brandCopy: { flex: 1, gap: 2 },
   brandName: { fontSize: 16, fontWeight: '900', letterSpacing: -0.3 },
   headerTitle: { fontWeight: '800', letterSpacing: 0.8 },
@@ -509,6 +524,7 @@ function createStyles(colors: any, normalize: any, factor: number, isDark: boole
   progressBg: { height: 4, backgroundColor: isDark ? '#333' : '#eee', width: '100%' },
   progressFill: { height: '100%' },
   stepContainer: { flex: 1, padding: 22, paddingTop: 24 },
+  stepScrollContent: { flexGrow: 1, paddingBottom: 24 },
   stepTitle: { fontWeight: '900', marginBottom: 9, letterSpacing: -0.5 },
   stepSubtitle: { lineHeight: 21, marginBottom: 24 },
   categoryCard: { padding: 20, borderRadius: 22, borderWidth: 1, marginBottom: 15 },

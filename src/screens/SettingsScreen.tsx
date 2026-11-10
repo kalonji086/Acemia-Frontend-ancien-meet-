@@ -17,7 +17,7 @@ import {
 import {
   Moon, Sun, Palette, Type, Languages, ArrowRightLeft,
   ArrowLeft, ChevronRight, ShieldCheck, FileText, HelpCircle,
-  LogOut, CheckCircle, Check, X, ChevronDown
+  LogOut, CheckCircle, Check, X, ChevronDown, Bell
 } from 'lucide-react-native';
 import apiService from '../services/api.service';
 import { SOCKET_URL } from '../utils/constants';
@@ -28,6 +28,7 @@ import { LanguageCode } from '../i18n/translations';
 import { useFeedback } from '../components/FeedbackSystem';
 import Constants from 'expo-constants';
 import * as Device from 'expo-device';
+import * as Notifications from 'expo-notifications';
 import { Platform, useWindowDimensions } from 'react-native';
 import EditProfileScreen from './EditProfileScreen';
 import SecurityPrivacyScreen from './SecurityPrivacyScreen';
@@ -45,7 +46,72 @@ export default function SettingsScreen({ navigation }: any) {
   const [colorModalVisible, setColorModalVisible] = useState(false);
   const [appearanceModalVisible, setAppearanceModalVisible] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>('profile');
+  const [notificationsEnabled, setNotificationsEnabled] = useState(Boolean(user?.push_token));
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
   const isTablet = screenWidth > 768;
+
+  useEffect(() => {
+    setNotificationsEnabled(Boolean(user?.push_token));
+  }, [user?.id, user?.push_token]);
+
+  const handlePushNotificationsChange = async (enabled: boolean) => {
+    if (notificationsLoading) return;
+
+    setNotificationsLoading(true);
+    try {
+      if (enabled) {
+        if (Platform.OS === 'web' || !Device.isDevice) {
+          Alert.alert(t('pushNotificationError'), t('pushNotificationsUnsupported'));
+          return;
+        }
+
+        if (Platform.OS === 'android') {
+          await Notifications.setNotificationChannelAsync('default', {
+            name: t('notifications'),
+            importance: Notifications.AndroidImportance.HIGH,
+            vibrationPattern: [0, 250, 250, 250],
+            lightColor: '#673AB7',
+          });
+        }
+
+        let permission = await Notifications.getPermissionsAsync();
+        if (permission.status !== 'granted') {
+          permission = await Notifications.requestPermissionsAsync();
+        }
+        if (permission.status !== 'granted') {
+          Alert.alert(t('pushNotificationError'), t('pushPermissionDenied'));
+          return;
+        }
+
+        const projectId = Constants.easConfig?.projectId || Constants.expoConfig?.extra?.eas?.projectId;
+        if (!projectId) {
+          throw new Error('EAS project ID is missing from the app configuration.');
+        }
+
+        const token = await Notifications.getExpoPushTokenAsync({ projectId });
+        const response = await apiService.updatePushToken(token.data);
+        if (!response.success) {
+          throw new Error(response.error || t('pushNotificationError'));
+        }
+
+        await setUser({ ...user, push_token: token.data });
+        setNotificationsEnabled(true);
+      } else {
+        const response = await apiService.updatePushToken(null);
+        if (!response.success) {
+          throw new Error(response.error || t('pushNotificationError'));
+        }
+
+        await setUser({ ...user, push_token: null });
+        setNotificationsEnabled(false);
+      }
+    } catch (error: any) {
+      console.error('Unable to update push notification settings:', error);
+      Alert.alert(t('pushNotificationError'), error?.message || t('pushNotificationError'));
+    } finally {
+      setNotificationsLoading(false);
+    }
+  };
 
   const notifyChange = async (message: string) => {
     console.log('Setting changed:', message);
@@ -277,6 +343,36 @@ export default function SettingsScreen({ navigation }: any) {
       </View>
 
       <View style={dynamicStyles.section}>
+        <Text style={dynamicStyles.sectionTitle}>{t('notifications')}</Text>
+        <View style={dynamicStyles.menuItem}>
+          <Bell size={22} color={colors.primary} />
+          <View style={dynamicStyles.notificationText}>
+            <Text style={dynamicStyles.menuText}>{t('pushNotifications')}</Text>
+            <Text style={dynamicStyles.notificationDescription}>{t('pushNotificationsDescription')}</Text>
+          </View>
+          {notificationsLoading
+            ? <ActivityIndicator size="small" color={colors.primary} />
+            : <Switch
+                value={notificationsEnabled}
+                onValueChange={handlePushNotificationsChange}
+                disabled={Platform.OS === 'web'}
+                trackColor={{ false: colors.border, true: colors.primaryLight }}
+                thumbColor={notificationsEnabled ? colors.primary : '#f4f3f4'}
+              />}
+        </View>
+        {user?.is_global_admin && (
+          <TouchableOpacity
+            style={dynamicStyles.menuItem}
+            onPress={() => navigation.navigate('AdminNotifications')}
+          >
+            <Bell size={22} color={colors.primary} />
+            <Text style={dynamicStyles.menuText}>Boîte de réception Admin</Text>
+            <ChevronRight size={20} color={colors.text.disabled} />
+          </TouchableOpacity>
+        )}
+      </View>
+
+      <View style={dynamicStyles.section}>
         <Text style={dynamicStyles.sectionTitle}>{t('appearance')}</Text>
         <TouchableOpacity
           style={[
@@ -459,6 +555,8 @@ const createStyles = (colors: any, normalize: any, factor: number) => StyleSheet
   sectionTitle: { fontSize: normalize(13, factor), fontWeight: 'bold', color: colors.primary, marginTop: 15, marginBottom: 10, textTransform: 'uppercase' },
   menuItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: colors.divider },
   menuText: { flex: 1, fontSize: normalize(15, factor), color: colors.text.primary, marginLeft: 15 },
+  notificationText: { flex: 1, minWidth: 0 },
+  notificationDescription: { fontSize: normalize(12, factor), color: colors.text.secondary, marginLeft: 15, marginTop: 3 },
   valueText: { fontSize: normalize(14, factor), color: colors.text.secondary, marginRight: 10 },
   colorPreview: { width: 24, height: 24, borderRadius: 12, marginRight: 10 },
   fontSizeContainer: { width: '100%', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10 },

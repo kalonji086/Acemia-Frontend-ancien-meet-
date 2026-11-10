@@ -264,7 +264,7 @@ export default function NewEmployerDashboard({ navigation }: any) {
             <Menu size={24} color={colors.text.primary} />
           </TouchableOpacity>
           
-          <Image source={require('../../assets/AcemiaLogo.png')} style={styles.brandLogo} resizeMode="contain" />
+          <Image source={require('../../assets/AcemiaLogo.png')} style={[styles.brandLogo, { backgroundColor: `${colors.primary}12` }]} resizeMode="contain" />
           <View style={styles.headerCenter}>
             <Text style={[styles.headerBrand, { color: colors.text.primary }]}>Acemia Emploi</Text>
             <Text style={[styles.headerSubtitle, { color: colors.text.secondary }]} numberOfLines={1}>
@@ -551,8 +551,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   brandLogo: {
-    width: 38,
-    height: 38,
+    width: 46,
+    height: 46,
+    borderRadius: 14,
   },
   headerCenter: {
     flex: 1,

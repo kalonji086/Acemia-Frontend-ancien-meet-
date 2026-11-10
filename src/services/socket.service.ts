@@ -213,6 +213,14 @@ class SocketService {
       this.emitEvent('message_read', data);
     });
 
+    this.socket.on('admin_notification', (data) => {
+      this.emitEvent('admin_notification', data);
+    });
+
+    this.socket.on('admin_notifications_read', (data) => {
+      this.emitEvent('admin_notifications_read', data);
+    });
+
     this.socket.on('message_delivered', (data) => {
       console.log('Message delivered:', data);
       this.emitEvent('message_delivered', data);

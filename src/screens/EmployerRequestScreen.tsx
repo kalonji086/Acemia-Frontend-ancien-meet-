@@ -20,9 +20,11 @@ import {
 } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
 import apiService from '../services/api.service';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function EmployerRequestScreen({ navigation }: any) {
   const { colors, normalize, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
   const { width: windowWidth } = useWindowDimensions();
   const isTablet = windowWidth > 768;
   const [step, setStep] = useState(1);
@@ -234,12 +236,12 @@ export default function EmployerRequestScreen({ navigation }: any) {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border, paddingHorizontal: isTablet ? '10%' : 15 }]}>
           <TouchableOpacity onPress={prevStep} style={styles.backBtn}>
             <ArrowLeft size={24} color={colors.text.primary} />
           </TouchableOpacity>
-          <Image source={require('../../assets/AcemiaLogo.png')} style={styles.brandLogo} resizeMode="contain" />
+          <Image source={require('../../assets/AcemiaLogo.png')} style={[styles.brandLogo, { backgroundColor: `${colors.primary}12` }]} resizeMode="contain" />
           <View style={styles.progressContainer}>
             <Text style={[styles.brandName, { color: colors.text.primary }]}>Acemia Emploi</Text>
             <View style={[styles.progressBar, { backgroundColor: colors.border }]}>
@@ -250,11 +252,16 @@ export default function EmployerRequestScreen({ navigation }: any) {
           <Text style={[styles.stepBadge, { color: colors.primary, backgroundColor: colors.primary + '15' }]}>{step}/5</Text>
         </View>
 
-        <ScrollView contentContainerStyle={[styles.scrollContent, { paddingHorizontal: isTablet ? '20%' : 25 }]} keyboardShouldPersistTaps="handled">
+        <ScrollView
+          contentContainerStyle={[styles.scrollContent, { paddingHorizontal: isTablet ? '20%' : 25 }]}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+          showsVerticalScrollIndicator={false}
+        >
           {renderStep()}
         </ScrollView>
 
-        <View style={[styles.footer, { borderTopColor: colors.border, paddingHorizontal: isTablet ? '20%' : 20 }]}>
+        <View style={[styles.footer, { borderTopColor: colors.border, backgroundColor: colors.background, paddingHorizontal: isTablet ? '20%' : 20, paddingBottom: Math.max(insets.bottom, 12) }]}>
           <TouchableOpacity
             style={[styles.nextBtn, { backgroundColor: colors.primary }]}
             onPress={step === 5 ? handleSubmit : nextStep}
@@ -279,14 +286,14 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   header: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 18, borderBottomWidth: StyleSheet.hairlineWidth, gap: 10 },
   backBtn: { width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: '#00000008' },
-  brandLogo: { width: 42, height: 42 },
+  brandLogo: { width: 46, height: 46, borderRadius: 14 },
   progressContainer: { flex: 1, gap: 5 },
   brandName: { fontSize: 15, fontWeight: '900', letterSpacing: -0.3 },
   progressBar: { height: 7, borderRadius: 8, width: '100%', overflow: 'hidden' },
   progressFill: { height: '100%' },
   stepIndicator: { fontSize: 10, fontWeight: '800', letterSpacing: 1 },
   stepBadge: { overflow: 'hidden', borderRadius: 12, paddingHorizontal: 11, paddingVertical: 8, fontSize: 12, fontWeight: '900' },
-  scrollContent: { paddingVertical: 24, paddingBottom: 36 },
+  scrollContent: { flexGrow: 1, paddingVertical: 24, paddingBottom: 36 },
   stepContainer: { width: '100%' },
   stepTitle: { fontSize: 24, fontWeight: '900', marginBottom: 25, letterSpacing: -0.5 },
   inputGroup: { marginBottom: 22 },
@@ -301,7 +308,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#00000004',
   },
   input: { flex: 1, marginLeft: 12 },
-  footer: { paddingVertical: 18, borderTopWidth: StyleSheet.hairlineWidth },
+  footer: { paddingTop: 12, paddingBottom: 18, borderTopWidth: StyleSheet.hairlineWidth },
   nextBtn: {
     height: 58,
     borderRadius: 17,

@@ -560,6 +560,10 @@ export default function ChatScreen({ navigation, route }: any) {
       const res = await apiService.getMessages(chatId, 1, 50);
       const nextItems = Array.isArray(res?.data) ? res.data.map((item: any) => dedupePayload(item)) : [];
       setMessages(nextItems);
+      const readRes = await apiService.markMessagesAsRead(chatId);
+      if (!readRes.success) {
+        console.error('Unable to mark the opened chat as read:', readRes.error);
+      }
     } catch (error) {
       console.error('Error fetching messages', error);
     } finally {
@@ -638,11 +642,22 @@ export default function ChatScreen({ navigation, route }: any) {
         const exists = prev.some((m) => String(m.id) === String(next.id));
         return exists ? prev.map((m) => (String(m.id) === String(next.id) ? next : m)) : [...prev, next];
       });
+
+      const senderId = incoming.sender_id || incoming.user_id || incoming.author_id;
+      if (senderId && String(senderId) !== String(currentUser?.id)) {
+        void apiService.markMessagesAsRead(chatId).then(response => {
+          if (!response.success) {
+            console.error('Unable to mark the incoming message as read:', response.error);
+          }
+        }).catch(error => {
+          console.error('Unable to mark the incoming message as read:', error);
+        });
+      }
     };
 
     socketService.on('new_message', onNewMessage);
     return () => socketService.off('new_message', onNewMessage);
-  }, [chatId]);
+  }, [chatId, currentUser?.id]);
 
   useEffect(() => {
     const onReaction = (payload: any) => {

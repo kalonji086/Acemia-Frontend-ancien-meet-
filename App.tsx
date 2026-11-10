@@ -8,8 +8,20 @@ import { LanguageProvider } from './src/context/LanguageContext';
 import { UserProvider } from './src/context/UserContext';
 import * as Device from 'expo-device';
 import { Platform, Alert, View, Text, ActivityIndicator, StyleSheet } from 'react-native';
+import * as Notifications from 'expo-notifications';
 import ErrorBoundary from './src/components/ErrorBoundary';
 import ErrorScreen from './src/screens/ErrorScreen';
+
+if (Platform.OS !== 'web') {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowBanner: true,
+      shouldShowList: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+    }),
+  });
+}
 
 // Empêcher le splash screen de se cacher automatiquement
 SplashScreen.preventAutoHideAsync().catch(() => {});

@@ -103,7 +103,7 @@ export default function SchoolDashboardScreen({ navigation }: any) {
           <TouchableOpacity style={styles.headerButton} onPress={() => navigation.goBack()}>
             <ArrowLeft size={24} color={colors.text.primary} />
           </TouchableOpacity>
-          <Image source={require('../../assets/AcemiaLogo.png')} style={styles.brandLogo} resizeMode="contain" />
+          <Image source={require('../../assets/AcemiaLogo.png')} style={[styles.brandLogo, { backgroundColor: `${colors.primary}12` }]} resizeMode="contain" />
           <Text style={[styles.headerTitle, { color: colors.text.primary, fontSize: normalize(16) }]}>Acemia École</Text>
           <TouchableOpacity style={styles.headerButton} accessibilityLabel="Connexion école" onPress={() => navigation.navigate('SchoolLogin')}>
             <School size={24} color={colors.primary} />
@@ -137,7 +137,7 @@ export default function SchoolDashboardScreen({ navigation }: any) {
           <TouchableOpacity style={styles.headerButton} onPress={() => navigation.goBack()}>
             <ArrowLeft size={24} color={colors.text.primary} />
           </TouchableOpacity>
-          <Image source={require('../../assets/AcemiaLogo.png')} style={styles.brandLogo} resizeMode="contain" />
+          <Image source={require('../../assets/AcemiaLogo.png')} style={[styles.brandLogo, { backgroundColor: `${colors.primary}12` }]} resizeMode="contain" />
           <Text style={[styles.headerTitle, { color: colors.text.primary, fontSize: normalize(16), flex: 1 }]}>Demande en attente</Text>
           <View style={{ width: 40 }} />
         </View>
@@ -168,7 +168,7 @@ export default function SchoolDashboardScreen({ navigation }: any) {
           <TouchableOpacity style={styles.headerButton} onPress={() => navigation.goBack()}>
             <ArrowLeft size={24} color={colors.text.primary} />
           </TouchableOpacity>
-          <Image source={require('../../assets/AcemiaLogo.png')} style={styles.brandLogo} resizeMode="contain" />
+          <Image source={require('../../assets/AcemiaLogo.png')} style={[styles.brandLogo, { backgroundColor: `${colors.primary}12` }]} resizeMode="contain" />
           <Text style={[styles.headerTitle, { color: colors.text.primary, fontSize: normalize(16), flex: 1 }]}>Demande refusée</Text>
           <View style={{ width: 40 }} />
         </View>
@@ -194,7 +194,7 @@ export default function SchoolDashboardScreen({ navigation }: any) {
         <TouchableOpacity style={styles.headerButton} accessibilityLabel="Ouvrir le menu école" onPress={() => setMenuVisible(true)}>
           <Menu size={24} color={colors.text.primary} />
         </TouchableOpacity>
-        <Image source={require('../../assets/AcemiaLogo.png')} style={styles.brandLogo} resizeMode="contain" />
+        <Image source={require('../../assets/AcemiaLogo.png')} style={[styles.brandLogo, { backgroundColor: `${colors.primary}12` }]} resizeMode="contain" />
         <View style={{ alignItems: 'flex-start', flex: 1, minWidth: 0, paddingHorizontal: 8 }}>
           <Text style={[styles.brandLabel, { color: colors.primary }]}>Acemia École</Text>
           <Text style={[styles.headerTitle, { color: colors.text.primary, fontSize: normalize(16) }]} numberOfLines={1}>
@@ -292,7 +292,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   headerButton: { width: 42, height: 42, alignItems: 'center', justifyContent: 'center', borderRadius: 14, backgroundColor: '#00000008' },
-  brandLogo: { width: 40, height: 40 },
+  brandLogo: { width: 46, height: 46, borderRadius: 14 },
   brandLabel: { fontSize: 10, fontWeight: '900', letterSpacing: 0.8 },
   headerTitle: { fontWeight: '800' },
   centeredContent: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 28, width: '100%', maxWidth: 600, alignSelf: 'center' },

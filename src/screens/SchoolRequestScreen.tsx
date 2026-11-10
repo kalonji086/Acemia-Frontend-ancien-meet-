@@ -17,10 +17,12 @@ import {
 import { ArrowLeft, Building2, Mail, Phone, MapPin, GraduationCap, FileText, ChevronRight } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
 import apiService from '../services/api.service';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function SchoolRequestScreen({ navigation }: any) {
   const { colors, normalize } = useTheme();
-  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const { width: windowWidth } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const isTablet = windowWidth > 768;
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState(1);
@@ -207,7 +209,7 @@ export default function SchoolRequestScreen({ navigation }: any) {
             <ArrowLeft size={24} color={colors.text.primary} />
           </TouchableOpacity>
           <View style={styles.brandBlock}>
-            <Image source={require('../../assets/AcemiaLogo.png')} style={styles.brandLogo} resizeMode="contain" />
+            <Image source={require('../../assets/AcemiaLogo.png')} style={[styles.brandLogo, { backgroundColor: `${colors.primary}12` }]} resizeMode="contain" />
             <View style={styles.brandCopy}>
               <Text style={[styles.brandName, { color: colors.text.primary }]}>Acemia</Text>
               <Text style={[styles.headerTitle, { color: colors.text.secondary, fontSize: normalize(12) }]}>CRÉATION D'ÉCOLE</Text>
@@ -229,42 +231,39 @@ export default function SchoolRequestScreen({ navigation }: any) {
           </View>
         </View>
 
-        <ScrollView contentContainerStyle={[styles.scrollContent, isTablet && styles.tabletContainer]} keyboardShouldPersistTaps="handled">
+        <ScrollView
+          contentContainerStyle={[styles.scrollContent, isTablet && styles.tabletContainer]}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+          showsVerticalScrollIndicator={false}
+        >
           {renderStep()}
-
-          <View style={styles.buttonRow}>
-            {step > 1 && (
-              <TouchableOpacity
-                style={[styles.navButton, { borderColor: colors.primary, borderWidth: 1, marginRight: 10 }]}
-                onPress={prevStep}
-              >
-                <Text style={[styles.navButtonText, { color: colors.primary }]}>Retour</Text>
-              </TouchableOpacity>
-            )}
-
-            {step < 3 ? (
-              <TouchableOpacity
-                style={[styles.actionButton, { backgroundColor: colors.primary }]}
-                onPress={nextStep}
-              >
-                <Text style={styles.actionButtonText}>Suivant</Text>
-                <ChevronRight size={18} color="#fff" />
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity
-                style={[styles.actionButton, { backgroundColor: colors.primary }]}
-                onPress={handleSubmit}
-                disabled={loading}
-              >
-                {loading ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={styles.actionButtonText}>Soumettre la demande</Text>
-                )}
-              </TouchableOpacity>
-            )}
-          </View>
         </ScrollView>
+        <View style={[styles.buttonRow, isTablet && styles.tabletContainer, { paddingBottom: Math.max(insets.bottom, 12), backgroundColor: colors.background, borderTopColor: colors.border }]}>
+          {step > 1 && (
+            <TouchableOpacity
+              style={[styles.navButton, { borderColor: colors.primary, borderWidth: 1 }]}
+              onPress={prevStep}
+            >
+              <Text style={[styles.navButtonText, { color: colors.primary }]}>Retour</Text>
+            </TouchableOpacity>
+          )}
+
+          <TouchableOpacity
+            style={[styles.actionButton, { backgroundColor: colors.primary }]}
+            onPress={step < 3 ? nextStep : handleSubmit}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <>
+                <Text style={styles.actionButtonText}>{step < 3 ? 'Suivant' : 'Soumettre la demande'}</Text>
+                {step < 3 && <ChevronRight size={18} color="#fff" />}
+              </>
+            )}
+          </TouchableOpacity>
+        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -282,7 +281,7 @@ const styles = StyleSheet.create({
   },
   backButton: { width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: '#00000008' },
   brandBlock: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 },
-  brandLogo: { width: 42, height: 42 },
+  brandLogo: { width: 46, height: 46, borderRadius: 14 },
   brandCopy: { gap: 2 },
   brandName: { fontSize: 17, fontWeight: '900', letterSpacing: -0.4 },
   headerTitle: { fontWeight: '800', letterSpacing: 1 },
@@ -293,7 +292,7 @@ const styles = StyleSheet.create({
   progressPercent: { fontSize: 12, fontWeight: '900' },
   progressBar: { height: 7, borderRadius: 8, width: '100%', overflow: 'hidden' },
   progressFill: { height: '100%', borderRadius: 8 },
-  scrollContent: { padding: 22, paddingBottom: 32 },
+  scrollContent: { flexGrow: 1, padding: 22, paddingBottom: 24 },
   tabletContainer: { maxWidth: 680, alignSelf: 'center', width: '100%' },
   stepContainer: { width: '100%' },
   stepTitle: { fontWeight: 'bold', marginBottom: 20 },
@@ -310,7 +309,7 @@ const styles = StyleSheet.create({
     width: '100%'
   },
   input: { flex: 1, marginLeft: 10, height: '100%' },
-  buttonRow: { flexDirection: 'row', marginTop: 30, justifyContent: 'space-between', width: '100%', gap: 12 },
+  buttonRow: { flexDirection: 'row', paddingHorizontal: 22, paddingTop: 12, paddingBottom: 18, borderTopWidth: StyleSheet.hairlineWidth, justifyContent: 'space-between', width: '100%', gap: 12 },
   navButton: {
     flex: 1,
     height: 54,

@@ -21,6 +21,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import apiService from '../services/api.service';
 import socketService from '../services/socket.service';
 import { SOCKET_URL } from '../utils/constants';
@@ -30,6 +31,7 @@ import * as DocumentPicker from 'expo-document-picker';
 
 export default function BusinessDashboardScreen({ navigation }: any) {
   const { colors, normalize, isDark, fontSizeFactor } = useTheme();
+  const insets = useSafeAreaInsets();
   const { t } = useLanguage();
   const { width: windowWidth } = useWindowDimensions();
   const isWide = windowWidth >= 900;
@@ -350,21 +352,34 @@ export default function BusinessDashboardScreen({ navigation }: any) {
   );
 
   const renderPublishForm = () => (
-    <ScrollView style={styles.mainContent} showsVerticalScrollIndicator={true} persistentScrollbar={true}>
-      <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>{business.category === 'Boutique' ? 'Nouvelle Annonce' : 'Publier un Exploit'}</Text>
-      <View style={[styles.formCard, { backgroundColor: colors.surface }]}>
-        <Text style={styles.label}>Titre de la publication</Text>
-        <TextInput style={[styles.input, { color: colors.text.primary, backgroundColor: isDark ? '#2a2a2a' : '#f9f9f9' }]} value={publishForm.title} onChangeText={t => setPublishForm(p => ({ ...p, title: t }))} placeholder="Ex: Arrivage de nouveaux smartphones" placeholderTextColor={colors.text.disabled} />
-        <Text style={styles.label}>Message / Description</Text>
-        <TextInput style={[styles.input, { color: colors.text.primary, backgroundColor: isDark ? '#2a2a2a' : '#f9f9f9', minHeight: 120, textAlignVertical: 'top' }]} value={publishForm.content} onChangeText={t => setPublishForm(p => ({ ...p, content: t }))} placeholder="Détaillez votre offre ou votre réalisation..." placeholderTextColor={colors.text.disabled} multiline />
-        <Text style={styles.label}>Photos (jusqu'à 5)</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10 }}>
-          {publishForm.images.map((img, idx) => (<View key={idx} style={styles.imagePreviewWrapper}><Image source={{ uri: img }} style={styles.smallPreview} /><TouchableOpacity style={styles.removeImgBtn} onPress={() => { const ni = [...publishForm.images]; const nu = [...publishForm.uploadedUrls]; ni.splice(idx,1); nu.splice(idx,1); setPublishForm(p => ({...p, images: ni, uploadedUrls: nu})); }}><Ionicons name="close-circle" size={20} color="#ff3b30" /></TouchableOpacity></View>))}
-          {publishForm.images.length < 5 && (<TouchableOpacity style={[styles.addImageBtn, { borderColor: catColor }]} onPress={pickPublishImage}><Ionicons name="add" size={30} color={catColor} /></TouchableOpacity>)}
-        </ScrollView>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+      <ScrollView
+        style={styles.mainContent}
+        contentContainerStyle={styles.publishFormContent}
+        showsVerticalScrollIndicator={true}
+        persistentScrollbar={true}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+      >
+        <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>{business.category === 'Boutique' ? 'Nouvelle Annonce' : 'Publier un Exploit'}</Text>
+        <View style={[styles.formCard, { backgroundColor: colors.surface }]}>
+          <Text style={styles.label}>Titre de la publication</Text>
+          <TextInput style={[styles.input, { color: colors.text.primary, backgroundColor: isDark ? '#2a2a2a' : '#f9f9f9' }]} value={publishForm.title} onChangeText={t => setPublishForm(p => ({ ...p, title: t }))} placeholder="Ex: Arrivage de nouveaux smartphones" placeholderTextColor={colors.text.disabled} />
+          <Text style={styles.label}>Message / Description</Text>
+          <TextInput style={[styles.input, { color: colors.text.primary, backgroundColor: isDark ? '#2a2a2a' : '#f9f9f9', minHeight: 120, textAlignVertical: 'top' }]} value={publishForm.content} onChangeText={t => setPublishForm(p => ({ ...p, content: t }))} placeholder="Détaillez votre offre ou votre réalisation..." placeholderTextColor={colors.text.disabled} multiline />
+          <Text style={styles.label}>Photos (jusqu'à 5)</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10 }} keyboardShouldPersistTaps="handled">
+            {publishForm.images.map((img, idx) => (<View key={idx} style={styles.imagePreviewWrapper}><Image source={{ uri: img }} style={styles.smallPreview} /><TouchableOpacity style={styles.removeImgBtn} onPress={() => { const ni = [...publishForm.images]; const nu = [...publishForm.uploadedUrls]; ni.splice(idx,1); nu.splice(idx,1); setPublishForm(p => ({...p, images: ni, uploadedUrls: nu})); }}><Ionicons name="close-circle" size={20} color="#ff3b30" /></TouchableOpacity></View>))}
+            {publishForm.images.length < 5 && (<TouchableOpacity style={[styles.addImageBtn, { borderColor: catColor }]} onPress={pickPublishImage}><Ionicons name="add" size={30} color={catColor} /></TouchableOpacity>)}
+          </ScrollView>
+        </View>
+      </ScrollView>
+      <View style={[styles.publishFormFooter, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+        <TouchableOpacity style={[styles.publishBtn, { backgroundColor: catColor, marginTop: 0 }]} onPress={handlePublish} disabled={loading}>
+          {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.publishBtnText}>PUBLIER MAINTENANT</Text>}
+        </TouchableOpacity>
       </View>
-      <TouchableOpacity style={[styles.publishBtn, { backgroundColor: catColor }]} onPress={handlePublish} disabled={loading}>{loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.publishBtnText}>PUBLIER MAINTENANT</Text>}</TouchableOpacity>
-    </ScrollView>
+    </KeyboardAvoidingView>
   );
 
   const renderOrders = () => (
@@ -518,7 +533,7 @@ export default function BusinessDashboardScreen({ navigation }: any) {
       <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
       <View style={styles.header}>
         {!isWide && <TouchableOpacity style={styles.headerMenuButton} accessibilityLabel="Ouvrir le menu Market" onPress={() => setMenuVisible(true)}><Ionicons name="menu" size={24} color={colors.text.primary} /></TouchableOpacity>}
-        <Image source={require('../../assets/AcemiaLogo.png')} style={styles.headerLogo} resizeMode="contain" />
+        <Image source={require('../../assets/AcemiaLogo.png')} style={[styles.headerLogo, { backgroundColor: `${colors.primary}12` }]} resizeMode="contain" />
         <View style={styles.headerInfo}>
           <Text style={[styles.brandTitle, { color: colors.text.primary }]}>Acemia Market</Text>
           <Text numberOfLines={1} style={[styles.businessName, { color: colors.text.secondary }]}>{business.business_name} · <Text style={{ color: catColor }}>{category}</Text></Text>
@@ -546,7 +561,7 @@ function createStyles(colors: any, normalize: any, factor: number, isDark: boole
   container: { flex: 1 }, centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   header: { flexDirection: 'row', alignItems: 'center', gap: normalize(10), paddingHorizontal: normalize(16), paddingVertical: normalize(11), borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border, backgroundColor: colors.surface },
   headerMenuButton: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 13, backgroundColor: isDark ? '#ffffff10' : '#00000008' },
-  headerLogo: { width: 40, height: 40 },
+  headerLogo: { width: 46, height: 46, borderRadius: 14 },
   headerInfo: { flex: 1, minWidth: 0 }, brandTitle: { fontSize: normalize(15, factor), fontWeight: '900' }, businessName: { fontSize: normalize(12, factor), fontWeight: '600', marginTop: 2 },
   headerExitButton: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 13, backgroundColor: isDark ? '#ffffff10' : '#00000008' },
   contentWrapper: { flex: 1, flexDirection: 'row' },
@@ -559,6 +574,8 @@ function createStyles(colors: any, normalize: any, factor: number, isDark: boole
   sidebarItem: { flexDirection: 'row', alignItems: 'center', minHeight: normalize(48), borderRadius: normalize(14), marginHorizontal: normalize(10), marginBottom: normalize(5), paddingHorizontal: normalize(12) },
   sidebarLabel: { marginLeft: normalize(10), fontSize: normalize(12, factor), fontWeight: '700' },
   mainContent: { flex: 1, padding: normalize(16), width: '100%', maxWidth: 1120, alignSelf: 'center' },
+  publishFormContent: { flexGrow: 1, paddingBottom: normalize(24) },
+  publishFormFooter: { width: '100%', maxWidth: 1120, alignSelf: 'center', paddingHorizontal: normalize(16), paddingTop: normalize(12), paddingBottom: normalize(18), borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border, backgroundColor: colors.background },
   dashboardHero: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: normalize(18), borderWidth: 1, borderRadius: normalize(20), marginBottom: normalize(18) },
   dashboardHeader: { flex: 1, minWidth: 0, marginBottom: 0, paddingRight: normalize(10) },
   heroAction: { minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 15, borderRadius: 14, gap: 4 },
