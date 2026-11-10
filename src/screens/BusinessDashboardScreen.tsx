@@ -16,6 +16,7 @@ import {
   FlatList,
   Modal,
   Linking,
+  useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
@@ -24,18 +25,19 @@ import apiService from '../services/api.service';
 import socketService from '../services/socket.service';
 import { SOCKET_URL } from '../utils/constants';
 
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 
 export default function BusinessDashboardScreen({ navigation }: any) {
   const { colors, normalize, isDark, fontSizeFactor } = useTheme();
   const { t } = useLanguage();
-  const insets = useSafeAreaInsets();
+  const { width: windowWidth } = useWindowDimensions();
+  const isWide = windowWidth >= 900;
 
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<any>(null);
   const [activeMenu, setActiveMenu] = useState('overview');
+  const [menuVisible, setMenuVisible] = useState(false);
 
   const [stockTab, setStockTab] = useState<'current' | 'logs'>('current');
 
@@ -283,35 +285,49 @@ export default function BusinessDashboardScreen({ navigation }: any) {
   const getFullUrl = (url: string) => { if (!url || url === 'null') return null; if (url.startsWith('http') || url.startsWith('file://') || url.startsWith('content://')) return url; return `${SOCKET_URL}${url.startsWith('/') ? '' : '/'}${url}`; };
 
   const renderSidebar = () => (
-    <View style={[styles.sidebar, { backgroundColor: isDark ? '#1a1a1a' : '#f8f9fa', borderRightColor: colors.border }]}>
+    <View style={[styles.sidebar, { width: isWide ? normalize(240) : Math.min(windowWidth * 0.84, 340), backgroundColor: isDark ? '#151923' : colors.surface, borderRightColor: colors.border }]}>
       <View style={styles.sidebarBrand}>
-        <Ionicons name="storefront" size={22} color={catColor} />
-        <Text numberOfLines={1} style={[styles.sidebarBusinessName, { color: colors.text.primary }]}>{business.business_name}</Text>
+        <Image source={require('../../assets/AcemiaLogo.png')} style={styles.sidebarLogo} resizeMode="contain" />
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={[styles.sidebarBrandName, { color: colors.text.primary }]}>Acemia Market</Text>
+          <Text numberOfLines={1} style={[styles.sidebarBusinessName, { color: colors.text.secondary }]}>{business.business_name}</Text>
+        </View>
+        {!isWide && (
+          <TouchableOpacity style={styles.closeSidebarButton} accessibilityLabel="Fermer le menu" onPress={() => setMenuVisible(false)}>
+            <Ionicons name="close" size={22} color={colors.text.secondary} />
+          </TouchableOpacity>
+        )}
       </View>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingVertical: normalize(12) }}>
-        <TouchableOpacity style={[styles.sidebarItem, activeMenu === 'overview' && { backgroundColor: catColor + '20' }]} onPress={() => setActiveMenu('overview')}><Ionicons name="grid" size={22} color={activeMenu === 'overview' ? catColor : colors.text.secondary} /><Text style={[styles.sidebarLabel, { color: activeMenu === 'overview' ? catColor : colors.text.secondary }]}>Vue d’ensemble</Text></TouchableOpacity>
+        <TouchableOpacity style={[styles.sidebarItem, activeMenu === 'overview' && { backgroundColor: catColor + '20' }]} onPress={() => { setActiveMenu('overview'); setMenuVisible(false); }}><Ionicons name="grid" size={22} color={activeMenu === 'overview' ? catColor : colors.text.secondary} /><Text style={[styles.sidebarLabel, { color: activeMenu === 'overview' ? catColor : colors.text.secondary }]}>Vue d’ensemble</Text></TouchableOpacity>
         {(category === 'Boutique') ? (
           <>
-            <TouchableOpacity style={[styles.sidebarItem, activeMenu === 'orders' && { backgroundColor: catColor + '20' }]} onPress={() => setActiveMenu('orders')}><Ionicons name="cart" size={22} color={activeMenu === 'orders' ? catColor : colors.text.secondary} /><Text style={[styles.sidebarLabel, { color: activeMenu === 'orders' ? catColor : colors.text.secondary }]}>Commandes</Text></TouchableOpacity>
-            <TouchableOpacity style={[styles.sidebarItem, activeMenu === 'stock' && { backgroundColor: catColor + '20' }]} onPress={() => setActiveMenu('stock')}><Ionicons name="cube" size={22} color={activeMenu === 'stock' ? catColor : colors.text.secondary} /><Text style={[styles.sidebarLabel, { color: activeMenu === 'stock' ? catColor : colors.text.secondary }]}>Stock</Text></TouchableOpacity>
+            <TouchableOpacity style={[styles.sidebarItem, activeMenu === 'orders' && { backgroundColor: catColor + '20' }]} onPress={() => { setActiveMenu('orders'); setMenuVisible(false); }}><Ionicons name="cart" size={22} color={activeMenu === 'orders' ? catColor : colors.text.secondary} /><Text style={[styles.sidebarLabel, { color: activeMenu === 'orders' ? catColor : colors.text.secondary }]}>Commandes</Text></TouchableOpacity>
+            <TouchableOpacity style={[styles.sidebarItem, activeMenu === 'stock' && { backgroundColor: catColor + '20' }]} onPress={() => { setActiveMenu('stock'); setMenuVisible(false); }}><Ionicons name="cube" size={22} color={activeMenu === 'stock' ? catColor : colors.text.secondary} /><Text style={[styles.sidebarLabel, { color: activeMenu === 'stock' ? catColor : colors.text.secondary }]}>Stock</Text></TouchableOpacity>
           </>
         ) : (
           <>
-            <TouchableOpacity style={[styles.sidebarItem, activeMenu === 'requests' && { backgroundColor: catColor + '20' }]} onPress={() => setActiveMenu('requests')}><Ionicons name="document-text" size={22} color={activeMenu === 'requests' ? catColor : colors.text.secondary} /><Text style={[styles.sidebarLabel, { color: activeMenu === 'requests' ? catColor : colors.text.secondary }]}>Demandes</Text></TouchableOpacity>
-            <TouchableOpacity style={[styles.sidebarItem, activeMenu === 'docs' && { backgroundColor: catColor + '20' }]} onPress={() => setActiveMenu('docs')}><Ionicons name="folder" size={22} color={activeMenu === 'docs' ? catColor : colors.text.secondary} /><Text style={[styles.sidebarLabel, { color: activeMenu === 'docs' ? catColor : colors.text.secondary }]}>Documents</Text></TouchableOpacity>
+            <TouchableOpacity style={[styles.sidebarItem, activeMenu === 'requests' && { backgroundColor: catColor + '20' }]} onPress={() => { setActiveMenu('requests'); setMenuVisible(false); }}><Ionicons name="document-text" size={22} color={activeMenu === 'requests' ? catColor : colors.text.secondary} /><Text style={[styles.sidebarLabel, { color: activeMenu === 'requests' ? catColor : colors.text.secondary }]}>Demandes</Text></TouchableOpacity>
+            <TouchableOpacity style={[styles.sidebarItem, activeMenu === 'docs' && { backgroundColor: catColor + '20' }]} onPress={() => { setActiveMenu('docs'); setMenuVisible(false); }}><Ionicons name="folder" size={22} color={activeMenu === 'docs' ? catColor : colors.text.secondary} /><Text style={[styles.sidebarLabel, { color: activeMenu === 'docs' ? catColor : colors.text.secondary }]}>Documents</Text></TouchableOpacity>
           </>
         )}
-        <TouchableOpacity style={[styles.sidebarItem, activeMenu === 'publish' && { backgroundColor: catColor + '20' }]} onPress={() => setActiveMenu('publish')}><Ionicons name="add-circle" size={22} color={activeMenu === 'publish' ? catColor : colors.text.secondary} /><Text style={[styles.sidebarLabel, { color: activeMenu === 'publish' ? catColor : colors.text.secondary }]}>Publier</Text></TouchableOpacity>
-        <TouchableOpacity style={[styles.sidebarItem, activeMenu === 'messages' && { backgroundColor: catColor + '20' }]} onPress={() => setActiveMenu('messages')}><Ionicons name="chatbubbles" size={22} color={activeMenu === 'messages' ? catColor : colors.text.secondary} /><Text style={[styles.sidebarLabel, { color: activeMenu === 'messages' ? catColor : colors.text.secondary }]}>Messages Market</Text></TouchableOpacity>
+        <TouchableOpacity style={[styles.sidebarItem, activeMenu === 'publish' && { backgroundColor: catColor + '20' }]} onPress={() => { setActiveMenu('publish'); setMenuVisible(false); }}><Ionicons name="add-circle" size={22} color={activeMenu === 'publish' ? catColor : colors.text.secondary} /><Text style={[styles.sidebarLabel, { color: activeMenu === 'publish' ? catColor : colors.text.secondary }]}>Publier</Text></TouchableOpacity>
+        <TouchableOpacity style={[styles.sidebarItem, activeMenu === 'messages' && { backgroundColor: catColor + '20' }]} onPress={() => { setActiveMenu('messages'); setMenuVisible(false); }}><Ionicons name="chatbubbles" size={22} color={activeMenu === 'messages' ? catColor : colors.text.secondary} /><Text style={[styles.sidebarLabel, { color: activeMenu === 'messages' ? catColor : colors.text.secondary }]}>Messages Market</Text></TouchableOpacity>
       </ScrollView>
     </View>
   );
 
   const renderOverview = () => (
     <ScrollView style={styles.mainContent} showsVerticalScrollIndicator={true} persistentScrollbar={true}>
-      <View style={styles.dashboardHeader}>
-        <Text style={[styles.sectionTitle, { color: colors.text.primary, marginBottom: 0 }]}>Bonjour, {business.business_name}</Text>
-        <Text style={{ color: colors.text.secondary, fontSize: 12 }}>{new Date().toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</Text>
+      <View style={[styles.dashboardHero, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <View style={styles.dashboardHeader}>
+          <Text style={[styles.sectionTitle, { color: colors.text.primary, marginBottom: 5 }]} numberOfLines={2}>Bonjour, {business.business_name}</Text>
+          <Text style={{ color: colors.text.secondary, fontSize: 12 }}>{new Date().toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</Text>
+        </View>
+        <TouchableOpacity style={[styles.heroAction, { backgroundColor: catColor }]} onPress={() => setActiveMenu('publish')}>
+          <Ionicons name="add" size={20} color="#fff" />
+          <Text style={styles.heroActionText}>Publier</Text>
+        </TouchableOpacity>
       </View>
       <View style={styles.statsGrid}>
         <View style={[styles.statCard, { backgroundColor: colors.surface }]}>
@@ -500,8 +516,27 @@ export default function BusinessDashboardScreen({ navigation }: any) {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
-      <View style={styles.header}><View style={styles.headerInfo}><Text style={[styles.businessName, { color: colors.text.primary }]}>{business.business_name}</Text><Text style={[styles.categoryTag, { color: catColor }]}>{category.toUpperCase()}</Text></View><TouchableOpacity onPress={() => navigation.goBack()}><Ionicons name="close-circle" size={32} color={colors.text.disabled} /></TouchableOpacity></View>
-      <View style={styles.contentWrapper}>{renderSidebar()}<View style={{ flex: 1 }}>{activeMenu === 'overview' && renderOverview()}{activeMenu === 'publish' && renderPublishForm()}{activeMenu === 'orders' && renderOrders()}{activeMenu === 'requests' && renderRequests()}{activeMenu === 'stock' && renderStock()}{activeMenu === 'messages' && renderMessages()}{activeMenu === 'docs' && renderDocuments()}</View></View>
+      <View style={styles.header}>
+        {!isWide && <TouchableOpacity style={styles.headerMenuButton} accessibilityLabel="Ouvrir le menu Market" onPress={() => setMenuVisible(true)}><Ionicons name="menu" size={24} color={colors.text.primary} /></TouchableOpacity>}
+        <Image source={require('../../assets/AcemiaLogo.png')} style={styles.headerLogo} resizeMode="contain" />
+        <View style={styles.headerInfo}>
+          <Text style={[styles.brandTitle, { color: colors.text.primary }]}>Acemia Market</Text>
+          <Text numberOfLines={1} style={[styles.businessName, { color: colors.text.secondary }]}>{business.business_name} · <Text style={{ color: catColor }}>{category}</Text></Text>
+        </View>
+        <TouchableOpacity style={styles.headerExitButton} onPress={() => navigation.goBack()} accessibilityLabel="Fermer le tableau de bord">
+          <Ionicons name="close" size={22} color={colors.text.secondary} />
+        </TouchableOpacity>
+      </View>
+      <View style={styles.contentWrapper}>
+        {isWide && renderSidebar()}
+        <View style={{ flex: 1, minWidth: 0 }}>{activeMenu === 'overview' && renderOverview()}{activeMenu === 'publish' && renderPublishForm()}{activeMenu === 'orders' && renderOrders()}{activeMenu === 'requests' && renderRequests()}{activeMenu === 'stock' && renderStock()}{activeMenu === 'messages' && renderMessages()}{activeMenu === 'docs' && renderDocuments()}</View>
+      </View>
+      <Modal visible={menuVisible && !isWide} transparent animationType="slide" onRequestClose={() => setMenuVisible(false)}>
+        <View style={styles.drawerOverlay}>
+          {renderSidebar()}
+          <TouchableOpacity style={styles.drawerBackdrop} activeOpacity={1} onPress={() => setMenuVisible(false)} />
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -509,35 +544,51 @@ export default function BusinessDashboardScreen({ navigation }: any) {
 function createStyles(colors: any, normalize: any, factor: number, isDark: boolean) {
   return StyleSheet.create({
   container: { flex: 1 }, centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: normalize(20), borderBottomWidth: 0.5, borderBottomColor: colors.border, backgroundColor: colors.surface },
-  headerInfo: { flex: 1 }, businessName: { fontSize: normalize(22, factor), fontWeight: '900' }, categoryTag: { fontSize: normalize(10, factor), fontWeight: 'bold', marginTop: 2, letterSpacing: 1 },
+  header: { flexDirection: 'row', alignItems: 'center', gap: normalize(10), paddingHorizontal: normalize(16), paddingVertical: normalize(11), borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border, backgroundColor: colors.surface },
+  headerMenuButton: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 13, backgroundColor: isDark ? '#ffffff10' : '#00000008' },
+  headerLogo: { width: 40, height: 40 },
+  headerInfo: { flex: 1, minWidth: 0 }, brandTitle: { fontSize: normalize(15, factor), fontWeight: '900' }, businessName: { fontSize: normalize(12, factor), fontWeight: '600', marginTop: 2 },
+  headerExitButton: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 13, backgroundColor: isDark ? '#ffffff10' : '#00000008' },
   contentWrapper: { flex: 1, flexDirection: 'row' },
-  sidebar: { width: normalize(210), borderRightWidth: 0.5 },
-  sidebarBrand: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: normalize(14), paddingVertical: normalize(18), borderBottomWidth: 0.5, borderBottomColor: colors.border },
-  sidebarBusinessName: { flex: 1, fontSize: normalize(13), fontWeight: '800' },
-  sidebarItem: { flexDirection: 'row', alignItems: 'center', minHeight: normalize(46), borderRadius: normalize(12), marginHorizontal: normalize(10), marginBottom: normalize(5), paddingHorizontal: normalize(12) },
-  sidebarLabel: { marginLeft: normalize(10), fontSize: normalize(12), fontWeight: '700' },
-  mainContent: { flex: 1, padding: normalize(20) },
-  dashboardHeader: { marginBottom: 25 },
-  sectionTitle: { fontSize: normalize(18, factor), fontWeight: 'bold', marginBottom: normalize(20) },
-  statsGrid: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: normalize(20) },
-  statCard: { width: '48%', padding: normalize(15), borderRadius: normalize(25), elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 10 },
+  sidebar: { borderRightWidth: StyleSheet.hairlineWidth, height: '100%' },
+  sidebarBrand: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: normalize(14), paddingVertical: normalize(16), borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
+  sidebarLogo: { width: 38, height: 38 },
+  sidebarBrandName: { fontSize: normalize(14, factor), fontWeight: '900' },
+  sidebarBusinessName: { fontSize: normalize(11, factor), fontWeight: '600', marginTop: 2 },
+  closeSidebarButton: { width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  sidebarItem: { flexDirection: 'row', alignItems: 'center', minHeight: normalize(48), borderRadius: normalize(14), marginHorizontal: normalize(10), marginBottom: normalize(5), paddingHorizontal: normalize(12) },
+  sidebarLabel: { marginLeft: normalize(10), fontSize: normalize(12, factor), fontWeight: '700' },
+  mainContent: { flex: 1, padding: normalize(16), width: '100%', maxWidth: 1120, alignSelf: 'center' },
+  dashboardHero: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: normalize(18), borderWidth: 1, borderRadius: normalize(20), marginBottom: normalize(18) },
+  dashboardHeader: { flex: 1, minWidth: 0, marginBottom: 0, paddingRight: normalize(10) },
+  heroAction: { minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 15, borderRadius: 14, gap: 4 },
+  heroActionText: { color: '#fff', fontSize: 13, fontWeight: '800' },
+  sectionTitle: { fontSize: normalize(18, factor), fontWeight: '800', marginBottom: normalize(16) },
+  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: normalize(16), gap: normalize(8) },
+  statCard: { width: '48%', padding: normalize(15), borderRadius: normalize(20), elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.04, shadowRadius: 8 },
   statIconCircle: { width: 36, height: 36, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginBottom: 10 },
   statLabel: { fontSize: normalize(10, factor), color: '#999', marginBottom: 5, fontWeight: 'bold' },
   statValue: { fontSize: normalize(22, factor), fontWeight: '900' },
   chartPlaceholder: { width: '100%', height: normalize(160), borderRadius: 30, justifyContent: 'center', alignItems: 'center', elevation: 1 },
   activityList: { width: '100%', borderRadius: normalize(25), marginTop: 10, elevation: 1 },
-  formCard: { padding: 20, borderRadius: 25, elevation: 1 },
+  formCard: { padding: 20, borderRadius: 22, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border, elevation: 1 },
   label: { fontSize: normalize(10, factor), fontWeight: 'bold', color: '#999', marginBottom: 8, marginTop: 15, textTransform: 'uppercase' },
-  input: { padding: normalize(15), borderRadius: 18, fontSize: normalize(15, factor) },
+  input: { padding: normalize(15), borderRadius: 14, borderWidth: 1, borderColor: colors.border, fontSize: normalize(15, factor), marginTop: 2 },
   imagePreviewWrapper: { marginRight: 10, position: 'relative' }, smallPreview: { width: normalize(100), height: normalize(100), borderRadius: 20 }, removeImgBtn: { position: 'absolute', top: -5, right: -5, backgroundColor: '#fff', borderRadius: 10, elevation: 2 }, addImageBtn: { width: normalize(100), height: normalize(100), borderRadius: 20, borderWidth: 2, borderStyle: 'dashed', justifyContent: 'center', alignItems: 'center' },
-  publishBtn: { marginTop: normalize(20), padding: normalize(18), borderRadius: 22, alignItems: 'center', elevation: 3, width: '100%' }, publishBtnText: { color: '#fff', fontWeight: '900', fontSize: normalize(16, factor) },
+  publishBtn: { marginTop: normalize(18), minHeight: 54, paddingHorizontal: normalize(18), paddingVertical: normalize(15), borderRadius: 16, alignItems: 'center', justifyContent: 'center', elevation: 2, width: '100%' }, publishBtnText: { color: '#fff', fontWeight: '900', fontSize: normalize(14, factor), letterSpacing: 0.3 },
   moduleHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  moduleCard: { flexDirection: 'row', alignItems: 'center', padding: 18, borderRadius: 22, marginBottom: 12, elevation: 1 }, moduleAvatar: { width: 45, height: 45, borderRadius: 15, marginRight: 15 }, moduleName: { fontWeight: 'bold', fontSize: 15 }, statusBadge: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8 }, actionBtn: { paddingHorizontal: 15, paddingVertical: 8, borderRadius: 10 },
+  moduleCard: { flexDirection: 'row', alignItems: 'center', padding: 15, borderRadius: 18, marginBottom: 10, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border, gap: 8 }, moduleAvatar: { width: 44, height: 44, borderRadius: 14, marginRight: 8 }, moduleName: { fontWeight: '800', fontSize: 14 }, statusBadge: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10 }, actionBtn: { minHeight: 40, justifyContent: 'center', paddingHorizontal: 13, paddingVertical: 8, borderRadius: 12 },
   tabBar: { flexDirection: 'row', marginBottom: 20, borderBottomWidth: 1, borderBottomColor: '#eee' }, tabItem: { flex: 1, paddingVertical: 10, alignItems: 'center' }, tabText: { fontWeight: 'bold', fontSize: 11 },
-  stockActionBtn: { width: 35, height: 35, borderRadius: 10, backgroundColor: 'rgba(0,0,0,0.03)', justifyContent: 'center', alignItems: 'center' },
+  stockActionBtn: { width: 40, height: 40, borderRadius: 13, backgroundColor: isDark ? '#ffffff10' : 'rgba(0,0,0,0.04)', justifyContent: 'center', alignItems: 'center' },
   emptyMsg: { textAlign: 'center', color: '#999', marginTop: 50, fontStyle: 'italic' },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' }, modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 35, borderTopRightRadius: 35, padding: 30, shadowColor: '#000', shadowOffset: { width: 0, height: -10 }, shadowOpacity: 0.1, shadowRadius: 20, elevation: 25 }, modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }, modalTitle: { fontSize: 22, fontWeight: '900', color: '#000' }, modalInput: { backgroundColor: '#f5f5f5', borderRadius: 20, padding: 18, marginBottom: 15, color: '#000', fontSize: 16 }, modalBtn: { padding: 18, borderRadius: 20, alignItems: 'center', flex: 1 },
+  drawerOverlay: { flex: 1, flexDirection: 'row', backgroundColor: 'rgba(0,0,0,0.42)' },
+  drawerBackdrop: { flex: 1 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'flex-end', paddingTop: 20 },
+  modalContent: { backgroundColor: colors.surface, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 22, paddingBottom: 24, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border, shadowColor: '#000', shadowOffset: { width: 0, height: -8 }, shadowOpacity: 0.12, shadowRadius: 18, elevation: 20, maxHeight: '90%' },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 },
+  modalTitle: { fontSize: 20, fontWeight: '900', color: colors.text.primary },
+  modalInput: { backgroundColor: isDark ? '#222733' : '#f4f6fa', borderWidth: 1, borderColor: colors.border, borderRadius: 14, padding: 15, marginBottom: 14, color: colors.text.primary, fontSize: 16, minHeight: 52 },
+  modalBtn: { minHeight: 52, padding: 15, borderRadius: 15, alignItems: 'center', justifyContent: 'center', flex: 1 },
   statusSelectBtn: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: '#ddd' },
 });
 }

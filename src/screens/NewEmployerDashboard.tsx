@@ -264,11 +264,10 @@ export default function NewEmployerDashboard({ navigation }: any) {
             <Menu size={24} color={colors.text.primary} />
           </TouchableOpacity>
           
+          <Image source={require('../../assets/AcemiaLogo.png')} style={styles.brandLogo} resizeMode="contain" />
           <View style={styles.headerCenter}>
-            <Text style={[styles.headerTitle, { color: colors.text.primary }]}>
-              Dashboard Employeur
-            </Text>
-            <Text style={[styles.headerSubtitle, { color: colors.text.secondary }]}>
+            <Text style={[styles.headerBrand, { color: colors.text.primary }]}>Acemia Emploi</Text>
+            <Text style={[styles.headerSubtitle, { color: colors.text.secondary }]} numberOfLines={1}>
               {companyName || 'Votre entreprise'}
             </Text>
           </View>
@@ -302,6 +301,25 @@ export default function NewEmployerDashboard({ navigation }: any) {
           ]}
           showsVerticalScrollIndicator={false}
         >
+          <View style={[styles.dashboardHero, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={[styles.heroEyebrow, { color: colors.primary }]}>ESPACE EMPLOYEUR</Text>
+              <Text style={[styles.heroTitle, { color: colors.text.primary }]} numberOfLines={2}>
+                Bonjour{userName ? `, ${userName}` : ''}
+              </Text>
+              <Text style={[styles.heroSubtitle, { color: colors.text.secondary }]} numberOfLines={2}>
+                {companyName || 'Pilotez vos recrutements depuis votre espace Acemia.'}
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={[styles.heroAction, { backgroundColor: colors.primary }]}
+              onPress={() => navigation.navigate('CreateJobPosting')}
+            >
+              <Plus size={19} color="#fff" />
+              <Text style={styles.heroActionText}>Publier</Text>
+            </TouchableOpacity>
+          </View>
+
           {/* Statistiques en temps réel */}
           <View style={styles.statsGrid}>
             {renderStatCard('Offres actives', stats.activeJobs, <Briefcase />, colors.primary, 2)}
@@ -520,21 +538,31 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee'
+    borderBottomColor: '#eee',
+    gap: 6,
   },
   menuButton: {
-    padding: 8
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  brandLogo: {
+    width: 38,
+    height: 38,
   },
   headerCenter: {
     flex: 1,
-    marginLeft: 12
+    minWidth: 0,
+    marginLeft: 3,
   },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: 'bold'
+  headerBrand: {
+    fontSize: 15,
+    fontWeight: '900',
+    letterSpacing: -0.3,
   },
   headerSubtitle: {
     fontSize: 12,
@@ -545,8 +573,8 @@ const styles = StyleSheet.create({
     alignItems: 'center'
   },
   headerButton: {
-    padding: 8,
-    marginRight: 8
+    padding: 6,
+    marginRight: 3,
   },
   refreshButton: {
     width: 36,
@@ -556,8 +584,17 @@ const styles = StyleSheet.create({
     alignItems: 'center'
   },
   scrollContent: {
-    paddingVertical: 20
+    paddingVertical: 20,
+    width: '100%',
+    maxWidth: 1320,
+    alignSelf: 'center',
   },
+  dashboardHero: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 18, borderRadius: 20, borderWidth: 1, marginBottom: 20, gap: 12 },
+  heroEyebrow: { fontSize: 10, fontWeight: '900', letterSpacing: 1, marginBottom: 5 },
+  heroTitle: { fontSize: 21, fontWeight: '900', letterSpacing: -0.5, marginBottom: 4 },
+  heroSubtitle: { fontSize: 12, lineHeight: 18 },
+  heroAction: { minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 14, borderRadius: 14, gap: 4 },
+  heroActionText: { color: '#fff', fontSize: 13, fontWeight: '800' },
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -567,7 +604,7 @@ const styles = StyleSheet.create({
   statCard: {
     width: '48%',
     padding: 16,
-    borderRadius: 16,
+    borderRadius: 18,
     borderWidth: 1,
     marginBottom: 16
   },
@@ -615,7 +652,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: 'bold'
+    fontWeight: '800'
   },
   actionsGrid: {
     flexDirection: 'row',
@@ -624,12 +661,12 @@ const styles = StyleSheet.create({
   },
   actionCard: {
     width: '48%',
-    height: 100,
-    borderRadius: 16,
+    minHeight: 96,
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    marginBottom: 16
+    marginBottom: 12
   },
   actionText: {
     color: '#fff',

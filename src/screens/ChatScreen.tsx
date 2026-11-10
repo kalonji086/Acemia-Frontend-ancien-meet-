@@ -6,10 +6,10 @@ import {
   Image,
   ImageBackground,
   KeyboardAvoidingView,
+  Keyboard,
   Modal,
   Platform,
   Pressable,
-  SafeAreaView,
   Share,
   StatusBar,
   StyleSheet,
@@ -43,7 +43,7 @@ import * as FileSystem from 'expo-file-system';
 import * as ImagePicker from 'expo-image-picker';
 import * as Sharing from 'expo-sharing';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import apiService from '../services/api.service';
 import socketService from '../services/socket.service';
@@ -490,7 +490,7 @@ const createStyles = (colors: any, normalize: any, isDark: boolean, isCompact: b
     minHeight: normalize(44),
     marginRight: 8,
   },
-  textInput: { flex: 1, fontSize: normalize(15), color: colors.text.primary, paddingVertical: 10 },
+  textInput: { flex: 1, maxHeight: normalize(120), fontSize: normalize(15), color: colors.text.primary, paddingVertical: 10, textAlignVertical: 'top' },
   iconButton: { minWidth: 44, minHeight: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', marginHorizontal: 1 },
   inlineIconButton: { width: 30, height: 40, alignItems: 'center', justifyContent: 'center', marginRight: 4 },
   quickActionTray: { flexDirection: 'row', justifyContent: 'space-around', paddingHorizontal: 10, paddingVertical: 12, borderTopWidth: StyleSheet.hairlineWidth },
@@ -522,6 +522,7 @@ export default function ChatScreen({ navigation, route }: any) {
   const { t } = useLanguage();
   const { user: currentUser } = useUser();
   const insets = useSafeAreaInsets();
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const chatId = route?.params?.chatId || route?.params?.id;
   const styles = createStyles(colors, normalize, isDark, windowWidth < 380);
   const [messages, setMessages] = useState<any[]>([]);
@@ -569,6 +570,16 @@ export default function ChatScreen({ navigation, route }: any) {
   useEffect(() => {
     if (chatId) loadMessages();
   }, [chatId, loadMessages]);
+
+  useEffect(() => {
+    const showSubscription = Keyboard.addListener('keyboardDidShow', () => setIsKeyboardVisible(true));
+    const hideSubscription = Keyboard.addListener('keyboardDidHide', () => setIsKeyboardVisible(false));
+
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, []);
 
   useEffect(() => {
     if (!chatId) return;
@@ -1132,9 +1143,9 @@ export default function ChatScreen({ navigation, route }: any) {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+      <View style={[styles.header, { paddingTop: 8 }]}>
         <View style={styles.headerLeft}>
           <TouchableOpacity style={styles.headerBtn} onPress={() => navigation?.goBack?.()}>
             <ArrowLeft size={20} color={colors.text.primary} />
@@ -1172,8 +1183,8 @@ export default function ChatScreen({ navigation, route }: any) {
 
       <KeyboardAvoidingView
         style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : Platform.OS === 'android' ? 'height' : undefined}
-        keyboardVerticalOffset={insets.bottom + 8}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={0}
       >
         <ImageBackground source={wallpaperSource} style={styles.body} imageStyle={styles.wallpaper}>
           {isLoading && messages.length === 0 ? (
@@ -1227,7 +1238,7 @@ export default function ChatScreen({ navigation, route }: any) {
             ))}
           </View>
         )}
-        <View style={styles.composer}>
+        <View style={[styles.composer, { paddingBottom: isKeyboardVisible ? 8 : Math.max(insets.bottom, 8) }]}>
           <TouchableOpacity
             style={styles.iconButton}
             onPress={() => { setIsAttachmentMenuOpen((open) => !open); setIsEmojiPickerOpen(false); }}
@@ -1253,6 +1264,8 @@ export default function ChatScreen({ navigation, route }: any) {
               placeholderTextColor={colors.text.secondary}
               style={styles.textInput}
               multiline
+              scrollEnabled
+              blurOnSubmit={false}
             />
             {recording ? (
               <Text style={styles.recordingTime}>{formatDuration(recordingDuration / 1000)}</Text>

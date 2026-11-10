@@ -11,7 +11,8 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  useWindowDimensions
+  useWindowDimensions,
+  Image,
 } from 'react-native';
 import { ArrowLeft, Building2, Mail, Phone, MapPin, GraduationCap, FileText, ChevronRight } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
@@ -201,24 +202,34 @@ export default function SchoolRequestScreen({ navigation }: any) {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
       >
-        <View style={[styles.header, { backgroundColor: colors.surface }]}>
+        <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
           <TouchableOpacity onPress={prevStep} style={styles.backButton}>
             <ArrowLeft size={24} color={colors.text.primary} />
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: colors.text.primary, fontSize: normalize(18) }]}>
-            Créer une École ({step}/3)
+          <View style={styles.brandBlock}>
+            <Image source={require('../../assets/AcemiaLogo.png')} style={styles.brandLogo} resizeMode="contain" />
+            <View style={styles.brandCopy}>
+              <Text style={[styles.brandName, { color: colors.text.primary }]}>Acemia</Text>
+              <Text style={[styles.headerTitle, { color: colors.text.secondary, fontSize: normalize(12) }]}>CRÉATION D'ÉCOLE</Text>
+            </View>
+          </View>
+          <Text style={[styles.stepBadge, { color: colors.primary, backgroundColor: colors.primary + '15' }]}>
+            {step}/3
           </Text>
-          <View style={{ width: 24 }} />
         </View>
 
         {/* Barre de progression des étapes */}
         <View style={styles.progressContainer}>
+          <View style={styles.progressLabelRow}>
+            <Text style={[styles.progressLabel, { color: colors.text.secondary }]}>Votre demande</Text>
+            <Text style={[styles.progressPercent, { color: colors.primary }]}>{Math.round((step / 3) * 100)}%</Text>
+          </View>
           <View style={[styles.progressBar, { backgroundColor: colors.border }]}>
             <View style={[styles.progressFill, { backgroundColor: colors.primary, width: `${(step / 3) * 100}%` }]} />
           </View>
         </View>
 
-        <ScrollView contentContainerStyle={[styles.scrollContent, isTablet && styles.tabletContainer]}>
+        <ScrollView contentContainerStyle={[styles.scrollContent, isTablet && styles.tabletContainer]} keyboardShouldPersistTaps="handled">
           {renderStep()}
 
           <View style={styles.buttonRow}>
@@ -263,20 +274,27 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 15,
-    paddingHorizontal: 20,
-    borderBottomWidth: 0.5,
-    borderBottomColor: '#ddd'
+    paddingVertical: 12,
+    paddingHorizontal: 18,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    gap: 12,
   },
-  backButton: { padding: 4 },
-  headerTitle: { fontWeight: 'bold' },
-  progressContainer: { paddingHorizontal: 20, paddingTop: 10 },
-  progressBar: { height: 6, borderRadius: 3, width: '100%', overflow: 'hidden' },
-  progressFill: { height: '100%' },
-  scrollContent: { padding: 20 },
-  tabletContainer: { maxWidth: 600, alignSelf: 'center', width: '100%' },
+  backButton: { width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: '#00000008' },
+  brandBlock: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  brandLogo: { width: 42, height: 42 },
+  brandCopy: { gap: 2 },
+  brandName: { fontSize: 17, fontWeight: '900', letterSpacing: -0.4 },
+  headerTitle: { fontWeight: '800', letterSpacing: 1 },
+  stepBadge: { overflow: 'hidden', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, fontWeight: '900', fontSize: 13 },
+  progressContainer: { paddingHorizontal: 22, paddingTop: 16, paddingBottom: 8 },
+  progressLabelRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 9 },
+  progressLabel: { fontSize: 12, fontWeight: '700' },
+  progressPercent: { fontSize: 12, fontWeight: '900' },
+  progressBar: { height: 7, borderRadius: 8, width: '100%', overflow: 'hidden' },
+  progressFill: { height: '100%', borderRadius: 8 },
+  scrollContent: { padding: 22, paddingBottom: 32 },
+  tabletContainer: { maxWidth: 680, alignSelf: 'center', width: '100%' },
   stepContainer: { width: '100%' },
   stepTitle: { fontWeight: 'bold', marginBottom: 20 },
   inputGroup: { marginBottom: 20 },
@@ -285,17 +303,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    height: 54,
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    height: 58,
+    backgroundColor: '#00000004',
     width: '100%'
   },
   input: { flex: 1, marginLeft: 10, height: '100%' },
-  buttonRow: { flexDirection: 'row', marginTop: 30, justifyContent: 'space-between', width: '100%' },
+  buttonRow: { flexDirection: 'row', marginTop: 30, justifyContent: 'space-between', width: '100%', gap: 12 },
   navButton: {
     flex: 1,
     height: 54,
-    borderRadius: 12,
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center'
   },
@@ -303,7 +322,7 @@ const styles = StyleSheet.create({
   actionButton: {
     flex: 2,
     height: 54,
-    borderRadius: 12,
+    borderRadius: 16,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center'

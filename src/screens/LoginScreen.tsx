@@ -119,6 +119,7 @@ export default function LoginScreen({ navigation, route }: any) {
         // 2. Mettre à jour le timestamp d'ouverture
         try {
           await AsyncStorage.setItem('last_app_open', Date.now().toString());
+          await AsyncStorage.removeItem('session_requires_password');
         } catch (storageError) {
           console.warn('Login: Failed to save last app open timestamp', storageError);
         }

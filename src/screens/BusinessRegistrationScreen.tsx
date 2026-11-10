@@ -15,6 +15,7 @@ import {
   Platform,
   Linking,
   useWindowDimensions,
+  Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
@@ -42,6 +43,7 @@ export default function BusinessRegistrationScreen({ navigation }: any) {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [uploadingField, setUploadingField] = useState<string | null>(null);
+  const [showCategoryPicker, setShowCategoryPicker] = useState(false);
 
   const isTablet = screenWidth >= 720;
   const contentWidth = isTablet ? 600 : screenWidth;
@@ -158,27 +160,26 @@ export default function BusinessRegistrationScreen({ navigation }: any) {
       showsVerticalScrollIndicator={true}
       persistentScrollbar={true}
     >
-      <Text style={[styles.stepTitle, { color: colors.text.primary, fontSize: normalize(24, fontSizeFactor) }]}>Quelle est votre catégorie ?</Text>
-      <Text style={[styles.stepSubtitle, { color: colors.text.secondary, fontSize: normalize(14, fontSizeFactor) }]}>Choisissez le domaine qui correspond le mieux à votre activité.</Text>
-      <View style={styles.categoryGrid}>
-        {CATEGORIES.map(cat => (
-          <TouchableOpacity
-            key={cat}
-            style={[
-              styles.categoryCard,
-              { backgroundColor: colors.surface, borderColor: formData.category === cat ? colors.primary : colors.border, width: isTablet ? '31%' : '48%' },
-              formData.category === cat && { borderWidth: 2 }
-            ]}
-            onPress={() => updateField('category', cat)}
-          >
-            <Ionicons
-              name={cat === 'Boutique' ? 'cart' : (cat === 'Informatique' ? 'laptop' : 'construct')}
-              size={normalize(30)}
-              color={formData.category === cat ? colors.primary : colors.text.secondary}
-            />
-            <Text style={[styles.categoryText, { color: colors.text.primary, fontWeight: formData.category === cat ? 'bold' : 'normal', fontSize: normalize(13, fontSizeFactor) }]}>{cat}</Text>
-          </TouchableOpacity>
-        ))}
+      <View style={[styles.categoryCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <View style={[styles.categoryIcon, { backgroundColor: colors.primary + '15' }]}>
+          <Ionicons name="storefront-outline" size={normalize(24)} color={colors.primary} />
+        </View>
+        <Text style={[styles.categoryPrompt, { color: colors.text.primary, fontSize: normalize(16, fontSizeFactor) }]}>Quel est votre domaine d'activité ?</Text>
+        <Text style={[styles.categoryHint, { color: colors.text.secondary, fontSize: normalize(13, fontSizeFactor) }]}>Choisissez une catégorie pour configurer votre espace Market.</Text>
+        <Text style={[styles.label, { fontSize: normalize(12, fontSizeFactor) }]}>CATÉGORIE *</Text>
+        <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityLabel={formData.category ? `Catégorie : ${formData.category}` : 'Sélectionner une catégorie'}
+          style={[styles.categorySelector, { backgroundColor: colors.background, borderColor: formData.category ? colors.primary : colors.border }]}
+          onPress={() => setShowCategoryPicker(true)}
+        >
+          <Ionicons name={formData.category ? 'pricetag-outline' : 'list-outline'} size={20} color={formData.category ? colors.primary : colors.text.disabled} />
+          <Text style={[styles.categorySelectorText, { color: formData.category ? colors.text.primary : colors.text.disabled, fontSize: normalize(15, fontSizeFactor) }]}>
+            {formData.category || 'Sélectionner une catégorie'}
+          </Text>
+          <Ionicons name="chevron-down" size={20} color={colors.text.secondary} />
+        </TouchableOpacity>
+        <Text style={[styles.categorySelectionHint, { color: colors.text.disabled }]}>Une seule catégorie peut être sélectionnée.</Text>
       </View>
     </ScrollView>
   );
@@ -402,11 +403,15 @@ export default function BusinessRegistrationScreen({ navigation }: any) {
 
         {/* Header */}
         <View style={[styles.header, isTablet && { alignSelf: 'center', width: contentWidth }]}>
-          <TouchableOpacity onPress={() => step > 1 ? setStep(step - 1) : navigation.goBack()} style={{ padding: 5 }}>
+          <TouchableOpacity onPress={() => step > 1 ? setStep(step - 1) : navigation.goBack()} style={styles.backButton}>
             <Ionicons name="arrow-back" size={24} color={colors.text.primary} />
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: colors.text.primary, fontSize: normalize(18, fontSizeFactor) }]}>Inscription Market — Étape {step}/5</Text>
-          <View style={{ width: 34 }} />
+          <Image source={require('../../assets/AcemiaLogo.png')} style={styles.brandLogo} resizeMode="contain" />
+          <View style={styles.brandCopy}>
+            <Text style={[styles.brandName, { color: colors.text.primary }]}>Acemia Market</Text>
+            <Text style={[styles.headerTitle, { color: colors.text.secondary, fontSize: normalize(10, fontSizeFactor) }]}>INSCRIPTION · ÉTAPE {step}/5</Text>
+          </View>
+          <Text style={[styles.stepBadge, { color: colors.primary, backgroundColor: colors.primary + '15' }]}>{step}/5</Text>
         </View>
 
         {/* Progress Bar */}
@@ -422,6 +427,57 @@ export default function BusinessRegistrationScreen({ navigation }: any) {
           {step === 4 && renderStep4()}
           {step === 5 && renderStep5()}
         </View>
+
+        <Modal
+          visible={showCategoryPicker}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowCategoryPicker(false)}
+        >
+          <View style={styles.categoryModalOverlay}>
+            <View style={[styles.categoryModal, { backgroundColor: colors.surface }]}>
+              <View style={[styles.categoryModalHeader, { borderBottomColor: colors.border }]}>
+                <View>
+                  <Text style={[styles.categoryModalTitle, { color: colors.text.primary }]}>Catégorie Market</Text>
+                  <Text style={[styles.categoryModalSubtitle, { color: colors.text.secondary }]}>Sélectionnez votre activité principale</Text>
+                </View>
+                <TouchableOpacity
+                  accessibilityRole="button"
+                  accessibilityLabel="Fermer la sélection des catégories"
+                  style={[styles.categoryCloseButton, { backgroundColor: colors.background }]}
+                  onPress={() => setShowCategoryPicker(false)}
+                >
+                  <Ionicons name="close" size={22} color={colors.text.primary} />
+                </TouchableOpacity>
+              </View>
+              <ScrollView style={styles.categoryOptions} keyboardShouldPersistTaps="handled">
+                {CATEGORIES.map((cat, index) => (
+                  <TouchableOpacity
+                    key={cat}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: formData.category === cat }}
+                    style={[
+                      styles.categoryOption,
+                      { borderBottomColor: colors.border },
+                      formData.category === cat && { backgroundColor: colors.primary + '12' },
+                      index === CATEGORIES.length - 1 && { borderBottomWidth: 0 },
+                    ]}
+                    onPress={() => {
+                      updateField('category', cat);
+                      setShowCategoryPicker(false);
+                    }}
+                  >
+                    <View style={[styles.categoryOptionIcon, { backgroundColor: colors.primary + '15' }]}>
+                      <Ionicons name={cat === 'Boutique' ? 'cart-outline' : cat === 'Informatique' ? 'laptop-outline' : 'construct-outline'} size={19} color={colors.primary} />
+                    </View>
+                    <Text style={[styles.categoryOptionText, { color: colors.text.primary }]}>{cat}</Text>
+                    {formData.category === cat && <Ionicons name="checkmark-circle" size={22} color={colors.primary} />}
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
 
         {/* Footer Button */}
         <View style={[styles.footer, isTablet && { alignSelf: 'center', width: contentWidth, borderTopWidth: 0 }]}>
@@ -443,16 +499,35 @@ export default function BusinessRegistrationScreen({ navigation }: any) {
 function createStyles(colors: any, normalize: any, factor: number, isDark: boolean) {
   return StyleSheet.create({
   container: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 15 },
-  headerTitle: { fontWeight: 'bold' },
+  header: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 18, paddingVertical: 12 },
+  backButton: { width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface },
+  brandLogo: { width: 42, height: 42 },
+  brandCopy: { flex: 1, gap: 2 },
+  brandName: { fontSize: 16, fontWeight: '900', letterSpacing: -0.3 },
+  headerTitle: { fontWeight: '800', letterSpacing: 0.8 },
+  stepBadge: { overflow: 'hidden', borderRadius: 12, paddingHorizontal: 11, paddingVertical: 8, fontSize: 12, fontWeight: '900' },
   progressBg: { height: 4, backgroundColor: isDark ? '#333' : '#eee', width: '100%' },
   progressFill: { height: '100%' },
-  stepContainer: { flex: 1, padding: 25 },
-  stepTitle: { fontWeight: '900', marginBottom: 10 },
-  stepSubtitle: { lineHeight: 20, marginBottom: 30 },
-  categoryGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
-  categoryCard: { padding: 20, borderRadius: 20, borderWidth: 1, alignItems: 'center', marginBottom: 15 },
-  categoryText: { marginTop: 10 },
+  stepContainer: { flex: 1, padding: 22, paddingTop: 24 },
+  stepTitle: { fontWeight: '900', marginBottom: 9, letterSpacing: -0.5 },
+  stepSubtitle: { lineHeight: 21, marginBottom: 24 },
+  categoryCard: { padding: 20, borderRadius: 22, borderWidth: 1, marginBottom: 15 },
+  categoryIcon: { width: 48, height: 48, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
+  categoryPrompt: { fontWeight: '900', marginBottom: 7 },
+  categoryHint: { lineHeight: 19, marginBottom: 20 },
+  categorySelector: { minHeight: 58, flexDirection: 'row', alignItems: 'center', borderWidth: 1.5, borderRadius: 16, paddingHorizontal: 14, gap: 11 },
+  categorySelectorText: { flex: 1, fontWeight: '700' },
+  categorySelectionHint: { fontSize: 11, marginTop: 9, marginLeft: 2 },
+  categoryModalOverlay: { flex: 1, backgroundColor: 'rgba(10, 15, 25, 0.55)', justifyContent: 'center', padding: 20 },
+  categoryModal: { width: '100%', maxWidth: 480, maxHeight: '80%', alignSelf: 'center', borderRadius: 24, overflow: 'hidden' },
+  categoryModalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 20, borderBottomWidth: StyleSheet.hairlineWidth },
+  categoryModalTitle: { fontSize: 18, fontWeight: '900' },
+  categoryModalSubtitle: { fontSize: 12, marginTop: 4 },
+  categoryCloseButton: { width: 40, height: 40, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  categoryOptions: { paddingHorizontal: 12 },
+  categoryOption: { minHeight: 62, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, borderBottomWidth: StyleSheet.hairlineWidth, gap: 12 },
+  categoryOptionIcon: { width: 38, height: 38, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
+  categoryOptionText: { flex: 1, fontSize: 14, fontWeight: '700' },
   label: { fontWeight: 'bold', color: '#999', marginTop: 15, marginBottom: 8, textTransform: 'uppercase' },
   input: { padding: 15, borderRadius: 15 },
   gridInputs: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 },
@@ -469,8 +544,8 @@ function createStyles(colors: any, normalize: any, factor: number, isDark: boole
   socialRow: { flexDirection: 'row', justifyContent: 'center', gap: 20, marginBottom: 15 },
   footerLink: { fontSize: 12, fontWeight: 'bold', textDecorationLine: 'underline', marginBottom: 10 },
   addressText: { fontSize: 10, textAlign: 'center' },
-  footer: { padding: 20, borderTopWidth: 1, borderTopColor: colors.border },
-  mainBtn: { padding: 18, borderRadius: 20, alignItems: 'center', elevation: 3, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4 },
+  footer: { padding: 18, borderTopWidth: 1, borderTopColor: colors.border },
+  mainBtn: { padding: 18, borderRadius: 17, alignItems: 'center', elevation: 3, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4 },
   mainBtnText: { color: '#fff', fontWeight: '900' },
 });
 }

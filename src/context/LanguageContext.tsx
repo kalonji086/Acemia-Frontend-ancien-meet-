@@ -35,18 +35,12 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       let preferredLanguage = localLanguage || (deviceLocale && deviceLocale in translations ? deviceLocale : 'fr');
       let preferredAutoTranslate = savedAuto === null ? true : savedAuto === 'true';
 
-      if (await apiService.getCurrentUser()) {
-        const response = await apiService.getMe();
-        if (response.success && response.data) {
-          if (!localLanguage && response.data.preferred_language in translations) {
-            preferredLanguage = response.data.preferred_language;
-          }
-          if (savedAuto === null && typeof response.data.auto_translate === 'boolean') {
-            preferredAutoTranslate = response.data.auto_translate;
-          }
-        } else if (!response.success) {
-          console.error('Unable to load account language preferences:', response.error);
-        }
+      const currentUser = await apiService.getCurrentUser();
+      if (!localLanguage && currentUser?.preferred_language && currentUser.preferred_language in translations) {
+        preferredLanguage = currentUser.preferred_language;
+      }
+      if (savedAuto === null && typeof currentUser?.auto_translate === 'boolean') {
+        preferredAutoTranslate = currentUser.auto_translate;
       }
 
       setLanguageState(preferredLanguage);

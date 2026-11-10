@@ -1,8 +1,9 @@
-import axios, { AxiosInstance } from 'axios';
+import axios, { AxiosHeaders, AxiosInstance, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 import { API_BASE_URL } from '../utils/constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
+import socketService from './socket.service';
 
 // Types
 export interface ApiResponse<T = any> {
@@ -38,11 +39,24 @@ interface SchoolCodeLoginResponse {
   schoolSessionToken: string;
 }
 
+interface ApiCacheEntry {
+  expiresAt: number;
+  data: any;
+}
+
+interface ApiCacheRequestConfig {
+  __apiCacheKey?: string;
+  __apiCacheHit?: boolean;
+}
+
 class ApiService {
   private static instance: ApiService;
   public api: AxiosInstance;
   private isRefreshing = false;
   private refreshSubscribers: ((token: string) => void)[] = [];
+  private readonly cachePrefix = '@acemia/api-cache:';
+  private readonly cacheTtlMs = 30_000;
+  private readonly memoryCache = new Map<string, ApiCacheEntry>();
 
   private constructor() {
     this.api = axios.create({
@@ -61,7 +75,15 @@ class ApiService {
 
   private async getAuthToken() {
     if (Platform.OS === 'web') return await AsyncStorage.getItem('auth_token');
-    return await SecureStore.getItemAsync('auth_token');
+    const token = await SecureStore.getItemAsync('auth_token');
+    if (token) return token;
+
+    const legacyToken = await AsyncStorage.getItem('auth_token');
+    if (legacyToken) {
+      await SecureStore.setItemAsync('auth_token', legacyToken);
+      await AsyncStorage.removeItem('auth_token');
+    }
+    return legacyToken;
   }
 
   private async setAuthToken(t: string) {
@@ -71,7 +93,15 @@ class ApiService {
 
   private async getRefreshToken() {
     if (Platform.OS === 'web') return await AsyncStorage.getItem('refresh_token');
-    return await SecureStore.getItemAsync('refresh_token');
+    const token = await SecureStore.getItemAsync('refresh_token');
+    if (token) return token;
+
+    const legacyToken = await AsyncStorage.getItem('refresh_token');
+    if (legacyToken) {
+      await SecureStore.setItemAsync('refresh_token', legacyToken);
+      await AsyncStorage.removeItem('refresh_token');
+    }
+    return legacyToken;
   }
 
   private async setRefreshToken(t: string) {
@@ -80,14 +110,122 @@ class ApiService {
   }
 
   private async clearTokens() {
+    socketService.disconnect();
     if (Platform.OS === 'web') {
       await AsyncStorage.removeItem('auth_token');
       await AsyncStorage.removeItem('refresh_token');
     } else {
       await SecureStore.deleteItemAsync('auth_token');
       await SecureStore.deleteItemAsync('refresh_token');
+      await AsyncStorage.multiRemove(['auth_token', 'refresh_token']);
     }
     await AsyncStorage.removeItem('user');
+    await AsyncStorage.removeItem('last_app_open');
+    await AsyncStorage.removeItem('session_requires_password');
+    await this.clearApiCache();
+  }
+
+  async hasAuthToken(): Promise<boolean> {
+    return Boolean(await this.getAuthToken());
+  }
+
+  async expireSessionPreservingUser(): Promise<void> {
+    socketService.disconnect();
+    if (Platform.OS === 'web') {
+      await AsyncStorage.multiRemove(['auth_token', 'refresh_token']);
+    } else {
+      await SecureStore.deleteItemAsync('auth_token');
+      await SecureStore.deleteItemAsync('refresh_token');
+      await AsyncStorage.multiRemove(['auth_token', 'refresh_token']);
+    }
+    await AsyncStorage.removeItem('last_app_open');
+    await AsyncStorage.setItem('session_requires_password', 'true');
+    await this.clearApiCache();
+  }
+
+  private getCacheTtl(url: string): number {
+    const path = url.split(/[?#]/, 1)[0];
+    if (path === '/check-update') return 5 * 60_000;
+    if (path === '/legal') return 60_000;
+    return this.cacheTtlMs;
+  }
+
+  private async getApiCacheKey(config: InternalAxiosRequestConfig): Promise<string | null> {
+    if (config.method?.toLowerCase() !== 'get' || !config.url) return null;
+
+    const path = config.url.split(/[?#]/, 1)[0];
+    const uncachedPath = /^\/auth(?:\/|$)|^\/me$|^\/users\/announcements$|^\/(chats|messages|statuses)(?:\/|$)|^\/users\/(?:search|check-phone|contacts\/check)(?:\/|$)|^\/market\/(?:chats|conversations)(?:\/|$)|^\/employer\/(?:applications|recent-chats|export)(?:\/|$)|^\/school\/(?:attendance|evaluations|export|portal)(?:\/|$)|^\/admin(?:\/|$)/;
+    if (uncachedPath.test(path)) return null;
+
+    try {
+      const userString = await AsyncStorage.getItem('user');
+      const user = userString ? JSON.parse(userString) : null;
+      const userId = user?.id || user?.userId || user?.user_id;
+      if (!userId) return null;
+
+      const identity = `${userId}:${config.method}:${config.url}:${JSON.stringify(config.params || {})}`;
+      let hash = 2166136261;
+      for (let index = 0; index < identity.length; index += 1) {
+        hash = Math.imul(hash ^ identity.charCodeAt(index), 16777619);
+      }
+      return `${this.cachePrefix}${userId}:${(hash >>> 0).toString(36)}`;
+    } catch (error) {
+      console.warn('API cache: Unable to create cache key', error);
+      return null;
+    }
+  }
+
+  private async readApiCache(key: string): Promise<ApiCacheEntry | null> {
+    const memoryEntry = this.memoryCache.get(key);
+    if (memoryEntry) {
+      if (memoryEntry.expiresAt > Date.now()) return memoryEntry;
+      this.memoryCache.delete(key);
+    }
+
+    try {
+      const storedEntry = await AsyncStorage.getItem(key);
+      if (!storedEntry) return null;
+      const entry = JSON.parse(storedEntry) as ApiCacheEntry;
+      if (typeof entry.expiresAt !== 'number' || entry.expiresAt <= Date.now()) {
+        await AsyncStorage.removeItem(key);
+        return null;
+      }
+      this.memoryCache.set(key, entry);
+      return entry;
+    } catch (error) {
+      console.warn('API cache: Unable to read cached response', error);
+      return null;
+    }
+  }
+
+  private async storeApiCache(response: AxiosResponse): Promise<void> {
+    const config = response.config as InternalAxiosRequestConfig & ApiCacheRequestConfig;
+    if (!config.__apiCacheKey || config.__apiCacheHit || response.status < 200 || response.status >= 300 || response.data?.success === false) return;
+
+    try {
+      const serializedData = JSON.stringify(response.data);
+      if (serializedData.length > 512_000) return;
+
+      const entry: ApiCacheEntry = {
+        expiresAt: Date.now() + this.getCacheTtl(config.url || ''),
+        data: response.data,
+      };
+      this.memoryCache.set(config.__apiCacheKey, entry);
+      await AsyncStorage.setItem(config.__apiCacheKey, JSON.stringify(entry));
+    } catch (error) {
+      console.warn('API cache: Unable to save response', error);
+    }
+  }
+
+  private async clearApiCache(): Promise<void> {
+    this.memoryCache.clear();
+    try {
+      const keys = await AsyncStorage.getAllKeys();
+      const cacheKeys = keys.filter(key => key.startsWith(this.cachePrefix));
+      if (cacheKeys.length) await AsyncStorage.multiRemove(cacheKeys);
+    } catch (error) {
+      console.warn('API cache: Unable to clear cached responses', error);
+    }
   }
 
   private setupInterceptors(): void {
@@ -99,6 +237,26 @@ class ApiService {
 
       const token = await this.getAuthToken();
       if (token) config.headers.Authorization = `Bearer ${token}`;
+      if (config.method?.toLowerCase() !== 'get') {
+        await this.clearApiCache();
+      } else {
+        const cacheKey = await this.getApiCacheKey(config);
+        if (cacheKey) {
+          const cachedConfig = config as InternalAxiosRequestConfig & ApiCacheRequestConfig;
+          cachedConfig.__apiCacheKey = cacheKey;
+          const entry = await this.readApiCache(cacheKey);
+          if (entry) {
+            cachedConfig.__apiCacheHit = true;
+            cachedConfig.adapter = async (requestConfig) => ({
+              data: entry.data,
+              status: 200,
+              statusText: 'OK',
+              headers: new AxiosHeaders({ 'X-Api-Cache': 'HIT' }),
+              config: requestConfig,
+            });
+          }
+        }
+      }
       return config;
     }, (error) => {
       // Gestion d'erreur de requête
@@ -107,7 +265,10 @@ class ApiService {
     });
 
     this.api.interceptors.response.use(
-      (res) => res,
+      async (res) => {
+        await this.storeApiCache(res);
+        return res;
+      },
       async (error) => {
         const originalRequest = error.config;
         if (error.response?.status === 403 && error.response.data?.isLocked) {
@@ -235,6 +396,13 @@ class ApiService {
         const localUser = await this.getCurrentUser();
         await AsyncStorage.setItem('user', JSON.stringify({ ...(localUser || {}), ...res.data.data }));
       }
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async getAnnouncements(): Promise<ApiResponse> {
+    try {
+      const res = await this.api.get('/users/announcements');
       return res.data;
     } catch (e: any) { return this.handleError(e); }
   }

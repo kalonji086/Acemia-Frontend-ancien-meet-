@@ -58,7 +58,6 @@ const SplashScreen = () => {
 
       await new Promise((resolve) => setTimeout(resolve, 300));
 
-      const token = await AsyncStorage.getItem('auth_token');
       const userString = await AsyncStorage.getItem('user');
       let userObj = null;
 
@@ -68,7 +67,58 @@ const SplashScreen = () => {
         console.error('Error parsing user data:', e);
       }
 
-      if (!token || !userObj) {
+      const hasToken = await apiService.hasAuthToken();
+      if (hasToken && userObj) {
+        const lastAppOpenStr = await AsyncStorage.getItem('last_app_open');
+        const storedLastAppOpen = lastAppOpenStr ? Number.parseInt(lastAppOpenStr, 10) : Number.NaN;
+        const lastLogin = userObj.last_login_at ? new Date(userObj.last_login_at).getTime() : Date.now();
+        const lastAppOpen = Number.isFinite(storedLastAppOpen) ? storedLastAppOpen : lastLogin;
+        const now = Date.now();
+        const twoDaysInMs = 2 * 24 * 60 * 60 * 1000;
+
+        if (now - lastAppOpen >= twoDaysInMs) {
+          await apiService.expireSessionPreservingUser();
+          safeNavigate('Login', {
+            mode: 'password_only',
+            email: userObj.email,
+            name: userObj.full_name || userObj.name,
+          });
+        } else {
+          await AsyncStorage.setItem('last_app_open', now.toString());
+          safeNavigate('ChatList');
+          void apiService.checkUpdate(APP_VERSION, userObj.id).then((updateRes: any) => {
+            if (updateRes?.updateRequired === true) {
+              navigation.dispatch(CommonActions.reset({
+                index: 0,
+                routes: [{
+                  name: 'Update',
+                  params: {
+                    updateUrl: updateRes.updateUrl,
+                    releaseNotes: updateRes.releaseNotes,
+                    forceUpdate: updateRes.forceUpdate,
+                    latestVersion: updateRes.latestVersion,
+                  },
+                }],
+              }));
+            }
+          }).catch((updateError) => {
+            console.error('Update check failed:', updateError);
+          });
+        }
+        return;
+      }
+
+      if (!hasToken || !userObj) {
+        const requiresPassword = await AsyncStorage.getItem('session_requires_password');
+        if (userObj && requiresPassword === 'true') {
+          safeNavigate('Login', {
+            mode: 'password_only',
+            email: userObj.email,
+            name: userObj.full_name || userObj.name,
+          });
+          return;
+        }
+
         // Même si non connecté, on vérifie si une acceptation légale est forcée pour les nouveaux utilisateurs
         try {
           const legalRes = await withTimeout(apiService.getLegalDocs(), 4000, 'legal-check-guest') as any;
@@ -91,99 +141,6 @@ const SplashScreen = () => {
         return;
       }
 
-      try {
-        // Check update avec timeout plus long
-        const updateRes = (await withTimeout(
-          apiService.checkUpdate(APP_VERSION, userObj?.id),
-          8000,
-          'update-check'
-        )) as any;
-
-        if (updateRes && updateRes.updateRequired === true) {
-          safeNavigate('Update', {
-            updateUrl: updateRes.updateUrl,
-            releaseNotes: updateRes.releaseNotes,
-            forceUpdate: updateRes.forceUpdate,
-            latestVersion: updateRes.latestVersion,
-          });
-          return;
-        }
-      } catch (updateErr) {
-        console.error('Update check failed:', updateErr);
-        // Continue even if update check fails
-      }
-
-      let checkRes: any;
-      try {
-        // Check user avec timeout plus long pour Render
-        checkRes = await withTimeout(apiService.getMe(), 10000, 'user-check') as any;
-      } catch (err) {
-        console.error('User check failed:', err);
-        // En cas d'erreur de connexion, on tente quand même d'aller sur l'écran principal
-        // si on a des données locales, sinon Login.
-        if (userObj) {
-          safeNavigate('ChatList');
-        } else {
-          safeNavigate('Login');
-        }
-        return;
-      }
-
-      if (checkRes && !checkRes.success) {
-        safeNavigate('Login', {
-          isLocked: checkRes.isLocked,
-          lockMessage: checkRes.message,
-        });
-        return;
-      }
-
-      const user = checkRes?.data || userObj;
-
-      try {
-        const legalRes = await withTimeout(apiService.getLegalDocs(), 4000, 'legal-check') as any;
-
-        if (legalRes && legalRes.success) {
-          const docs = legalRes.data || [];
-          const mustAccept = docs.some((doc: any) => {
-            if (!doc.force_acceptance) return false;
-            if (doc.type === 'tos') return doc.version !== user?.accepted_tos_version;
-            if (doc.type === 'privacy') return doc.version !== user?.accepted_privacy_version;
-            return doc.version !== user?.accepted_legal_version;
-          });
-
-          if (mustAccept) {
-            safeNavigate('LegalAcceptance', { documents: docs });
-            return;
-          }
-        }
-      } catch (legalErr) {
-        console.error('Legal check failed:', legalErr);
-        // Continue even if legal check fails
-      }
-
-      const lastLogin = user?.last_login_at ? new Date(user.last_login_at).getTime() : Date.now();
-      const lastAppOpenStr = await AsyncStorage.getItem('last_app_open');
-      const lastAppOpen = lastAppOpenStr ? parseInt(lastAppOpenStr) : lastLogin;
-
-      const now = Date.now();
-      const twoDaysInMs = 2 * 24 * 60 * 60 * 1000;
-      const tenDaysInMs = 10 * 24 * 60 * 60 * 1000;
-
-      if (now - lastLogin > tenDaysInMs) {
-        // Session trop ancienne (10 jours), reconnexion totale requise
-        safeNavigate('Login');
-      } else if (now - lastAppOpen > twoDaysInMs) {
-        // Plus de 2 jours d'inactivité, demander seulement le mot de passe
-        safeNavigate('Login', {
-          mode: 'password_only',
-          email: user.email,
-          name: user.full_name || user.name
-        });
-      } else {
-        // Connexion auto, on met à jour le temps d'ouverture
-        await AsyncStorage.setItem('last_app_open', now.toString());
-        safeNavigate('ChatList');
-      }
     } catch (error) {
       console.error('Critical navigation error:', error);
       safeNavigate('Login');

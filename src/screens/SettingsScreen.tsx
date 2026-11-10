@@ -37,7 +37,7 @@ import HelpdeskScreen from './HelpdeskScreen';
 export default function SettingsScreen({ navigation }: any) {
   const { isDark, colors, toggleTheme, setTheme, primaryColor, setPrimaryColor, fontSizeFactor, setFontSizeFactor, normalize } = useTheme();
   const { language, setLanguage, t, autoTranslate, setAutoTranslate } = useLanguage();
-  const { user, loading: userLoading } = useUser();
+  const { user, setUser, loading: userLoading } = useUser();
   const { showFeedbackModal, FeedbackModal } = useFeedback();
   const { width: screenWidth } = useWindowDimensions();
 
@@ -72,6 +72,7 @@ export default function SettingsScreen({ navigation }: any) {
           style: "destructive",
           onPress: async () => {
             await apiService.logout();
+            await setUser(null);
             navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
           }
         }

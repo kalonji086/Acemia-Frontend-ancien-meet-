@@ -56,15 +56,17 @@ import SchoolAttendanceScreen from '../screens/SchoolAttendanceScreen';
 import SchoolReportsScreen from '../screens/SchoolReportsScreen';
 import { useTheme } from '../context/ThemeContext';
 import { DefaultTheme, DarkTheme } from '@react-navigation/native';
-import { Platform } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import socketService from '../services/socket.service';
+import apiService from '../services/api.service';
 
 const Stack = createStackNavigator();
 
 export default function AppNavigator() {
   const { isDark, colors: themeColors } = useTheme();
   const navRef = useRef<any>(null);
+  const wasBackground = useRef(false);
 
   // Thème personnalisé pour React Navigation
   const navigationTheme = {
@@ -81,14 +83,66 @@ export default function AppNavigator() {
   };
 
   useEffect(() => {
+    const subscription = AppState.addEventListener('change', async (nextState) => {
+      if (nextState === 'background') {
+        wasBackground.current = true;
+        try {
+          if (await apiService.hasAuthToken()) {
+            await AsyncStorage.setItem('last_app_open', Date.now().toString());
+          }
+        } catch (error) {
+          console.error('Unable to persist session activity time:', error);
+        }
+        return;
+      }
+
+      if (nextState !== 'active' || !wasBackground.current) return;
+      wasBackground.current = false;
+
+      try {
+        const [hasToken, userString, lastAppOpenString] = await Promise.all([
+          apiService.hasAuthToken(),
+          AsyncStorage.getItem('user'),
+          AsyncStorage.getItem('last_app_open'),
+        ]);
+        if (!hasToken || !userString || !lastAppOpenString) return;
+
+        const user = JSON.parse(userString);
+        const lastAppOpen = Number.parseInt(lastAppOpenString, 10);
+        const twoDaysInMs = 2 * 24 * 60 * 60 * 1000;
+        if (!user || !Number.isFinite(lastAppOpen) || Date.now() - lastAppOpen < twoDaysInMs) return;
+
+        await apiService.expireSessionPreservingUser();
+        if (navRef.current?.getCurrentRoute()?.name !== 'Login') {
+          navRef.current?.dispatch(CommonActions.reset({
+            index: 0,
+            routes: [{
+              name: 'Login',
+              params: {
+                mode: 'password_only',
+                email: user.email,
+                name: user.full_name || user.name,
+              },
+            }],
+          }));
+        }
+      } catch (error) {
+        console.error('Unable to validate resumed session:', error);
+      }
+    });
+
+    return () => subscription.remove();
+  }, []);
+
+  useEffect(() => {
     // Le socket sera initialisé uniquement quand l'utilisateur sera authentifié
     // et sur l'écran principal (ChatList), pas au démarrage pour éviter les blocages
     const initSocketEarly = async () => {
       try {
-        const token = await AsyncStorage.getItem('auth_token');
+        const hasToken = await apiService.hasAuthToken();
         // On ne connecte le socket que si on a un token ET qu'on est actif
         // L'initialisation réelle se fera dans MainScreen
-        if (token) {
+        if (hasToken) {
           console.log('AppNavigator: Token found, socket will be initialized when needed');
         }
       } catch (error) {

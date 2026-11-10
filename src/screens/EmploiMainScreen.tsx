@@ -163,7 +163,7 @@ export default function EmploiMainScreen({ navigation }: any) {
           </View>
           <View style={styles.infoRow}>
             <CheckCircle2 size={16} color={colors.primary} />
-            <Text style={[styles.infoText, { color: colors.text.secondary, fontSize: normalize(13) }]}>Publication d'offres style Amazon</Text>
+            <Text style={[styles.infoText, { color: colors.text.secondary, fontSize: normalize(13) }]}>Publication et suivi de vos offres d'emploi en un seul espace</Text>
           </View>
         </View>
       </ScrollView>

@@ -11,7 +11,8 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  useWindowDimensions
+  useWindowDimensions,
+  Image,
 } from 'react-native';
 import {
   ArrowLeft, Building2, Globe, Mail, Phone, MapPin,
@@ -86,13 +87,13 @@ export default function EmployerRequestScreen({ navigation }: any) {
             <Text style={[styles.stepTitle, { color: colors.text.primary, fontSize: normalize(22) }]}>Identité de l'entreprise</Text>
             <View style={styles.inputGroup}>
               <Text style={[styles.label, { color: colors.text.secondary, fontSize: normalize(14) }]}>Nom de l'entreprise *</Text>
-              <View style={[styles.inputWrapper, { borderColor: colors.border }]}>
+                  <View style={[styles.inputWrapper, { borderColor: colors.border }]}>
                 <Building2 size={20} color={colors.text.disabled} />
                 <TextInput
                   style={[styles.input, { color: colors.text.primary, fontSize: normalize(16) }]}
                   value={formData.companyName}
                   onChangeText={(v) => updateForm('companyName', v)}
-                  placeholder="Ex: Together Tech Solutions"
+                  placeholder="Ex: Mon entreprise"
                   placeholderTextColor={colors.text.disabled}
                 />
               </View>
@@ -234,19 +235,22 @@ export default function EmployerRequestScreen({ navigation }: any) {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-        <View style={[styles.header, { paddingHorizontal: isTablet ? '10%' : 15 }]}>
+        <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border, paddingHorizontal: isTablet ? '10%' : 15 }]}>
           <TouchableOpacity onPress={prevStep} style={styles.backBtn}>
             <ArrowLeft size={24} color={colors.text.primary} />
           </TouchableOpacity>
+          <Image source={require('../../assets/AcemiaLogo.png')} style={styles.brandLogo} resizeMode="contain" />
           <View style={styles.progressContainer}>
+            <Text style={[styles.brandName, { color: colors.text.primary }]}>Acemia Emploi</Text>
             <View style={[styles.progressBar, { backgroundColor: colors.border }]}>
               <View style={[styles.progressFill, { width: `${(step / 5) * 100}%`, backgroundColor: colors.primary }]} />
             </View>
-            <Text style={[styles.stepIndicator, { color: colors.text.secondary }]}>Étape {step}/5</Text>
+            <Text style={[styles.stepIndicator, { color: colors.text.secondary }]}>ÉTAPE {step} SUR 5</Text>
           </View>
+          <Text style={[styles.stepBadge, { color: colors.primary, backgroundColor: colors.primary + '15' }]}>{step}/5</Text>
         </View>
 
-        <ScrollView contentContainerStyle={[styles.scrollContent, { paddingHorizontal: isTablet ? '20%' : 25 }]}>
+        <ScrollView contentContainerStyle={[styles.scrollContent, { paddingHorizontal: isTablet ? '20%' : 25 }]} keyboardShouldPersistTaps="handled">
           {renderStep()}
         </ScrollView>
 
@@ -273,30 +277,34 @@ export default function EmployerRequestScreen({ navigation }: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', padding: 15, borderBottomWidth: 0.5, borderBottomColor: '#ddd' },
-  backBtn: { padding: 5 },
-  progressContainer: { flex: 1, marginLeft: 20 },
-  progressBar: { height: 6, borderRadius: 3, width: '100%', marginBottom: 5, overflow: 'hidden' },
+  header: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 18, borderBottomWidth: StyleSheet.hairlineWidth, gap: 10 },
+  backBtn: { width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: '#00000008' },
+  brandLogo: { width: 42, height: 42 },
+  progressContainer: { flex: 1, gap: 5 },
+  brandName: { fontSize: 15, fontWeight: '900', letterSpacing: -0.3 },
+  progressBar: { height: 7, borderRadius: 8, width: '100%', overflow: 'hidden' },
   progressFill: { height: '100%' },
-  stepIndicator: { fontSize: 12, fontWeight: '600' },
-  scrollContent: { paddingVertical: 25 },
+  stepIndicator: { fontSize: 10, fontWeight: '800', letterSpacing: 1 },
+  stepBadge: { overflow: 'hidden', borderRadius: 12, paddingHorizontal: 11, paddingVertical: 8, fontSize: 12, fontWeight: '900' },
+  scrollContent: { paddingVertical: 24, paddingBottom: 36 },
   stepContainer: { width: '100%' },
-  stepTitle: { fontWeight: 'bold', marginBottom: 25 },
-  inputGroup: { marginBottom: 20 },
-  label: { fontWeight: '600', marginBottom: 8, marginLeft: 2 },
+  stepTitle: { fontSize: 24, fontWeight: '900', marginBottom: 25, letterSpacing: -0.5 },
+  inputGroup: { marginBottom: 22 },
+  label: { fontWeight: '800', marginBottom: 9, marginLeft: 2 },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1.5,
-    borderRadius: 12,
+    borderRadius: 16,
     paddingHorizontal: 15,
-    height: 55
+    height: 58,
+    backgroundColor: '#00000004',
   },
   input: { flex: 1, marginLeft: 12 },
-  footer: { paddingVertical: 20, borderTopWidth: 0.5 },
+  footer: { paddingVertical: 18, borderTopWidth: StyleSheet.hairlineWidth },
   nextBtn: {
-    height: 55,
-    borderRadius: 15,
+    height: 58,
+    borderRadius: 17,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',

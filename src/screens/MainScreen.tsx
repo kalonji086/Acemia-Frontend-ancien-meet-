@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text, ActivityIndicator, Image, Platform, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -7,7 +7,6 @@ import {
 } from 'lucide-react-native';
 import apiService from '../services/api.service';
 import socketService from '../services/socket.service';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import ChatListScreen from './ChatListScreen';
 import StatusScreen from './StatusScreen';
 import MarketScreen from './MarketScreen';
@@ -17,11 +16,14 @@ import EmploiMainScreen from './EmploiMainScreen';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
 import { useUser } from '../context/UserContext';
+import AnnouncementBanner from '../components/AnnouncementBanner';
 
 export default function MainScreen({ navigation, route }: any) {
   // --- 1. HOOKS (MUST ALWAYS RUN IN THE SAME ORDER) ---
   const { colors, isDark, normalize } = useTheme();
   const { user: currentUser, setUser, loading: userLoading } = useUser();
+  const currentUserRef = useRef(currentUser);
+  currentUserRef.current = currentUser;
   const { t } = useLanguage();
   const insets = useSafeAreaInsets();
   const { width: screenWidth } = useWindowDimensions();
@@ -59,6 +61,8 @@ export default function MainScreen({ navigation, route }: any) {
   }, [route.params?.screen, activeTab]);
 
   useEffect(() => {
+    if (userLoading || !currentUser) return;
+
     const startSocket = async () => {
       try {
         await socketService.initialize();
@@ -74,19 +78,15 @@ export default function MainScreen({ navigation, route }: any) {
         const legalRes = await apiService.getLegalDocs();
         if (legalRes?.success) {
           const docs = legalRes.data || [];
-          const userRes = await apiService.getMe();
-          if (userRes.success) {
-            const user = userRes.data;
-            await AsyncStorage.setItem('user', JSON.stringify(user));
-            const mustAccept = docs.some((doc: any) => {
-              if (!doc.force_acceptance) return false;
-              if (doc.type === 'tos') return doc.version !== user?.accepted_tos_version;
-              if (doc.type === 'privacy') return doc.version !== user?.accepted_privacy_version;
-              return doc.version !== user?.accepted_legal_version;
-            });
-            if (mustAccept) {
-              navigation.reset({ index: 0, routes: [{ name: 'LegalAcceptance', params: { documents: docs } }] });
-            }
+          const user = currentUserRef.current;
+          const mustAccept = docs.some((doc: any) => {
+            if (!doc.force_acceptance) return false;
+            if (doc.type === 'tos') return doc.version !== user?.accepted_tos_version;
+            if (doc.type === 'privacy') return doc.version !== user?.accepted_privacy_version;
+            return doc.version !== user?.accepted_legal_version;
+          });
+          if (mustAccept) {
+            navigation.reset({ index: 0, routes: [{ name: 'LegalAcceptance', params: { documents: docs } }] });
           }
         }
 
@@ -109,7 +109,7 @@ export default function MainScreen({ navigation, route }: any) {
       socketService.off('profile_updated');
       socketService.off('legal_update');
     };
-  }, [navigation, setUser]);
+  }, [navigation, setUser, userLoading, Boolean(currentUser)]);
 
   // --- 2. EARLY RETURN (AFTER ALL HOOKS) ---
   if (userLoading || !currentUser || !colors) {
@@ -220,7 +220,10 @@ export default function MainScreen({ navigation, route }: any) {
         </View>
       )}
 
-      <View style={styles.content}>{renderContent()}</View>
+      <View style={styles.content}>
+        <AnnouncementBanner />
+        {renderContent()}
+      </View>
 
       {!showSidebar && (
         <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 10), height: normalize(70) + insets.bottom, backgroundColor: colors.surface, borderTopColor: colors.border }]}>

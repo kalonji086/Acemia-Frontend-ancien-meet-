@@ -9,9 +9,10 @@ import {
   ActivityIndicator,
   Alert,
   useWindowDimensions,
-  Modal
+  Modal,
+  Image,
 } from 'react-native';
-import { ArrowLeft, Users, GraduationCap, BookOpen, DollarSign, Clock, RefreshCw, Menu, X, School } from 'lucide-react-native';
+import { ArrowLeft, ChevronRight, Users, GraduationCap, BookOpen, DollarSign, Clock, RefreshCw, Menu, X, School } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
 import apiService from '../services/api.service';
 import SchoolSideMenu from '../components/SchoolSideMenu';
@@ -98,17 +99,20 @@ export default function SchoolDashboardScreen({ navigation }: any) {
   if (!hasRequest) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-        <View style={[styles.header, { backgroundColor: colors.surface }]}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
+        <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+          <TouchableOpacity style={styles.headerButton} onPress={() => navigation.goBack()}>
             <ArrowLeft size={24} color={colors.text.primary} />
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: colors.text.primary, fontSize: normalize(18) }]}>Gestion École</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('SchoolLogin')}>
+          <Image source={require('../../assets/AcemiaLogo.png')} style={styles.brandLogo} resizeMode="contain" />
+          <Text style={[styles.headerTitle, { color: colors.text.primary, fontSize: normalize(16) }]}>Acemia École</Text>
+          <TouchableOpacity style={styles.headerButton} accessibilityLabel="Connexion école" onPress={() => navigation.navigate('SchoolLogin')}>
             <School size={24} color={colors.primary} />
           </TouchableOpacity>
         </View>
         <View style={styles.centeredContent}>
-          <GraduationCap size={80} color={colors.primary} style={{ marginBottom: 20 }} />
+          <View style={[styles.statusIcon, { backgroundColor: colors.primary + '15' }]}>
+            <GraduationCap size={42} color={colors.primary} />
+          </View>
           <Text style={[styles.mainText, { color: colors.text.primary, fontSize: normalize(20) }]}>Vous n'avez pas d'école</Text>
           <Text style={[styles.subText, { color: colors.text.secondary, fontSize: normalize(14) }]}>
             Créez votre profil de promoteur et enregistrez votre école pour accéder à votre tableau de bord.
@@ -117,7 +121,9 @@ export default function SchoolDashboardScreen({ navigation }: any) {
             style={[styles.actionButton, { backgroundColor: colors.primary }]}
             onPress={() => navigation.navigate('SchoolRequest')}
           >
+            <GraduationCap size={19} color="#fff" />
             <Text style={styles.actionButtonText}>Créer une École</Text>
+            <ChevronRight size={18} color="#fff" />
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -127,15 +133,18 @@ export default function SchoolDashboardScreen({ navigation }: any) {
   if (requestStatus === 'en_attente') {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-        <View style={[styles.header, { backgroundColor: colors.surface }]}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
+        <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+          <TouchableOpacity style={styles.headerButton} onPress={() => navigation.goBack()}>
             <ArrowLeft size={24} color={colors.text.primary} />
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: colors.text.primary, fontSize: normalize(18) }]}>Demande en attente</Text>
-          <View style={{ width: 24 }} />
+          <Image source={require('../../assets/AcemiaLogo.png')} style={styles.brandLogo} resizeMode="contain" />
+          <Text style={[styles.headerTitle, { color: colors.text.primary, fontSize: normalize(16), flex: 1 }]}>Demande en attente</Text>
+          <View style={{ width: 40 }} />
         </View>
         <View style={styles.centeredContent}>
-          <Clock size={80} color="#FF9800" style={{ marginBottom: 20 }} />
+          <View style={[styles.statusIcon, { backgroundColor: '#FF980015' }]}>
+            <Clock size={42} color="#FF9800" />
+          </View>
           <Text style={[styles.mainText, { color: colors.text.primary, fontSize: normalize(20) }]}>Demande En Attente</Text>
           <Text style={[styles.subText, { color: colors.text.secondary, fontSize: normalize(14) }]}>
             Votre demande est en cours d'examen par notre équipe administrative. Dès qu'elle sera approuvée, votre tableau de bord complet s'activera ici automatiquement.
@@ -155,14 +164,18 @@ export default function SchoolDashboardScreen({ navigation }: any) {
   if (requestStatus === 'rejete') {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-        <View style={[styles.header, { backgroundColor: colors.surface }]}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
+        <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+          <TouchableOpacity style={styles.headerButton} onPress={() => navigation.goBack()}>
             <ArrowLeft size={24} color={colors.text.primary} />
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: colors.text.primary, fontSize: normalize(18) }]}>Demande Refusée</Text>
-          <View style={{ width: 24 }} />
+          <Image source={require('../../assets/AcemiaLogo.png')} style={styles.brandLogo} resizeMode="contain" />
+          <Text style={[styles.headerTitle, { color: colors.text.primary, fontSize: normalize(16), flex: 1 }]}>Demande refusée</Text>
+          <View style={{ width: 40 }} />
         </View>
         <View style={styles.centeredContent}>
+          <View style={[styles.statusIcon, { backgroundColor: colors.danger + '15' }]}>
+            <School size={42} color={colors.danger} />
+          </View>
           <Text style={[styles.mainText, { color: colors.text.primary, fontSize: normalize(20) }]}>Demande Non Approuvée</Text>
           <Text style={[styles.subText, { color: colors.text.secondary, fontSize: normalize(14) }]}>
             Malheureusement, votre demande de création d'école n'a pas pu être validée par les administrateurs. Veuillez contacter le support pour plus d'informations.
@@ -177,18 +190,20 @@ export default function SchoolDashboardScreen({ navigation }: any) {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={[styles.header, { backgroundColor: colors.surface }]}>
-        <TouchableOpacity onPress={() => setMenuVisible(true)}>
+      <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+        <TouchableOpacity style={styles.headerButton} accessibilityLabel="Ouvrir le menu école" onPress={() => setMenuVisible(true)}>
           <Menu size={24} color={colors.text.primary} />
         </TouchableOpacity>
-        <View style={{ alignItems: 'center', flex: 1, paddingHorizontal: 10 }}>
+        <Image source={require('../../assets/AcemiaLogo.png')} style={styles.brandLogo} resizeMode="contain" />
+        <View style={{ alignItems: 'flex-start', flex: 1, minWidth: 0, paddingHorizontal: 8 }}>
+          <Text style={[styles.brandLabel, { color: colors.primary }]}>Acemia École</Text>
           <Text style={[styles.headerTitle, { color: colors.text.primary, fontSize: normalize(16) }]} numberOfLines={1}>
             {school.school_name || 'Dashboard École'}
           </Text>
-          <Text style={{ color: '#4CAF50', fontSize: normalize(11), fontWeight: 'bold' }}>PROMOTEUR AGRÉÉ</Text>
+          <Text style={{ color: '#4CAF50', fontSize: normalize(10), fontWeight: '800', letterSpacing: 0.6 }}>ÉTABLISSEMENT AGRÉÉ</Text>
         </View>
-        <TouchableOpacity onPress={() => navigation.navigate('ChatList')}>
-          <ArrowLeft size={24} color={colors.text.primary} />
+        <TouchableOpacity style={styles.headerButton} accessibilityLabel="Retour aux discussions" onPress={() => navigation.navigate('ChatList')}>
+          <ArrowLeft size={22} color={colors.text.primary} />
         </TouchableOpacity>
       </View>
 
@@ -214,6 +229,16 @@ export default function SchoolDashboardScreen({ navigation }: any) {
       </Modal>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
+        <View style={[styles.welcomePanel, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.welcomeEyebrow, { color: colors.primary }]}>ESPACE DE GESTION</Text>
+            <Text style={[styles.welcomeTitle, { color: colors.text.primary }]} numberOfLines={2}>Bonjour, {school.school_name || 'votre école'}</Text>
+            <Text style={[styles.welcomeSubtitle, { color: colors.text.secondary }]}>Suivez l’activité de votre établissement et accédez rapidement à vos outils.</Text>
+          </View>
+          <View style={[styles.welcomeIcon, { backgroundColor: colors.primary + '14' }]}>
+            <GraduationCap size={28} color={colors.primary} />
+          </View>
+        </View>
         <View style={[styles.statsGrid, isWide && styles.tabletRow]}>
           {renderStatCard('Élèves', stats.totalStudents || 0, <Users />, colors.primary)}
           {renderStatCard('Enseignants', stats.totalTeachers || 0, <GraduationCap />, '#4CAF50')}
@@ -221,28 +246,33 @@ export default function SchoolDashboardScreen({ navigation }: any) {
           {renderStatCard('Revenus', stats.monthlyRevenue || '0 $', <DollarSign />, '#FF9800')}
         </View>
 
-        <Text style={[styles.sectionTitle, { color: colors.text.primary, fontSize: normalize(16) }]}>
-          Outils de gestion disponibles
-        </Text>
+        <View style={styles.sectionHeading}>
+          <Text style={[styles.sectionTitle, { color: colors.text.primary, fontSize: normalize(18) }]}>Outils de gestion</Text>
+          <Text style={[styles.sectionSubtitle, { color: colors.text.secondary }]}>Choisissez un espace pour continuer</Text>
+        </View>
         <View style={[styles.menuGrid, isWide && styles.tabletRow]}>
           <TouchableOpacity style={[styles.menuCard, { backgroundColor: colors.surface, borderColor: colors.border }, isWide && { flex: 1, marginRight: 10 }]} onPress={() => navigation.navigate('SchoolStudents')}>
-            <Users size={28} color={colors.primary} />
+            <View style={[styles.menuCardIcon, { backgroundColor: colors.primary + '14' }]}><Users size={22} color={colors.primary} /></View>
             <Text style={[styles.menuText, { color: colors.text.primary }]}>Inscriptions & Élèves</Text>
+            <ChevronRight size={18} color={colors.text.disabled} />
           </TouchableOpacity>
 
           <TouchableOpacity style={[styles.menuCard, { backgroundColor: colors.surface, borderColor: colors.border }, isWide && { flex: 1, marginRight: 10 }]} onPress={() => navigation.navigate('SchoolClasses')}>
-            <GraduationCap size={28} color={colors.primary} />
+            <View style={[styles.menuCardIcon, { backgroundColor: '#4CAF5015' }]}><GraduationCap size={22} color="#4CAF50" /></View>
             <Text style={[styles.menuText, { color: colors.text.primary }]}>Gestion des Classes</Text>
+            <ChevronRight size={18} color={colors.text.disabled} />
           </TouchableOpacity>
 
           <TouchableOpacity style={[styles.menuCard, { backgroundColor: colors.surface, borderColor: colors.border }, isWide && { flex: 1, marginRight: 10 }]} onPress={() => navigation.navigate('SchoolSchedule')}>
-            <BookOpen size={28} color={colors.primary} />
+            <View style={[styles.menuCardIcon, { backgroundColor: '#2196F315' }]}><BookOpen size={22} color="#2196F3" /></View>
             <Text style={[styles.menuText, { color: colors.text.primary }]}>Horaires & Cours</Text>
+            <ChevronRight size={18} color={colors.text.disabled} />
           </TouchableOpacity>
 
           <TouchableOpacity style={[styles.menuCard, { backgroundColor: colors.surface, borderColor: colors.border }, isWide && { flex: 1 }]} onPress={() => navigation.navigate('SchoolFees')}>
-            <DollarSign size={28} color={colors.primary} />
+            <View style={[styles.menuCardIcon, { backgroundColor: '#FF980015' }]}><DollarSign size={22} color="#FF9800" /></View>
             <Text style={[styles.menuText, { color: colors.text.primary }]}>Frais Scolaires</Text>
+            <ChevronRight size={18} color={colors.text.disabled} />
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -255,28 +285,36 @@ const styles = StyleSheet.create({
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 15,
-    paddingHorizontal: 20,
-    borderBottomWidth: 0.5,
-    borderBottomColor: '#ddd'
+    paddingVertical: 11,
+    paddingHorizontal: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    gap: 8,
   },
-  headerTitle: { fontWeight: 'bold' },
-  centeredContent: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 30 },
-  mainText: { fontWeight: 'bold', marginBottom: 10, textAlign: 'center' },
-  subText: { textAlign: 'center', marginBottom: 30, lineHeight: 22 },
-  actionButton: { paddingHorizontal: 30, paddingVertical: 15, borderRadius: 12 },
-  actionButtonText: { color: '#fff', fontWeight: 'bold' },
-  refreshButton: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 12, borderWidth: 1 },
+  headerButton: { width: 42, height: 42, alignItems: 'center', justifyContent: 'center', borderRadius: 14, backgroundColor: '#00000008' },
+  brandLogo: { width: 40, height: 40 },
+  brandLabel: { fontSize: 10, fontWeight: '900', letterSpacing: 0.8 },
+  headerTitle: { fontWeight: '800' },
+  centeredContent: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 28, width: '100%', maxWidth: 600, alignSelf: 'center' },
+  statusIcon: { width: 78, height: 78, borderRadius: 26, justifyContent: 'center', alignItems: 'center', marginBottom: 20 },
+  mainText: { fontWeight: '900', marginBottom: 10, textAlign: 'center' },
+  subText: { textAlign: 'center', marginBottom: 28, lineHeight: 22 },
+  actionButton: { minHeight: 54, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingHorizontal: 25, paddingVertical: 14, borderRadius: 16, width: '100%', maxWidth: 360, elevation: 2 },
+  actionButtonText: { color: '#fff', fontWeight: '800', fontSize: 15 },
+  refreshButton: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18, paddingVertical: 12, borderRadius: 14, borderWidth: 1 },
   refreshButtonText: { fontWeight: 'bold' },
-  scrollContent: { padding: 20, width: '100%', maxWidth: 1280, alignSelf: 'center' },
-  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 25 },
+  scrollContent: { padding: 20, paddingBottom: 32, width: '100%', maxWidth: 1280, alignSelf: 'center' },
+  welcomePanel: { flexDirection: 'row', alignItems: 'center', padding: 20, borderRadius: 22, borderWidth: 1, marginBottom: 20, gap: 12 },
+  welcomeEyebrow: { fontSize: 10, fontWeight: '900', letterSpacing: 1.1, marginBottom: 7 },
+  welcomeTitle: { fontSize: 20, fontWeight: '900', letterSpacing: -0.5, marginBottom: 6 },
+  welcomeSubtitle: { fontSize: 13, lineHeight: 19 },
+  welcomeIcon: { width: 54, height: 54, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 18, gap: 8 },
   statCard: {
     width: '48%',
-    padding: 15,
-    borderRadius: 20,
-    marginBottom: 15,
+    padding: 14,
+    borderRadius: 18,
+    marginBottom: 10,
     borderWidth: 1,
     flexDirection: 'row',
     alignItems: 'center'
@@ -284,10 +322,13 @@ const styles = StyleSheet.create({
   statIcon: { width: 44, height: 44, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
   statValue: { fontWeight: 'bold' },
   statTitle: {},
-  sectionTitle: { fontWeight: 'bold', marginBottom: 15 },
-  menuGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
-  menuCard: { width: '48%', padding: 20, borderRadius: 20, borderWidth: 1, alignItems: 'center', justifyContent: 'center', height: 120, marginBottom: 15 },
-  menuText: { fontWeight: '600', marginTop: 12, textAlign: 'center', fontSize: 13 },
+  sectionHeading: { marginTop: 8, marginBottom: 14 },
+  sectionTitle: { fontWeight: '900', marginBottom: 4 },
+  sectionSubtitle: { fontSize: 12 },
+  menuGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 8 },
+  menuCard: { width: '48%', flexDirection: 'row', padding: 13, borderRadius: 18, borderWidth: 1, alignItems: 'center', minHeight: 78, marginBottom: 10, gap: 8 },
+  menuCardIcon: { width: 40, height: 40, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
+  menuText: { flex: 1, fontWeight: '700', textAlign: 'left', fontSize: 12 },
   tabletRow: { flexDirection: 'row', justifyContent: 'space-between', flexWrap: 'nowrap', width: '100%', marginBottom: 20 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', flexDirection: 'row' },
   menuDrawerContainer: { height: '100%', backgroundColor: '#fff', position: 'relative' },

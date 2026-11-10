@@ -2,6 +2,7 @@ import io, { Socket } from 'socket.io-client';
 import { SOCKET_URL, APP_VERSION } from '../utils/constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alert, Platform } from 'react-native';
+import * as SecureStore from 'expo-secure-store';
 
 // Types
 interface SocketEvent {
@@ -44,6 +45,20 @@ class SocketService {
 
   private constructor() {}
 
+  private async getAuthToken(): Promise<string | null> {
+    if (Platform.OS === 'web') return AsyncStorage.getItem('auth_token');
+
+    const token = await SecureStore.getItemAsync('auth_token');
+    if (token) return token;
+
+    const legacyToken = await AsyncStorage.getItem('auth_token');
+    if (legacyToken) {
+      await SecureStore.setItemAsync('auth_token', legacyToken);
+      await AsyncStorage.removeItem('auth_token');
+    }
+    return legacyToken;
+  }
+
   static getInstance(): SocketService {
     if (!SocketService.instance) {
       SocketService.instance = new SocketService();
@@ -65,7 +80,7 @@ class SocketService {
         return;
       }
 
-      const token = await AsyncStorage.getItem('auth_token');
+      const token = await this.getAuthToken();
       const userString = await AsyncStorage.getItem('user');
 
       if (!token || !userString) {
@@ -263,6 +278,10 @@ class SocketService {
       this.emitEvent('app_config_update', data);
     });
 
+    this.socket.on('announcement_updated', (data) => {
+      this.emitEvent('announcement_updated', data);
+    });
+
     // Error events
     this.socket.on('error', (error) => {
       console.error('Socket error:', error);
@@ -335,7 +354,7 @@ class SocketService {
         }
       }
 
-      const token = await AsyncStorage.getItem('auth_token');
+      const token = await this.getAuthToken();
       const userString = await AsyncStorage.getItem('user');
 
       if (!token || !userString) {

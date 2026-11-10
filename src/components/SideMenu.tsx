@@ -6,7 +6,8 @@ import {
   TouchableOpacity,
   ScrollView,
   SafeAreaView,
-  useWindowDimensions
+  useWindowDimensions,
+  Image,
 } from 'react-native';
 import {
   Home,
@@ -25,6 +26,8 @@ import {
   HelpCircle
 } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
+import { useUser } from '../context/UserContext';
+import apiService from '../services/api.service';
 
 interface SideMenuProps {
   navigation: any;
@@ -36,6 +39,7 @@ interface SideMenuProps {
 
 export default function SideMenu({ navigation, activeRoute, onClose, userName, companyName }: SideMenuProps) {
   const { colors, normalize, isDark } = useTheme();
+  const { setUser } = useUser();
   const { width: windowWidth } = useWindowDimensions();
   const isTablet = windowWidth > 768;
 
@@ -107,8 +111,9 @@ export default function SideMenu({ navigation, activeRoute, onClose, userName, c
     onClose();
   };
 
-  const handleLogout = () => {
-    // Logique de déconnexion
+  const handleLogout = async () => {
+    await apiService.logout();
+    await setUser(null);
     navigation.reset({
       index: 0,
       routes: [{ name: 'Login' }]
@@ -118,6 +123,10 @@ export default function SideMenu({ navigation, activeRoute, onClose, userName, c
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.surface }]}>
       <View style={styles.header}>
+        <View style={styles.brandRow}>
+          <Image source={require('../../assets/AcemiaLogo.png')} style={styles.brandLogo} resizeMode="contain" />
+          <Text style={[styles.brandName, { color: colors.text.primary }]}>Acemia Emploi</Text>
+        </View>
         <View style={styles.userInfo}>
           <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
             <User size={normalize(24)} color="#fff" />
@@ -248,11 +257,14 @@ const styles = StyleSheet.create({
     shadowRadius: 8
   },
   header: {
-    padding: 20,
-    paddingBottom: 15,
+    padding: 18,
+    paddingBottom: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#eee'
   },
+  brandRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 16, gap: 9 },
+  brandLogo: { width: 34, height: 34 },
+  brandName: { fontSize: 15, fontWeight: '900', letterSpacing: -0.3 },
   userInfo: {
     flexDirection: 'row',
     alignItems: 'center'
@@ -296,10 +308,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 12,
+    minHeight: 48,
+    paddingVertical: 10,
     paddingHorizontal: 12,
-    borderRadius: 10,
-    marginBottom: 4
+    borderRadius: 13,
+    marginBottom: 5
   },
   menuItemLeft: {
     flexDirection: 'row',

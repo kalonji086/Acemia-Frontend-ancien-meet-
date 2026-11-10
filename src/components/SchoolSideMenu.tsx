@@ -6,7 +6,8 @@ import {
   TouchableOpacity,
   ScrollView,
   SafeAreaView,
-  useWindowDimensions
+  useWindowDimensions,
+  Image,
 } from 'react-native';
 import {
   Home,
@@ -100,13 +101,14 @@ export default function SchoolSideMenu({ navigation, onClose, schoolName }: Scho
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.surface }]}>
-      <View style={styles.header}>
-        <GraduationCap size={normalize(28)} color={colors.primary} />
-        <View style={{ marginLeft: 12, flex: 1 }}>
-          <Text style={[styles.schoolName, { color: colors.text.primary, fontSize: normalize(15) }]} numberOfLines={1}>
+      <View style={[styles.header, { borderBottomColor: colors.border }]}>
+        <Image source={require('../../assets/AcemiaLogo.png')} style={styles.logo} resizeMode="contain" />
+        <View style={{ marginLeft: 11, flex: 1, minWidth: 0 }}>
+          <Text style={[styles.brandName, { color: colors.primary }]}>Acemia École</Text>
+          <Text style={[styles.schoolName, { color: colors.text.primary, fontSize: normalize(14) }]} numberOfLines={1}>
             {schoolName || 'Mon École'}
           </Text>
-          <Text style={{ color: colors.text.secondary, fontSize: normalize(11) }}>Espace Promoteur</Text>
+          <Text style={{ color: colors.text.secondary, fontSize: normalize(10) }}>Espace de gestion</Text>
         </View>
       </View>
 
@@ -114,7 +116,7 @@ export default function SchoolSideMenu({ navigation, onClose, schoolName }: Scho
         {menuItems.map((item) => (
           <TouchableOpacity
             key={item.id}
-            style={[styles.menuItem, { borderRadius: 10 }]}
+            style={[styles.menuItem, { borderRadius: 14, backgroundColor: colors.background }]}
             onPress={() => {
               item.action();
               onClose();
@@ -150,21 +152,18 @@ export default function SchoolSideMenu({ navigation, onClose, schoolName }: Scho
 
 const styles = StyleSheet.create({
   container: { flex: 1, height: '100%' },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 20,
-    borderBottomWidth: 0.5,
-    borderBottomColor: '#ddd'
-  },
-  schoolName: { fontWeight: 'bold' },
+  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, paddingVertical: 20, borderBottomWidth: StyleSheet.hairlineWidth },
+  logo: { width: 42, height: 42 },
+  brandName: { fontSize: 10, fontWeight: '900', letterSpacing: 0.8, marginBottom: 2 },
+  schoolName: { fontWeight: '800' },
   scrollContent: { paddingVertical: 15, paddingHorizontal: 10 },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 15,
-    marginBottom: 5
+    minHeight: 50,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    marginBottom: 7
   },
   iconContainer: { marginRight: 15 },
   menuLabel: { fontWeight: '500' },

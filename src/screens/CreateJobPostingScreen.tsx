@@ -11,7 +11,8 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  useWindowDimensions
+  useWindowDimensions,
+  Image,
 } from 'react-native';
 import { ArrowLeft, Briefcase, MapPin, DollarSign, FileText, Gift, ChevronRight, CheckCircle2 } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
@@ -136,7 +137,7 @@ export default function CreateJobPostingScreen({ navigation }: any) {
 
             <View style={styles.inputGroup}>
               <Text style={[styles.label, { color: colors.text.secondary }]}>Titre du poste *</Text>
-              <View style={[styles.inputWrapper, { borderColor: colors.border }]}>
+              <View style={[styles.inputWrapper, { borderColor: colors.border, backgroundColor: colors.surface }]}>
                 <Briefcase size={20} color={colors.text.disabled} />
                 <TextInput
                   style={[styles.input, { color: colors.text.primary }]}
@@ -150,26 +151,28 @@ export default function CreateJobPostingScreen({ navigation }: any) {
 
             <View style={styles.inputGroup}>
               <Text style={[styles.label, { color: colors.text.secondary }]}>Catégorie *</Text>
-              <View style={styles.categoriesRow}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoriesRow} keyboardShouldPersistTaps="handled">
                 {CATEGORIES.map(cat => (
                   <TouchableOpacity
                     key={cat.id}
                     style={[
                       styles.categoryChip,
-                      { borderColor: colors.border },
+                      { borderColor: colors.border, backgroundColor: colors.surface },
                       formData.category === cat.id && { backgroundColor: colors.primary, borderColor: colors.primary }
                     ]}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: formData.category === cat.id }}
                     onPress={() => setFormData({...formData, category: cat.id})}
                   >
                     <Text style={[styles.categoryChipText, { color: formData.category === cat.id ? '#fff' : colors.text.secondary }]}>{cat.name}</Text>
                   </TouchableOpacity>
                 ))}
-              </View>
+              </ScrollView>
             </View>
 
             <View style={styles.inputGroup}>
               <Text style={[styles.label, { color: colors.text.secondary }]}>Localisation *</Text>
-              <View style={[styles.inputWrapper, { borderColor: colors.border }]}>
+              <View style={[styles.inputWrapper, { borderColor: colors.border, backgroundColor: colors.surface }]}>
                 <MapPin size={20} color={colors.text.disabled} />
                 <TextInput
                   style={[styles.input, { color: colors.text.primary }]}
@@ -187,7 +190,9 @@ export default function CreateJobPostingScreen({ navigation }: any) {
                 {['CDI', 'CDD', 'Freelance', 'Stage'].map(t => (
                   <TouchableOpacity
                     key={t}
-                    style={[styles.typeBtn, { borderColor: colors.border }, formData.jobType === t && { backgroundColor: colors.primary, borderColor: colors.primary }]}
+                    style={[styles.typeBtn, { borderColor: colors.border, backgroundColor: colors.surface }, formData.jobType === t && { backgroundColor: colors.primary, borderColor: colors.primary }]}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: formData.jobType === t }}
                     onPress={() => setFormData({...formData, jobType: t})}
                   >
                     <Text style={[styles.typeText, { color: formData.jobType === t ? '#fff' : colors.text.secondary }]}>{t}</Text>
@@ -204,7 +209,7 @@ export default function CreateJobPostingScreen({ navigation }: any) {
 
             <View style={styles.inputGroup}>
               <Text style={[styles.label, { color: colors.text.secondary }]}>Salaire / Fourchette</Text>
-              <View style={[styles.inputWrapper, { borderColor: colors.border }]}>
+              <View style={[styles.inputWrapper, { borderColor: colors.border, backgroundColor: colors.surface }]}>
                 <DollarSign size={20} color={colors.text.disabled} />
                 <TextInput
                   style={[styles.input, { color: colors.text.primary }]}
@@ -218,7 +223,7 @@ export default function CreateJobPostingScreen({ navigation }: any) {
 
             <View style={styles.inputGroup}>
               <Text style={[styles.label, { color: colors.text.secondary }]}>Description détaillée *</Text>
-              <View style={[styles.inputWrapper, { borderColor: colors.border, height: 200, alignItems: 'flex-start', paddingTop: 15 }]}>
+              <View style={[styles.inputWrapper, { borderColor: colors.border, backgroundColor: colors.surface, height: 200, alignItems: 'flex-start', paddingTop: 15 }]}>
                 <FileText size={20} color={colors.text.disabled} />
                 <TextInput
                   style={[styles.input, { color: colors.text.primary, height: '100%', textAlignVertical: 'top' }]}
@@ -239,7 +244,7 @@ export default function CreateJobPostingScreen({ navigation }: any) {
 
             <View style={styles.inputGroup}>
               <Text style={[styles.label, { color: colors.text.secondary }]}>Pré-requis (Un par ligne)</Text>
-              <View style={[styles.inputWrapper, { borderColor: colors.border, height: 120, alignItems: 'flex-start', paddingTop: 15 }]}>
+              <View style={[styles.inputWrapper, { borderColor: colors.border, backgroundColor: colors.surface, height: 120, alignItems: 'flex-start', paddingTop: 15 }]}>
                 <TextInput
                   style={[styles.input, { color: colors.text.primary, height: '100%', textAlignVertical: 'top' }]}
                   value={formData.requirements}
@@ -253,7 +258,7 @@ export default function CreateJobPostingScreen({ navigation }: any) {
 
             <View style={styles.inputGroup}>
               <Text style={[styles.label, { color: colors.text.secondary }]}>Avantages (Un par ligne)</Text>
-              <View style={[styles.inputWrapper, { borderColor: colors.border, height: 120, alignItems: 'flex-start', paddingTop: 15 }]}>
+              <View style={[styles.inputWrapper, { borderColor: colors.border, backgroundColor: colors.surface, height: 120, alignItems: 'flex-start', paddingTop: 15 }]}>
                 <Gift size={20} color={colors.text.disabled} />
                 <TextInput
                   style={[styles.input, { color: colors.text.primary, height: '100%', textAlignVertical: 'top' }]}
@@ -278,19 +283,21 @@ export default function CreateJobPostingScreen({ navigation }: any) {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-        <View style={[styles.header, { backgroundColor: colors.surface }]}>
-          <TouchableOpacity onPress={prevStep} style={styles.backBtn}>
+        <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+          <TouchableOpacity onPress={prevStep} style={[styles.backBtn, { backgroundColor: colors.background }]} accessibilityRole="button" accessibilityLabel={step === 1 ? 'Retour' : 'Étape précédente'}>
             <ArrowLeft size={24} color={colors.text.primary} />
           </TouchableOpacity>
+          <Image source={require('../../assets/AcemiaLogo.png')} style={styles.brandLogo} resizeMode="contain" />
           <View style={styles.progressContainer}>
+            <Text style={[styles.brandName, { color: colors.text.primary }]}>Acemia Emploi</Text>
             <View style={[styles.progressBar, { backgroundColor: colors.border }]}>
               <View style={[styles.progressFill, { width: `${(step / 3) * 100}%`, backgroundColor: colors.primary }]} />
             </View>
-            <Text style={[styles.stepIndicator, { color: colors.text.secondary }]}>Étape {step}/3</Text>
+            <Text style={[styles.stepIndicator, { color: colors.text.secondary }]}>ÉTAPE {step} SUR 3</Text>
           </View>
         </View>
 
-        <ScrollView contentContainerStyle={[styles.scrollContent, { paddingHorizontal: isTablet ? '20%' : 25 }]}>
+        <ScrollView contentContainerStyle={[styles.scrollContent, { paddingHorizontal: isTablet ? 48 : 22 }]} keyboardShouldPersistTaps="handled">
           {renderStep()}
         </ScrollView>
 
@@ -299,6 +306,8 @@ export default function CreateJobPostingScreen({ navigation }: any) {
             style={[styles.nextBtn, { backgroundColor: colors.primary }]}
             onPress={step === 3 ? handleSubmit : nextStep}
             disabled={loading}
+            accessibilityRole="button"
+            accessibilityLabel={step === 3 ? 'Publier l’offre d’emploi' : 'Continuer vers l’étape suivante'}
           >
             {loading ? <ActivityIndicator color="#fff" /> : (
               <>
@@ -315,39 +324,43 @@ export default function CreateJobPostingScreen({ navigation }: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', padding: 15, borderBottomWidth: 0.5, borderBottomColor: '#ddd' },
-  backBtn: { padding: 5 },
-  progressContainer: { flex: 1, marginLeft: 20 },
-  progressBar: { height: 6, borderRadius: 3, width: '100%', marginBottom: 5, overflow: 'hidden' },
+  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, gap: 12 },
+  backBtn: { width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: '#00000008' },
+  brandLogo: { width: 42, height: 42 },
+  progressContainer: { flex: 1, gap: 5 },
+  brandName: { fontSize: 15, fontWeight: '900', letterSpacing: -0.3 },
+  progressBar: { height: 7, borderRadius: 8, width: '100%', overflow: 'hidden' },
   progressFill: { height: '100%' },
-  stepIndicator: { fontSize: 12, fontWeight: '600' },
-  scrollContent: { paddingVertical: 25 },
+  stepIndicator: { fontSize: 10, fontWeight: '800', letterSpacing: 1 },
+  scrollContent: { width: '100%', maxWidth: 920, alignSelf: 'center', paddingVertical: 24, paddingBottom: 36 },
   stepContainer: { width: '100%' },
-  stepTitle: { fontSize: 22, fontWeight: 'bold', marginBottom: 25 },
-  inputGroup: { marginBottom: 20 },
-  label: { fontSize: 14, fontWeight: '600', marginBottom: 8, marginLeft: 2 },
+  stepTitle: { fontSize: 24, fontWeight: '900', marginBottom: 25, letterSpacing: -0.5 },
+  inputGroup: { marginBottom: 22 },
+  label: { fontSize: 13, fontWeight: '800', marginBottom: 9, marginLeft: 2 },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1.5,
-    borderRadius: 12,
+    borderRadius: 16,
     paddingHorizontal: 15,
-    height: 55
+    height: 58,
+    backgroundColor: '#00000004',
   },
   input: { flex: 1, marginLeft: 12, fontSize: 16 },
-  categoriesRow: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 5 },
-  categoryChip: { paddingHorizontal: 15, paddingVertical: 8, borderRadius: 20, borderWidth: 1, marginRight: 10, marginBottom: 10 },
-  categoryChipText: { fontSize: 13, fontWeight: '600' },
+  categoriesRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 4, paddingRight: 4 },
+  categoryChip: { minHeight: 42, justifyContent: 'center', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 14, borderWidth: 1, marginRight: 9 },
+  categoryChipText: { fontSize: 13, fontWeight: '700' },
   typeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  typeBtn: { paddingHorizontal: 15, paddingVertical: 10, borderRadius: 12, borderWidth: 1 },
-  typeText: { fontWeight: 'bold', fontSize: 13 },
-  footer: { padding: 20, borderTopWidth: 0.5 },
+  typeBtn: { minHeight: 44, minWidth: 78, paddingHorizontal: 16, paddingVertical: 11, borderRadius: 14, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  typeText: { fontWeight: '800', fontSize: 13 },
+  footer: { paddingHorizontal: 18, paddingTop: 14, paddingBottom: 18, borderTopWidth: StyleSheet.hairlineWidth },
   nextBtn: {
-    height: 55,
-    borderRadius: 15,
+    minHeight: 56,
+    borderRadius: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 8,
     elevation: 3,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },

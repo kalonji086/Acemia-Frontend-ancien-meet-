@@ -1,10 +1,10 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import socketService from '../services/socket.service';
 
 interface UserContextType {
   user: any;
-  setUser: (user: any) => void;
+  setUser: (user: any) => Promise<void>;
   refreshUser: () => Promise<void>;
   loading: boolean;
 }
@@ -15,7 +15,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUserState] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  const normalizeUser = (newUser: any) => {
+  const normalizeUser = useCallback((newUser: any) => {
     if (!newUser) return null;
 
     const fullName = newUser.full_name || newUser.name || newUser.fullName || 'Utilisateur';
@@ -41,9 +41,9 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       preferred_language: newUser.preferred_language ?? 'fr',
       auto_translate: newUser.auto_translate ?? false,
     };
-  };
+  }, []);
 
-  const setUser = async (newUser: any) => {
+  const setUser = useCallback(async (newUser: any) => {
     try {
       if (newUser) {
         const formattedUser = normalizeUser(newUser);
@@ -57,9 +57,9 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (e) {
       console.error('UserContext: Error setting user', e);
     }
-  };
+  }, [normalizeUser]);
 
-  const refreshUser = async () => {
+  const refreshUser = useCallback(async () => {
     try {
       const storedUser = await AsyncStorage.getItem('user');
       if (storedUser) {
@@ -71,7 +71,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       setLoading(false);
     }
-  };
+  }, [normalizeUser]);
 
   useEffect(() => {
     refreshUser();
@@ -106,7 +106,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => {
       socketService.off('admin_user_profile_updated', handleProfileUpdate);
     };
-  }, []);
+  }, [normalizeUser, refreshUser]);
 
   return (
     <UserContext.Provider value={{ user, setUser, refreshUser, loading }}>

@@ -30,7 +30,7 @@
     },
     "android": {
       "package": "com.deve",
-      "versionCode": 98,
+      "versionCode": 99,
       "adaptiveIcon": {
         "foregroundImage": "./assets/AcemiaLogo.png",
         "backgroundColor": "#ffffff"

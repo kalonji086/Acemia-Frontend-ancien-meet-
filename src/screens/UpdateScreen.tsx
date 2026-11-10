@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRoute, useNavigation, CommonActions } from '@react-navigation/native';
 import { useLanguage } from '../context/LanguageContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import apiService from '../services/api.service';
 
 const UpdateScreen = () => {
   const route = useRoute();
@@ -28,10 +29,12 @@ const UpdateScreen = () => {
 
   const handleLater = async () => {
     try {
-      const token = await AsyncStorage.getItem('auth_token');
-      const userString = await AsyncStorage.getItem('user');
+      const [hasToken, userString] = await Promise.all([
+        apiService.hasAuthToken(),
+        AsyncStorage.getItem('user'),
+      ]);
 
-      if (token && userString) {
+      if (hasToken && userString) {
         navigation.dispatch(CommonActions.reset({
           index: 0,
           routes: [{ name: 'ChatList' }]
