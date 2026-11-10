@@ -12,7 +12,7 @@ import {
   Modal,
   Image,
 } from 'react-native';
-import { ArrowLeft, ChevronRight, Users, GraduationCap, BookOpen, DollarSign, Clock, RefreshCw, Menu, X, School } from 'lucide-react-native';
+import { ArrowLeft, ChevronRight, Users, GraduationCap, BookOpen, DollarSign, Clock, RefreshCw, Menu, X, School, Search } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
 import apiService from '../services/api.service';
 import SchoolSideMenu from '../components/SchoolSideMenu';
@@ -124,6 +124,13 @@ export default function SchoolDashboardScreen({ navigation }: any) {
             <GraduationCap size={19} color="#fff" />
             <Text style={styles.actionButtonText}>Créer une École</Text>
             <ChevronRight size={18} color="#fff" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.directoryButton, { borderColor: colors.primary }]}
+            onPress={() => navigation.navigate('SchoolDirectory')}
+          >
+            <Search size={18} color={colors.primary} />
+            <Text style={[styles.directoryButtonText, { color: colors.primary }]}>Explorer les écoles du monde</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -257,6 +264,17 @@ export default function SchoolDashboardScreen({ navigation }: any) {
             <ChevronRight size={18} color={colors.text.disabled} />
           </TouchableOpacity>
 
+          {!!dashboardData?.school?.directory_school_id && (
+            <TouchableOpacity
+              style={[styles.menuCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+              onPress={() => navigation.navigate('SchoolAdmissions', { mode: 'inbox' })}
+            >
+              <View style={[styles.menuCardIcon, { backgroundColor: '#00968815' }]}><GraduationCap size={22} color="#009688" /></View>
+              <Text style={[styles.menuText, { color: colors.text.primary }]}>Demandes d’admission</Text>
+              <ChevronRight size={18} color={colors.text.disabled} />
+            </TouchableOpacity>
+          )}
+
           <TouchableOpacity style={[styles.menuCard, { backgroundColor: colors.surface, borderColor: colors.border }, isWide && { flex: 1, marginRight: 10 }]} onPress={() => navigation.navigate('SchoolClasses')}>
             <View style={[styles.menuCardIcon, { backgroundColor: '#4CAF5015' }]}><GraduationCap size={22} color="#4CAF50" /></View>
             <Text style={[styles.menuText, { color: colors.text.primary }]}>Gestion des Classes</Text>
@@ -272,6 +290,12 @@ export default function SchoolDashboardScreen({ navigation }: any) {
           <TouchableOpacity style={[styles.menuCard, { backgroundColor: colors.surface, borderColor: colors.border }, isWide && { flex: 1 }]} onPress={() => navigation.navigate('SchoolFees')}>
             <View style={[styles.menuCardIcon, { backgroundColor: '#FF980015' }]}><DollarSign size={22} color="#FF9800" /></View>
             <Text style={[styles.menuText, { color: colors.text.primary }]}>Frais Scolaires</Text>
+            <ChevronRight size={18} color={colors.text.disabled} />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={[styles.menuCard, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => navigation.navigate('SchoolDirectory')}>
+            <View style={[styles.menuCardIcon, { backgroundColor: colors.primary + '14' }]}><Search size={22} color={colors.primary} /></View>
+            <Text style={[styles.menuText, { color: colors.text.primary }]}>Répertoire mondial</Text>
             <ChevronRight size={18} color={colors.text.disabled} />
           </TouchableOpacity>
         </View>
@@ -301,6 +325,8 @@ const styles = StyleSheet.create({
   subText: { textAlign: 'center', marginBottom: 28, lineHeight: 22 },
   actionButton: { minHeight: 54, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingHorizontal: 25, paddingVertical: 14, borderRadius: 16, width: '100%', maxWidth: 360, elevation: 2 },
   actionButtonText: { color: '#fff', fontWeight: '800', fontSize: 15 },
+  directoryButton: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 18, paddingVertical: 12, borderRadius: 14, borderWidth: 1, width: '100%', maxWidth: 360, marginTop: 10 },
+  directoryButtonText: { fontWeight: '700', fontSize: 14 },
   refreshButton: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18, paddingVertical: 12, borderRadius: 14, borderWidth: 1 },
   refreshButtonText: { fontWeight: 'bold' },
   scrollContent: { padding: 20, paddingBottom: 32, width: '100%', maxWidth: 1280, alignSelf: 'center' },

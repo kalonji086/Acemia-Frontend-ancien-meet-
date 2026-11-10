@@ -56,6 +56,9 @@ import StudentDashboard from '../screens/StudentDashboard';
 import SchoolGradesScreen from '../screens/SchoolGradesScreen';
 import SchoolAttendanceScreen from '../screens/SchoolAttendanceScreen';
 import SchoolReportsScreen from '../screens/SchoolReportsScreen';
+import SchoolParentsScreen from '../screens/SchoolParentsScreen';
+import SchoolDirectoryScreen from '../screens/SchoolDirectoryScreen';
+import SchoolAdmissionsScreen from '../screens/SchoolAdmissionsScreen';
 import { useTheme } from '../context/ThemeContext';
 import { DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { AppState, Platform } from 'react-native';
@@ -316,9 +319,13 @@ export default function AppNavigator() {
         SchoolLogin: 'school/login',
         SchoolStaffDashboard: 'school/staff-dashboard',
         StudentDashboard: 'school/student-dashboard',
+        ParentDashboard: 'school/parent-dashboard',
         SchoolGrades: 'school/grades',
         SchoolAttendance: 'school/attendance',
         SchoolReports: 'school/reports',
+        SchoolParents: 'school/parents',
+        SchoolDirectory: 'school/directory',
+        SchoolAdmissions: 'school/admissions',
       },
     },
   };
@@ -576,6 +583,11 @@ export default function AppNavigator() {
           options={{ headerShown: false }}
         />
         <Stack.Screen
+          name="ParentDashboard"
+          component={StudentDashboard}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
           name="SchoolGrades"
           component={SchoolGradesScreen}
           options={{ headerShown: false }}
@@ -588,6 +600,21 @@ export default function AppNavigator() {
         <Stack.Screen
           name="SchoolReports"
           component={SchoolReportsScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="SchoolParents"
+          component={SchoolParentsScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="SchoolDirectory"
+          component={SchoolDirectoryScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="SchoolAdmissions"
+          component={SchoolAdmissionsScreen}
           options={{ headerShown: false }}
         />
       </Stack.Navigator>

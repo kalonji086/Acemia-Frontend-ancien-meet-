@@ -17,8 +17,9 @@ import apiService from '../services/api.service';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 
-export default function SchoolReportsScreen({ navigation }: any) {
+export default function SchoolReportsScreen({ navigation, route }: any) {
   const { colors, normalize } = useTheme();
+  const isPrefet = route?.params?.schoolRole === 'prefet';
   const { width: windowWidth } = useWindowDimensions();
   const isTablet = windowWidth > 768;
 
@@ -50,7 +51,7 @@ export default function SchoolReportsScreen({ navigation }: any) {
       icon: <Calendar size={24} color="#FF9800" />,
       color: '#FF9800'
     }
-  ];
+  ].filter((report) => !isPrefet || report.id !== 'financial_summary');
 
   useEffect(() => {
     fetchStats();
@@ -67,7 +68,7 @@ export default function SchoolReportsScreen({ navigation }: any) {
       ]);
 
       const statsData = {
-        attendance: attendanceRes.success ? attendanceRes.data : null,
+        attendance: attendanceRes.success ? (attendanceRes.data || attendanceRes.stats) : null,
         studentsCount: studentsRes.success ? (studentsRes.data || []).length : 0,
         classesCount: classesRes.success ? (classesRes.data || []).length : 0
       };
@@ -495,38 +496,39 @@ export default function SchoolReportsScreen({ navigation }: any) {
             {renderReportContent()}
 
             {/* Boutons d'export */}
-            <View style={[styles.exportSection, { borderTopColor: colors.border }]}>
-              <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>Exporter les données</Text>
-              <View style={styles.exportButtons}>
-                <TouchableOpacity
-                  style={[styles.exportButton, { borderColor: colors.border }]}
-                  onPress={() => exportData('students')}
-                >
-                  <Users size={18} color={colors.primary} style={{ marginRight: 8 }} />
-                  <Text style={{ color: colors.text.primary }}>Élèves</Text>
-                </TouchableOpacity>
+            {!isPrefet && (
+              <View style={[styles.exportSection, { borderTopColor: colors.border }]}>
+                <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>Exporter les données</Text>
+                <View style={styles.exportButtons}>
+                  <TouchableOpacity
+                    style={[styles.exportButton, { borderColor: colors.border }]}
+                    onPress={() => exportData('students')}
+                  >
+                    <Users size={18} color={colors.primary} style={{ marginRight: 8 }} />
+                    <Text style={{ color: colors.text.primary }}>Élèves</Text>
+                  </TouchableOpacity>
 
-                <TouchableOpacity
-                  style={[styles.exportButton, { borderColor: colors.border }]}
-                  onPress={() => exportData('grades')}
-                >
-                  <BarChart3 size={18} color={colors.primary} style={{ marginRight: 8 }} />
-                  <Text style={{ color: colors.text.primary }}>Notes</Text>
-                </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.exportButton, { borderColor: colors.border }]}
+                    onPress={() => exportData('grades')}
+                  >
+                    <BarChart3 size={18} color={colors.primary} style={{ marginRight: 8 }} />
+                    <Text style={{ color: colors.text.primary }}>Notes</Text>
+                  </TouchableOpacity>
 
-                <TouchableOpacity
-                  style={[styles.exportButton, { borderColor: colors.border }]}
-                  onPress={() => exportData('attendance')}
-                >
-                  <Calendar size={18} color={colors.primary} style={{ marginRight: 8 }} />
-                  <Text style={{ color: colors.text.primary }}>Présences</Text>
-                </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.exportButton, { borderColor: colors.border }]}
+                    onPress={() => exportData('attendance')}
+                  >
+                    <Calendar size={18} color={colors.primary} style={{ marginRight: 8 }} />
+                    <Text style={{ color: colors.text.primary }}>Présences</Text>
+                  </TouchableOpacity>
+                </View>
+                <Text style={[styles.exportNote, { color: colors.text.secondary }]}>
+                  Les données sont exportées au format PDF et partagées depuis votre appareil.
+                </Text>
               </View>
-
-              <Text style={[styles.exportNote, { color: colors.text.secondary }]}>
-                Les données sont exportées au format PDF et partagées depuis votre appareil.
-              </Text>
-            </View>
+            )}
           </>
         ) : (
           <View style={styles.emptyReport}>

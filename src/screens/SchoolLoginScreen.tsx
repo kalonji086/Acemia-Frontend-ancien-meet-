@@ -19,6 +19,8 @@ export default function SchoolLoginScreen({ navigation }: any) {
         const { type, role, user } = res;
         if (type === 'student') {
           navigation.navigate('StudentDashboard', { user });
+        } else if (type === 'parent') {
+          navigation.navigate('ParentDashboard', { user });
         } else {
           navigation.navigate('SchoolStaffDashboard', { user, role });
         }
@@ -55,7 +57,7 @@ export default function SchoolLoginScreen({ navigation }: any) {
             <KeyRound size={20} color={colors.text.disabled} />
             <TextInput
               style={[styles.input, { color: colors.text.primary, fontSize: normalize(16) }]}
-              placeholder="Ex: SCH-X12345 ou STU-Y67890"
+              placeholder="Code personnel, élève ou parent"
               placeholderTextColor={colors.text.disabled}
               value={code}
               onChangeText={setCode}

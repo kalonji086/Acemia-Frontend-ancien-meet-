@@ -17,8 +17,10 @@ import { ArrowLeft, Plus, Users, Trash2, Edit, Search, Check, Copy, UserPlus, Fi
 import { useTheme } from '../context/ThemeContext';
 import apiService from '../services/api.service';
 
-export default function SchoolStudentsScreen({ navigation }: any) {
+export default function SchoolStudentsScreen({ navigation, route }: any) {
   const { colors, normalize } = useTheme();
+  const isSchoolStaff = Boolean(route?.params?.schoolRole);
+  const canManageStudents = !isSchoolStaff || route.params.schoolRole === 'directeur';
   const { width: windowWidth } = useWindowDimensions();
   const isTablet = windowWidth > 768;
 
@@ -158,20 +160,22 @@ export default function SchoolStudentsScreen({ navigation }: any) {
         <Text style={[styles.headerTitle, { color: colors.text.primary, fontSize: normalize(18) }]}>
           Inscriptions & Élèves ({filteredStudents.length})
         </Text>
-        <TouchableOpacity
-          style={[styles.addHeaderBtn, { backgroundColor: colors.primary + '15' }]}
-          onPress={() => {
-            if (showAddForm) {
-              resetForm();
-              setShowAddForm(false);
-            } else {
-              resetForm();
-              setShowAddForm(true);
-            }
-          }}
-        >
-          <Plus size={22} color={colors.primary} />
-        </TouchableOpacity>
+        {canManageStudents && (
+          <TouchableOpacity
+            style={[styles.addHeaderBtn, { backgroundColor: colors.primary + '15' }]}
+            onPress={() => {
+              if (showAddForm) {
+                resetForm();
+                setShowAddForm(false);
+              } else {
+                resetForm();
+                setShowAddForm(true);
+              }
+            }}
+          >
+            <Plus size={22} color={colors.primary} />
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Barre de Recherche et Filtres */}
@@ -314,25 +318,29 @@ export default function SchoolStudentsScreen({ navigation }: any) {
             <View style={{ flex: 1 }}>
               <Text style={[styles.studentName, { color: colors.text.primary, fontSize: normalize(15) }]}>{item.full_name}</Text>
               <Text style={{ color: colors.text.secondary, fontSize: normalize(12), marginTop: 2 }}>
-                Genre : {item.gender || 'M'} • Classe : <Text style={{ fontWeight: 'bold', color: colors.text.primary }}>{item.class_name || 'Non assigné'}</Text>
+                {!isSchoolStaff && `Genre : ${item.gender || 'M'} • `}Classe : <Text style={{ fontWeight: 'bold', color: colors.text.primary }}>{item.class_name || 'Non assigné'}</Text>
               </Text>
 
-              <TouchableOpacity style={styles.codeBadge} onPress={() => handleShareCode(item)}>
-                <Copy size={12} color={colors.primary} style={{ marginRight: 4 }} />
-                <Text style={{ color: colors.primary, fontSize: normalize(11), fontWeight: 'bold' }}>
-                  Code : {item.access_code}
-                </Text>
-              </TouchableOpacity>
+              {canManageStudents && (
+                <TouchableOpacity style={styles.codeBadge} onPress={() => handleShareCode(item)}>
+                  <Copy size={12} color={colors.primary} style={{ marginRight: 4 }} />
+                  <Text style={{ color: colors.primary, fontSize: normalize(11), fontWeight: 'bold' }}>
+                    Code : {item.access_code}
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
 
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <TouchableOpacity onPress={() => handleEditStudent(item)} style={styles.actionIcon}>
-                <Edit size={18} color={colors.primary} />
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => handleDeleteStudent(item.id, item.full_name)} style={styles.actionIcon}>
-                <Trash2 size={18} color={colors.danger} />
-              </TouchableOpacity>
-            </View>
+            {canManageStudents && (
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <TouchableOpacity onPress={() => handleEditStudent(item)} style={styles.actionIcon}>
+                  <Edit size={18} color={colors.primary} />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => handleDeleteStudent(item.id, item.full_name)} style={styles.actionIcon}>
+                  <Trash2 size={18} color={colors.danger} />
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         )}
       />

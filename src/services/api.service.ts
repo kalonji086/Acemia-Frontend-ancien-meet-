@@ -14,6 +14,8 @@ export interface ApiResponse<T = any> {
   message?: string;
   isContact?: boolean;
   statusCode?: number;
+  stats?: Record<string, any>;
+  frequentAbsences?: any[];
 }
 
 export interface AvailabilityResponse extends ApiResponse {
@@ -33,7 +35,7 @@ interface PhoneLookupResult {
 }
 
 interface SchoolCodeLoginResponse {
-  type: 'staff' | 'student';
+  type: 'staff' | 'student' | 'parent';
   role: string;
   user: any;
   schoolSessionToken: string;
@@ -237,6 +239,10 @@ class ApiService {
 
       const token = await this.getAuthToken();
       if (token) config.headers.Authorization = `Bearer ${token}`;
+      if (config.url?.startsWith('/school/')) {
+        const schoolSessionToken = await AsyncStorage.getItem('school_session_token');
+        if (schoolSessionToken) config.headers['X-School-Session'] = schoolSessionToken;
+      }
       if (config.method?.toLowerCase() !== 'get') {
         await this.clearApiCache();
       } else {
@@ -1016,6 +1022,27 @@ class ApiService {
     } catch (e: any) { return this.handleError(e); }
   }
 
+  async getSchoolParents(): Promise<ApiResponse> {
+    try {
+      const res = await this.api.get('/school/parents');
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async addSchoolParent(data: { fullName: string; phone?: string; studentId: string }): Promise<ApiResponse> {
+    try {
+      const res = await this.api.post('/school/parents', data);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async deactivateSchoolParent(id: string): Promise<ApiResponse> {
+    try {
+      const res = await this.api.delete(`/school/parents/${id}`);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
   async getSchoolSchedules(): Promise<ApiResponse> {
     try {
       const res = await this.api.get('/school/schedules');
@@ -1159,6 +1186,118 @@ class ApiService {
       const res = await this.api.get('/school/portal/dashboard', {
         headers: { 'X-School-Session': schoolSessionToken }
       });
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async searchSchoolDirectory(location: string): Promise<ApiResponse> {
+    try {
+      const res = await this.api.get('/school/directory/search', { params: { location } });
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async proposeSchoolDirectoryEntry(data: {
+    name: string;
+    schoolType?: string;
+    country: string;
+    city: string;
+    address?: string;
+    phone?: string;
+    website?: string;
+  }): Promise<ApiResponse> {
+    try {
+      const res = await this.api.post('/school/directory/proposals', data);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async reviewSchoolDirectoryProposal(proposalId: string, status: 'accepted' | 'rejected'): Promise<ApiResponse> {
+    try {
+      const res = await this.api.put(`/school/directory/proposals/${proposalId}`, { status });
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async submitSchoolDirectoryClaim(schoolRef: string, data: {
+    fullName: string;
+    role: string;
+    officialEmail: string;
+    phone: string;
+    evidence: string;
+  }): Promise<ApiResponse> {
+    try {
+      const res = await this.api.post(`/school/directory/${encodeURIComponent(schoolRef)}/claim`, data);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async getSchoolDirectoryClaimStatus(schoolRef: string): Promise<ApiResponse> {
+    try {
+      const res = await this.api.get(`/school/directory/${encodeURIComponent(schoolRef)}/claim-status`);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async reviewSchoolDirectoryClaim(claimId: string, status: 'accepted' | 'rejected'): Promise<ApiResponse> {
+    try {
+      const res = await this.api.put(`/school/directory/claims/${claimId}`, { status });
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async submitSchoolAdmission(schoolRef: string, data: {
+    fullName: string;
+    email: string;
+    phone: string;
+    currentLevel: string;
+    requestedProgram: string;
+    motivation: string;
+  }): Promise<ApiResponse> {
+    try {
+      const res = await this.api.post(`/school/directory/${encodeURIComponent(schoolRef)}/admissions`, data);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async getMySchoolAdmissions(): Promise<ApiResponse> {
+    try {
+      const res = await this.api.get('/school/admissions/mine');
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async getSchoolAdmissionInbox(): Promise<ApiResponse> {
+    try {
+      const res = await this.api.get('/school/admissions/inbox');
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async decideSchoolAdmission(applicationId: string, status: 'info_requested' | 'accepted' | 'rejected', message?: string): Promise<ApiResponse> {
+    try {
+      const res = await this.api.put(`/school/admissions/${applicationId}/decision`, { status, message });
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async respondToSchoolAdmission(applicationId: string, message: string): Promise<ApiResponse> {
+    try {
+      const res = await this.api.put(`/school/admissions/${applicationId}/respond`, { message });
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async getMyAdmissionNotifications(): Promise<ApiResponse> {
+    try {
+      const res = await this.api.get('/school/admissions/notifications');
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async markAdmissionNotificationRead(notificationId: string): Promise<ApiResponse> {
+    try {
+      const res = await this.api.put(`/school/admissions/notifications/${notificationId}/read`);
       return res.data;
     } catch (e: any) { return this.handleError(e); }
   }

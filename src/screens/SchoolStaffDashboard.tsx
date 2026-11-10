@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, useWindowDimensions, ActivityIndicator, Alert } from 'react-native';
 import {
-  ArrowLeft, GraduationCap, Users, ShieldAlert, BarChart3,
-  Calendar, BookOpen, UserCheck, MessageSquare, Bell, LogOut,
-  FileText, TrendingUp, DollarSign, ListChecks
+  GraduationCap, Users, ShieldAlert, BarChart3,
+  Calendar, BookOpen, UserCheck, UserRound, LogOut,
+  FileText, DollarSign, ListChecks
 } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
 import apiService from '../services/api.service';
@@ -34,11 +34,12 @@ export default function SchoolStaffDashboard({ route, navigation }: any) {
     });
   }, [loadPortal]);
 
-  const renderModule = (label: string, icon: any, color: string, screen?: string) => (
+  const renderModule = (label: string, icon: any, color: string, screen: string, extraParams: Record<string, unknown> = {}) => (
     <TouchableOpacity
       key={label}
       style={[styles.moduleCard, { backgroundColor: colors.surface, borderColor: colors.border }, isTablet && { width: '31%' }]}
-      onPress={() => Alert.alert('Espace Personnel', 'Ce module sera disponible avec les droits spécifiques à votre rôle.')}
+      accessibilityRole="button"
+      onPress={() => navigation.navigate(screen, { schoolRole: role, ...extraParams })}
     >
       <View style={[styles.moduleIcon, { backgroundColor: color + '15' }]}>
         {React.cloneElement(icon, { color, size: normalize(24) })}
@@ -52,10 +53,10 @@ export default function SchoolStaffDashboard({ route, navigation }: any) {
       case 'prefet':
         return (
           <>
-            {renderModule('Discipline & Sanctions', <ShieldAlert />, '#F44336', 'SchoolReports')}
-            {renderModule('Rapports de Conduite', <FileText />, '#FF9800', 'SchoolReports')}
-            {renderModule('Suivi des Bulletins', <BarChart3 />, '#2196F3', 'SchoolGrades')}
-            {renderModule('Absences Générales', <Users />, '#9C27B0', 'SchoolAttendance')}
+            {renderModule('Présences & Absences', <ShieldAlert />, '#F44336', 'SchoolAttendance')}
+            {renderModule('Rapports scolaires', <FileText />, '#FF9800', 'SchoolReports')}
+            {renderModule('Élèves & Classes', <Users />, '#2196F3', 'SchoolStudents')}
+            {renderModule('Horaires scolaires', <Calendar />, '#9C27B0', 'SchoolSchedule')}
           </>
         );
       case 'directeur':
@@ -63,16 +64,21 @@ export default function SchoolStaffDashboard({ route, navigation }: any) {
           <>
             {renderModule('État Financier Global', <DollarSign />, '#4CAF50', 'SchoolReports')}
             {renderModule('Gestion du Personnel', <UserCheck />, '#673AB7', 'SchoolAccounts')}
-            {renderModule('Notes Circulaires', <Bell />, '#FF5722', 'SchoolReports')}
-            {renderModule('Statistiques École', <TrendingUp />, '#3F51B5', 'SchoolReports')}
+            {renderModule('Gestion des Classes', <BookOpen />, '#FF5722', 'SchoolClasses')}
+            {renderModule('Évaluations & Notes', <BarChart3 />, '#3F51B5', 'SchoolGrades')}
+            {renderModule('Élèves & Inscriptions', <Users />, '#E91E63', 'SchoolStudents')}
+            {renderModule('Horaires & Cours', <Calendar />, '#2196F3', 'SchoolSchedule')}
+            {renderModule('Frais Scolaires', <DollarSign />, '#FF9800', 'SchoolFees')}
+            {renderModule('Présences', <ListChecks />, '#00BCD4', 'SchoolAttendance')}
+            {renderModule('Comptes Parents', <UserRound />, '#795548', 'SchoolParents')}
+            {renderModule('Demandes d’admission', <GraduationCap />, '#009688', 'SchoolAdmissions', { mode: 'inbox' })}
           </>
         );
       case 'enseignant':
         return (
           <>
             {renderModule('Appel de Classe', <ListChecks />, '#00BCD4', 'SchoolAttendance')}
-            {renderModule('Journal de Classe', <BookOpen />, '#795548', 'SchoolStudents')}
-            {renderModule('Suivi Élèves', <Users />, '#E91E63', 'SchoolStudents')}
+            {renderModule('Élèves de mes classes', <BookOpen />, '#795548', 'SchoolStudents')}
             {renderModule('Mes Horaires', <Calendar />, '#4CAF50', 'SchoolSchedule')}
           </>
         );
@@ -81,8 +87,7 @@ export default function SchoolStaffDashboard({ route, navigation }: any) {
           <>
             {renderModule('Gestion des Cours', <BookOpen />, '#3F51B5', 'SchoolSchedule')}
             {renderModule('Saisie des Notes', <BarChart3 />, '#FF9800', 'SchoolGrades')}
-            {renderModule('Devoirs & Travaux', <FileText />, '#009688', 'SchoolGrades')}
-            {renderModule('Messagerie Parents', <MessageSquare />, '#2196F3', 'Settings')}
+            {renderModule('Mes Élèves', <Users />, '#2196F3', 'SchoolStudents')}
           </>
         );
       default:
@@ -96,6 +101,10 @@ export default function SchoolStaffDashboard({ route, navigation }: any) {
 
   const staff = portal?.staff || user;
   const stats = portal?.stats || {};
+  const logout = async () => {
+    await apiService.logoutSchoolSession();
+    navigation.replace('SchoolLogin');
+  };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -107,7 +116,7 @@ export default function SchoolStaffDashboard({ route, navigation }: any) {
             <Text style={[styles.roleText, { color: colors.primary }]}>{role.toUpperCase()}</Text>
           </View>
         </View>
-        <TouchableOpacity onPress={() => navigation.navigate('ChatList')} style={styles.logoutBtn}>
+        <TouchableOpacity onPress={logout} accessibilityRole="button" accessibilityLabel="Se déconnecter de l’espace scolaire" style={styles.logoutBtn}>
           <LogOut size={24} color={colors.danger} />
         </TouchableOpacity>
       </View>

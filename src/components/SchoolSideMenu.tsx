@@ -23,7 +23,8 @@ import {
   UserCheck,
   BarChart3,
   ClipboardCheck,
-  FileBarChart
+  FileBarChart,
+  Search
 } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
 
@@ -48,6 +49,12 @@ export default function SchoolSideMenu({ navigation, onClose, schoolName }: Scho
       label: 'Inscriptions & Élèves',
       icon: <Users size={normalize(20)} />,
       action: () => navigation.navigate('SchoolStudents')
+    },
+    {
+      id: 'directory',
+      label: 'Répertoire mondial',
+      icon: <Search size={normalize(20)} />,
+      action: () => navigation.navigate('SchoolDirectory')
     },
     {
       id: 'classes_mgmt',

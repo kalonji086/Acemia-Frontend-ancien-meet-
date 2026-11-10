@@ -17,8 +17,9 @@ import { ArrowLeft, Plus, Calendar, Users, CheckCircle, XCircle, Clock, Filter, 
 import { useTheme } from '../context/ThemeContext';
 import apiService from '../services/api.service';
 
-export default function SchoolAttendanceScreen({ navigation }: any) {
+export default function SchoolAttendanceScreen({ navigation, route }: any) {
   const { colors, normalize } = useTheme();
+  const canRecordAttendance = !route?.params?.schoolRole || ['directeur', 'enseignant'].includes(route.params.schoolRole);
   const { width: windowWidth } = useWindowDimensions();
   const isTablet = windowWidth > 768;
 
@@ -73,7 +74,7 @@ export default function SchoolAttendanceScreen({ navigation }: any) {
     try {
       const res = await apiService.getSchoolAttendanceStats();
       if (res.success) {
-        setStats(res.data);
+        setStats(res.data || res.stats);
       }
     } catch (e) {
       console.error('Error fetching stats:', e);
@@ -209,15 +210,17 @@ export default function SchoolAttendanceScreen({ navigation }: any) {
         <Text style={[styles.headerTitle, { color: colors.text.primary, fontSize: normalize(18) }]}>
           Gestion des Présences
         </Text>
-        <TouchableOpacity
-          style={[styles.addHeaderBtn, { backgroundColor: colors.primary + '15' }]}
-          onPress={() => {
-            setNewDate(new Date().toISOString().split('T')[0]);
-            setShowRecordAttendance(true);
-          }}
-        >
-          <Plus size={22} color={colors.primary} />
-        </TouchableOpacity>
+        {canRecordAttendance && (
+          <TouchableOpacity
+            style={[styles.addHeaderBtn, { backgroundColor: colors.primary + '15' }]}
+            onPress={() => {
+              setNewDate(new Date().toISOString().split('T')[0]);
+              setShowRecordAttendance(true);
+            }}
+          >
+            <Plus size={22} color={colors.primary} />
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Statistiques */}
@@ -404,7 +407,7 @@ export default function SchoolAttendanceScreen({ navigation }: any) {
       />
 
       {/* Modal: Enregistrer les Présences */}
-      <Modal
+      {canRecordAttendance && <Modal
         animationType="slide"
         transparent={true}
         visible={showRecordAttendance}
@@ -552,7 +555,7 @@ export default function SchoolAttendanceScreen({ navigation }: any) {
             </View>
           </View>
         </View>
-      </Modal>
+      </Modal>}
     </SafeAreaView>
   );
 }

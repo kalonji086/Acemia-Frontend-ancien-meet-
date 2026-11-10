@@ -21,6 +21,15 @@ import { useTheme } from '../context/ThemeContext';
 
 interface AdminNotification {
   id: string;
+  source_type: string;
+  source_id: string;
+  metadata?: {
+    proposalStatus?: string;
+    claimStatus?: string;
+    officialEmail?: string;
+    phone?: string;
+    evidence?: string;
+  };
   title: string;
   body: string;
   created_at: string;
@@ -35,6 +44,7 @@ export default function AdminNotificationsScreen({ navigation }: any) {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [reviewingProposal, setReviewingProposal] = useState<string | null>(null);
   const notificationsOffset = useRef(0);
 
   const loadNotifications = useCallback(async (isRefresh = false, loadMore = false) => {
@@ -113,8 +123,46 @@ export default function AdminNotificationsScreen({ navigation }: any) {
     }
   };
 
+  const reviewSchoolDirectoryItem = async (item: AdminNotification, status: 'accepted' | 'rejected') => {
+    if (item.source_type === 'school_directory_claim' && status === 'accepted') {
+      Alert.alert(
+        'Activer l’espace partenaire ?',
+        'Confirmez-vous avoir vérifié l’identité et le mandat du responsable ? L’approbation activera son accès au tableau de bord scolaire.',
+        [
+          { text: 'Annuler', style: 'cancel' },
+          { text: 'Vérifier et activer', onPress: () => { void processSchoolDirectoryItem(item, status); } }
+        ]
+      );
+      return;
+    }
+    await processSchoolDirectoryItem(item, status);
+  };
+
+  const processSchoolDirectoryItem = async (item: AdminNotification, status: 'accepted' | 'rejected') => {
+    setReviewingProposal(item.source_id);
+    try {
+      const response = item.source_type === 'school_directory_claim'
+        ? await apiService.reviewSchoolDirectoryClaim(item.source_id, status)
+        : await apiService.reviewSchoolDirectoryProposal(item.source_id, status);
+      if (!response.success) {
+        throw new Error(response.error || 'Impossible de traiter cette demande.');
+      }
+      await loadNotifications(true);
+      Alert.alert('Demande traitée', response.message || 'La décision a été enregistrée.');
+    } catch (error: any) {
+      console.error('Unable to review school directory request:', error);
+      Alert.alert('Répertoire scolaire', error?.message || 'Impossible de traiter cette demande.');
+    } finally {
+      setReviewingProposal(null);
+    }
+  };
+
   const renderNotification = ({ item }: { item: AdminNotification }) => {
     const unread = !item.read_at;
+    const pendingDirectoryRequest = (
+      (item.source_type === 'school_directory_proposal' && item.metadata?.proposalStatus === 'pending')
+      || (item.source_type === 'school_directory_claim' && item.metadata?.claimStatus === 'pending')
+    );
     return (
       <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         <View style={styles.cardHeader}>
@@ -140,6 +188,37 @@ export default function AdminNotificationsScreen({ navigation }: any) {
           )}
         </View>
         <Text selectable style={[styles.body, { color: colors.text.primary }]}>{item.body}</Text>
+        {item.source_type === 'school_directory_claim' && item.metadata?.claimStatus === 'pending' && (
+          <View style={[styles.claimDetails, { backgroundColor: colors.background }]}>
+            {!!item.metadata.officialEmail && <Text style={[styles.claimDetailText, { color: colors.text.primary }]}>E-mail professionnel : {item.metadata.officialEmail}</Text>}
+            {!!item.metadata.phone && <Text style={[styles.claimDetailText, { color: colors.text.primary }]}>Téléphone : {item.metadata.phone}</Text>}
+            {!!item.metadata.evidence && <Text style={[styles.claimDetailText, { color: colors.text.secondary }]}>Vérification : {item.metadata.evidence}</Text>}
+          </View>
+        )}
+        {pendingDirectoryRequest && (
+          <View style={styles.proposalActions}>
+            <TouchableOpacity
+              accessibilityRole="button"
+              disabled={reviewingProposal === item.source_id}
+              onPress={() => void reviewSchoolDirectoryItem(item, 'accepted')}
+              style={[styles.proposalButton, { backgroundColor: '#2E7D32' }]}
+            >
+              {reviewingProposal === item.source_id
+                ? <ActivityIndicator size="small" color="#fff" />
+                : <Text style={styles.proposalButtonText}>
+                  {item.source_type === 'school_directory_claim' ? 'Vérifier et activer partenaire' : 'Ajouter au répertoire'}
+                </Text>}
+            </TouchableOpacity>
+            <TouchableOpacity
+              accessibilityRole="button"
+              disabled={reviewingProposal === item.source_id}
+              onPress={() => void reviewSchoolDirectoryItem(item, 'rejected')}
+              style={[styles.proposalButton, { backgroundColor: colors.danger }]}
+            >
+              <Text style={styles.proposalButtonText}>Refuser</Text>
+            </TouchableOpacity>
+          </View>
+        )}
         {unread && <View style={[styles.unreadDot, { backgroundColor: colors.danger }]} />}
       </View>
     );
@@ -218,6 +297,11 @@ const styles = StyleSheet.create({
   readButton: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 9, paddingVertical: 7, borderWidth: 1, borderRadius: 10 },
   readButtonText: { fontSize: 11, fontWeight: '700' },
   unreadDot: { position: 'absolute', top: 11, right: 11, width: 7, height: 7, borderRadius: 4 },
+  proposalActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 14 },
+  claimDetails: { borderRadius: 10, padding: 11, marginTop: 12, gap: 6 },
+  claimDetailText: { fontSize: 12, lineHeight: 18 },
+  proposalButton: { minHeight: 40, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 13, borderRadius: 10 },
+  proposalButtonText: { color: '#fff', fontSize: 12, fontWeight: '700' },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   emptyText: { marginTop: 12, fontSize: 14 },
 });

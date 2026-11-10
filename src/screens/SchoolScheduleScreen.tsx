@@ -4,8 +4,9 @@ import { ArrowLeft, Plus, Clock, BookOpen } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
 import apiService from '../services/api.service';
 
-export default function SchoolScheduleScreen({ navigation }: any) {
+export default function SchoolScheduleScreen({ navigation, route }: any) {
   const { colors, normalize } = useTheme();
+  const canManageSchedules = !route?.params?.schoolRole || route.params.schoolRole === 'directeur';
   const { width: windowWidth } = useWindowDimensions();
   const isTablet = windowWidth > 768;
 
@@ -81,12 +82,14 @@ export default function SchoolScheduleScreen({ navigation }: any) {
         <Text style={[styles.headerTitle, { color: colors.text.primary, fontSize: normalize(18) }]}>
           Horaires & Cours
         </Text>
-        <TouchableOpacity onPress={() => setShowAddForm(!showAddForm)}>
-          <Plus size={24} color={colors.primary} />
-        </TouchableOpacity>
+        {canManageSchedules && (
+          <TouchableOpacity onPress={() => setShowAddForm(!showAddForm)}>
+            <Plus size={24} color={colors.primary} />
+          </TouchableOpacity>
+        )}
       </View>
 
-      {showAddForm && (
+      {canManageSchedules && showAddForm && (
         <ScrollView style={[styles.form, { backgroundColor: colors.surface, borderColor: colors.border }, isTablet && styles.tabletForm]}>
           <Text style={[styles.formTitle, { color: colors.text.primary, fontSize: normalize(16) }]}>Planifier un Cours</Text>
 
