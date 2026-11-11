@@ -6,6 +6,7 @@ import { useRoute, useNavigation, CommonActions } from '@react-navigation/native
 import apiService from '../services/api.service';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
+import { parseLegalContent } from '../components/LegalDocumentScreen';
 
 const LegalAcceptanceScreen = () => {
   const route = useRoute();
@@ -128,7 +129,18 @@ const LegalAcceptanceScreen = () => {
               <Text style={styles.cardTitle}>{doc.type === 'privacy' ? 'Confidentialité' : 'Conditions Générales'}</Text>
               <View style={styles.versionBadge}><Text style={styles.versionText}>v{doc.version}</Text></View>
             </View>
-            <Text style={styles.docText}>{doc.content}</Text>
+            {parseLegalContent(String(doc.content || '')).map((block, blockIndex) => (
+              <Text
+                key={`${doc.type}-${blockIndex}`}
+                style={[
+                  styles.docText,
+                  block.type === 'heading' && styles.docHeading,
+                  block.type === 'bullet' && styles.docBullet,
+                ]}
+              >
+                {block.type === 'bullet' ? '• ' : ''}{block.text}
+              </Text>
+            ))}
           </Animated.View>
         ))}
         <View style={{ height: 40 }} />
@@ -178,6 +190,8 @@ const styles = StyleSheet.create({
   versionBadge: { backgroundColor: '#EDE9FE', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 },
   versionText: { fontSize: normalize(10), fontWeight: 'bold', color: colors.primary },
   docText: { fontSize: normalize(13), color: '#4B5563', lineHeight: 22 },
+  docHeading: { marginTop: 16, marginBottom: 8, fontWeight: '800', color: '#4d347f' },
+  docBullet: { paddingLeft: 8, marginBottom: 8 },
   footer: { padding: 30, borderTopWidth: 1, borderTopColor: '#F3F4F6', backgroundColor: '#fff' },
   checkboxContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: 25 },
   checkbox: { width: 24, height: 24, borderRadius: 8, borderWidth: 2, borderColor: '#D1D5DB', marginRight: 12, justifyContent: 'center', alignItems: 'center' },

@@ -156,7 +156,7 @@ class ApiService {
     if (config.method?.toLowerCase() !== 'get' || !config.url) return null;
 
     const path = config.url.split(/[?#]/, 1)[0];
-    const uncachedPath = /^\/auth(?:\/|$)|^\/me$|^\/users\/(?:announcements|badges)$|^\/(chats|messages|statuses)(?:\/|$)|^\/users\/(?:search|check-phone|contacts\/check)(?:\/|$)|^\/market\/(?:chats|conversations)(?:\/|$)|^\/employer\/(?:applications|recent-chats|export)(?:\/|$)|^\/school\/(?:attendance|evaluations|export|portal)(?:\/|$)|^\/admin(?:\/|$)/;
+    const uncachedPath = /^\/auth(?:\/|$)|^\/me$|^\/legal$|^\/users\/(?:announcements|badges)$|^\/(chats|messages|statuses)(?:\/|$)|^\/users\/(?:search|check-phone|contacts\/check)(?:\/|$)|^\/market\/(?:chats|conversations)(?:\/|$)|^\/employer\/(?:applications|recent-chats|export)(?:\/|$)|^\/school\/(?:attendance|evaluations|export|portal)(?:\/|$)|^\/admin(?:\/|$)/;
     if (uncachedPath.test(path)) return null;
 
     try {

@@ -11,6 +11,7 @@ import {
   Platform,
   Pressable,
   Share,
+  ScrollView,
   StatusBar,
   StyleSheet,
   Text,
@@ -36,6 +37,7 @@ import {
   Image as ImageIcon,
   Smile,
   Square,
+  X,
 } from 'lucide-react-native';
 import { Audio } from 'expo-av';
 import * as DocumentPicker from 'expo-document-picker';
@@ -60,6 +62,13 @@ const formatFileSize = (size?: number | string | null) => {
   if (raw < 1024) return `${raw} B`;
   if (raw < 1024 * 1024) return `${(raw / 1024).toFixed(1)} KB`;
   return `${(raw / (1024 * 1024)).toFixed(1)} MB`;
+};
+
+const STICKER_CATEGORIES = {
+  Réactions: ['😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '🥹', '😊', '😇', '🙂', '🙃', '😉', '😍', '🥰', '😘', '😋', '😎', '🤩', '🥳', '😏', '😌', '🤗', '🤭', '🫣', '🤔', '🫡', '🤐', '🤨', '😴', '🤯', '😱', '😭', '😤', '🥺', '😬', '🤪', '🤓', '🫠'],
+  Cœurs: ['❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '🩷', '🩵', '🩶', '💖', '💗', '💓', '💞', '💕', '💘', '💝', '💟', '❣️', '❤️‍🔥', '❤️‍🩹', '💌', '💋', '💑', '🫶', '🤟', '💐', '🌹'],
+  Animaux: ['🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯', '🦁', '🐸', '🐵', '🙈', '🙉', '🙊', '🐣', '🐥', '🦄', '🐝', '🦋', '🐢', '🐬', '🐳', '🦖', '🐙', '🦀', '🐧', '🦉', '🐾'],
+  Fête: ['🎉', '🎊', '🎈', '🎁', '🎂', '🎆', '🎇', '✨', '🌟', '⭐', '💫', '🔥', '💥', '⚡', '🏆', '🥇', '👏', '🙌', '🤝', '🙏', '💪', '👍', '👎', '👌', '✌️', '🤞', '👋', '💯', '✅', '🚀'],
 };
 
 const formatDuration = (seconds: number) => {
@@ -189,6 +198,7 @@ const MessageItem = React.memo((props: any) => {
   } = props;
 
   const normalized = dedupePayload(item);
+  const replyTo = normalized.metadata?.reply_to;
   const [imageAspectRatio, setImageAspectRatio] = useState(1);
   const imageWidth = Math.min(maxMediaWidth, 260 * Math.min(imageAspectRatio, 1));
   const imageHeight = Math.min(260, imageWidth / imageAspectRatio);
@@ -351,6 +361,21 @@ const MessageItem = React.memo((props: any) => {
           disabled={isDeleted}
           style={bubbleStyle}
         >
+          {normalized.metadata?.forwarded_from && (
+            <Text style={[styles.forwardedLabel, { color: isMe ? 'rgba(255,255,255,0.78)' : themeColors.text.secondary }]}>
+              Transféré · {normalized.metadata.forwarded_from.sender_name || 'Acemia'}
+            </Text>
+          )}
+          {!isDeleted && replyTo && (
+            <View style={[styles.replyPreview, { borderLeftColor: isMe ? 'rgba(255,255,255,0.8)' : themeColors.primary, backgroundColor: isMe ? 'rgba(255,255,255,0.16)' : isDark ? '#111827' : '#f3f0fa' }]}>
+              <Text style={[styles.replyPreviewAuthor, { color: isMe ? '#fff' : themeColors.primary }]} numberOfLines={1}>
+                {replyTo.sender_name || 'Message'}
+              </Text>
+              <Text style={[styles.replyPreviewText, { color: isMe ? '#fff' : themeColors.text.primary }]} numberOfLines={2}>
+                {replyTo.content || replyTo.file_name || 'Pièce jointe'}
+              </Text>
+            </View>
+          )}
           {isDeleted ? (
             <Text style={[styles.msgText, styles.deletedMessageText]}>
               {t?.('messageRemoved') || 'Ce message a été supprimé'}
@@ -454,7 +479,7 @@ const createStyles = (colors: any, normalize: any, isDark: boolean, isCompact: b
   headerBtn: { minWidth: 44, minHeight: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', marginLeft: 4 },
   avatar: { width: normalize(40), height: normalize(40), borderRadius: normalize(20), backgroundColor: '#E2E8F0', marginRight: normalize(10) },
   body: { flex: 1 },
-  wallpaper: { opacity: isDark ? 0.1 : 0.12 },
+  wallpaper: { opacity: isDark ? 0.1 : 0.16 },
   messagesList: { paddingHorizontal: 10, paddingTop: 8, paddingBottom: 12 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   messageRow: { flexDirection: 'row', marginVertical: 6 },
@@ -462,6 +487,10 @@ const createStyles = (colors: any, normalize: any, isDark: boolean, isCompact: b
   dateDividerText: { color: colors.text.secondary, fontSize: normalize(11), fontWeight: '600' },
   bubble: { maxWidth: '100%', borderRadius: 18, paddingHorizontal: 12, paddingVertical: 10, overflow: 'hidden' },
   msgText: { fontSize: normalize(15), lineHeight: normalize(22) },
+  replyPreview: { borderLeftWidth: 3, borderRadius: 8, paddingHorizontal: 9, paddingVertical: 6, marginBottom: 8 },
+  replyPreviewAuthor: { fontSize: normalize(11), fontWeight: '800', marginBottom: 2 },
+  replyPreviewText: { fontSize: normalize(12), lineHeight: normalize(17) },
+  forwardedLabel: { fontSize: normalize(10), fontStyle: 'italic', marginBottom: 5 },
   deletedMessageText: { fontStyle: 'italic', color: '#999' },
   sendFailedText: { fontSize: 10, fontWeight: '700', color: '#ffb4ab' },
   msgFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', marginTop: 6 },
@@ -521,9 +550,20 @@ const createStyles = (colors: any, normalize: any, isDark: boolean, isCompact: b
   quickAction: { alignItems: 'center', justifyContent: 'center', minWidth: 78, minHeight: 72 },
   quickActionIcon: { width: 44, height: 44, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
   quickActionLabel: { fontSize: normalize(11), fontWeight: '600', marginTop: 5 },
-  emojiTray: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-around', paddingHorizontal: 8, paddingVertical: 7, borderTopWidth: StyleSheet.hairlineWidth },
-  emojiOption: { width: '12.5%', minWidth: 34, height: 40, alignItems: 'center', justifyContent: 'center' },
-  emojiText: { fontSize: 22 },
+  stickerPanel: { maxHeight: 250, borderTopWidth: StyleSheet.hairlineWidth },
+  stickerPanelHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingTop: 9, paddingBottom: 4 },
+  stickerPanelTitle: { fontSize: normalize(12), fontWeight: '800' },
+  stickerCategoryRow: { paddingHorizontal: 10, paddingVertical: 5, gap: 7 },
+  stickerCategory: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 16 },
+  stickerCategoryText: { fontSize: normalize(11), fontWeight: '700' },
+  stickerGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-start', paddingHorizontal: 8, paddingBottom: 8 },
+  stickerOption: { width: '12.5%', minWidth: 38, height: 42, alignItems: 'center', justifyContent: 'center' },
+  stickerText: { fontSize: 25 },
+  replyComposer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingVertical: 8, borderTopWidth: StyleSheet.hairlineWidth },
+  replyComposerText: { flex: 1, fontSize: normalize(12), fontWeight: '600', lineHeight: normalize(18) },
+  forwardChatRow: { flexDirection: 'row', alignItems: 'center', minHeight: 58, gap: 12, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
+  forwardChatAvatar: { width: 38, height: 38, borderRadius: 19, backgroundColor: colors.border },
+  forwardChatName: { flex: 1, fontSize: normalize(14), fontWeight: '700', color: colors.text.primary },
   recordingButton: { backgroundColor: '#d93025' },
   recordingTime: { color: '#d93025', fontSize: normalize(12), fontWeight: '700', marginHorizontal: 4 },
   sendButton: { width: normalize(46), height: normalize(46), borderRadius: normalize(23), backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
@@ -559,9 +599,15 @@ export default function ChatScreen({ navigation, route }: any) {
   const [chatInfo, setChatInfo] = useState<any>(null);
   const [isChatFavorite, setIsChatFavorite] = useState(false);
   const [selectedMessage, setSelectedMessage] = useState<any>(null);
+  const [replyMessage, setReplyMessage] = useState<any>(null);
+  const [messageToForward, setMessageToForward] = useState<any>(null);
+  const [forwardChats, setForwardChats] = useState<any[]>([]);
+  const [isLoadingForwardChats, setIsLoadingForwardChats] = useState(false);
+  const [forwardingChatId, setForwardingChatId] = useState<string | null>(null);
   const [isWallpaperPickerOpen, setIsWallpaperPickerOpen] = useState(false);
   const [isAttachmentMenuOpen, setIsAttachmentMenuOpen] = useState(false);
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
+  const [stickerCategory, setStickerCategory] = useState<keyof typeof STICKER_CATEGORIES>('Réactions');
   const [wallpaperId, setWallpaperId] = useState('default');
   const [customWallpaperUri, setCustomWallpaperUri] = useState<string | null>(null);
   const [sound, setSound] = useState<Audio.Sound | null>(null);
@@ -572,6 +618,7 @@ export default function ChatScreen({ navigation, route }: any) {
   const [peerLastSeen, setPeerLastSeen] = useState(route?.params?.peerLastSeen || null);
   const [typingUserId, setTypingUserId] = useState<string | null>(null);
   const flatListRef = useRef<FlatList>(null);
+  const messageInputRef = useRef<TextInput>(null);
   const recordingRef = useRef<Audio.Recording | null>(null);
   const messagesRef = useRef(messages);
   const localTypingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -844,6 +891,82 @@ export default function ChatScreen({ navigation, route }: any) {
     }
   }, []);
 
+  const openForwardPicker = useCallback(async (item: any) => {
+    setMessageToForward(dedupePayload(item));
+    setIsLoadingForwardChats(true);
+    try {
+      const response = await apiService.getChats(1, 100, false);
+      if (!response?.success || !Array.isArray(response.data)) {
+        throw new Error(response?.error || 'Impossible de charger vos conversations.');
+      }
+      setForwardChats(response.data.filter((chat: any) => String(chat.id) !== String(chatId)));
+    } catch (error: any) {
+      console.error('Unable to load chats for message forwarding:', error);
+      setMessageToForward(null);
+      Alert.alert('Transférer', error?.message || 'Impossible de charger vos conversations.');
+    } finally {
+      setIsLoadingForwardChats(false);
+    }
+  }, [chatId]);
+
+  const forwardMessageToChat = useCallback(async (targetChat: any) => {
+    if (!messageToForward || forwardingChatId) return;
+    const source = dedupePayload(messageToForward);
+    const mediaUrl = source.file_url || source.media_url || source.localUri;
+    const isMedia = ['image', 'audio', 'video', 'file'].includes(source.type);
+    if (isMedia && !mediaUrl) {
+      Alert.alert('Transférer', 'Le fichier de ce message n’est plus disponible.');
+      return;
+    }
+
+    setForwardingChatId(String(targetChat.id));
+    try {
+      const clientMessageId = `${currentUser?.id || 'user'}-forward-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const response = await apiService.sendMessage(
+        String(targetChat.id),
+        source.content || source.file_name || 'Pièce jointe',
+        source.type || 'text',
+        mediaUrl ? getFullUrl(mediaUrl) || mediaUrl : undefined,
+        {
+          ...(isMedia ? {
+            mimeType: source.mime_type || source.mimeType || 'application/octet-stream',
+            fileName: source.file_name || source.filename || source.content || 'Fichier',
+            fileSize: source.file_size || source.size || undefined,
+          } : {}),
+          client_message_id: clientMessageId,
+          forwarded_from: {
+            message_id: String(source.id),
+            sender_name: source.sender?.full_name || source.sender_name || 'Utilisateur Acemia',
+          },
+        },
+      );
+      if (!response?.success) {
+        throw new Error(response?.error || 'Le transfert du message a échoué.');
+      }
+      setMessageToForward(null);
+      Alert.alert('Transférer', 'Message envoyé dans la conversation.');
+    } catch (error: any) {
+      console.error('Message forwarding failed:', error);
+      Alert.alert('Transférer', error?.message || 'Impossible de transférer ce message.');
+    } finally {
+      setForwardingChatId(null);
+    }
+  }, [currentUser?.id, forwardingChatId, messageToForward]);
+
+  const startReply = useCallback((item: any) => {
+    const message = dedupePayload(item);
+    setReplyMessage({
+      id: String(message.id),
+      content: message.content || message.file_name || 'Pièce jointe',
+      file_name: message.file_name,
+      sender_name: message.sender?.full_name || message.sender_name || 'Message',
+    });
+    setIsEmojiPickerOpen(false);
+    setIsAttachmentMenuOpen(false);
+    setSelectedMessage(null);
+    requestAnimationFrame(() => messageInputRef.current?.focus());
+  }, []);
+
   const toggleChatFavorite = useCallback(async () => {
     if (!chatId) return;
     const nextFavorite = !isChatFavorite;
@@ -891,28 +1014,8 @@ export default function ChatScreen({ navigation, route }: any) {
 
   const handleMessageLongPress = useCallback((item: any) => {
     const normalized = dedupePayload(item);
-    if (Platform.OS === 'web') {
-      setSelectedMessage(normalized);
-      return;
-    }
-
-    const isMine = String(normalized.sender_id || normalized.user_id || normalized.author_id) === String(currentUser?.id);
-    const actions: any[] = [
-      { text: 'Transférer', onPress: () => { shareMessage(normalized); } },
-      { text: isChatFavorite ? 'Retirer des favoris' : 'Mettre en favoris', onPress: () => { toggleChatFavorite(); } },
-      { text: 'Supprimer pour moi', style: 'destructive', onPress: () => { deleteMessage(normalized, 'me'); } },
-    ];
-
-    if (isMine) {
-      actions.splice(2, 0, {
-        text: 'Supprimer pour tous',
-        style: 'destructive',
-        onPress: () => { deleteMessage(normalized, 'everyone'); },
-      });
-    }
-    actions.push({ text: 'Annuler', style: 'cancel' });
-    Alert.alert('Actions du message', normalized.content || normalized.file_name || 'Message média', actions);
-  }, [currentUser?.id, deleteMessage, isChatFavorite, shareMessage, toggleChatFavorite]);
+    setSelectedMessage(normalized);
+  }, []);
 
   const playAudio = useCallback(async (item: any) => {
     const normalized = dedupePayload(item);
@@ -996,10 +1099,11 @@ export default function ChatScreen({ navigation, route }: any) {
     }
   }, [downloadProgress, downloadedFiles]);
 
-  const submitTextMessage = useCallback(async (content: string, clientMessageId: string, optimisticId: string) => {
+  const submitTextMessage = useCallback(async (content: string, clientMessageId: string, optimisticId: string, replyTo?: any) => {
     try {
       const res = await apiService.sendMessage(chatId, content, 'text', undefined, {
         client_message_id: clientMessageId,
+        ...(replyTo ? { reply_to: replyTo } : {}),
       });
       if (!res?.success || !res.data) {
         throw new Error(res?.error || 'Le message n’a pas pu être envoyé.');
@@ -1048,15 +1152,19 @@ export default function ChatScreen({ navigation, route }: any) {
       type: 'text',
       status: 'sending',
       created_at: new Date().toISOString(),
-      metadata: { client_message_id: clientMessageId },
+      metadata: {
+        client_message_id: clientMessageId,
+        ...(replyMessage ? { reply_to: replyMessage } : {}),
+      },
     };
 
     setInput('');
+    setReplyMessage(null);
     setMessages((prev) => [...prev, optimisticMessage]);
     requestAnimationFrame(() => flatListRef.current?.scrollToEnd({ animated: true }));
 
-    void submitTextMessage(content, clientMessageId, optimisticId);
-  }, [chatId, currentUser?.avatar_url, currentUser?.full_name, currentUser?.id, input, stopTypingIndicator, submitTextMessage]);
+    void submitTextMessage(content, clientMessageId, optimisticId, replyMessage);
+  }, [chatId, currentUser?.avatar_url, currentUser?.full_name, currentUser?.id, input, replyMessage, stopTypingIndicator, submitTextMessage]);
 
   const retryTextMessage = useCallback((item: any) => {
     const clientMessageId = item.metadata?.client_message_id;
@@ -1065,7 +1173,7 @@ export default function ChatScreen({ navigation, route }: any) {
     setMessages((prev) => prev.map((message) => (
       String(message.id) === optimisticId ? { ...message, status: 'sending' } : message
     )));
-    void submitTextMessage(item.content, clientMessageId, optimisticId);
+    void submitTextMessage(item.content, clientMessageId, optimisticId, item.metadata?.reply_to);
   }, [chatId, submitTextMessage]);
 
   useEffect(() => {
@@ -1458,7 +1566,7 @@ export default function ChatScreen({ navigation, route }: any) {
 
       <KeyboardAvoidingView
         style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={0}
       >
         <ImageBackground source={wallpaperSource} style={styles.body} imageStyle={styles.wallpaper}>
@@ -1499,18 +1607,61 @@ export default function ChatScreen({ navigation, route }: any) {
           </View>
         )}
         {isEmojiPickerOpen && (
-          <View style={[styles.emojiTray, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
-            {['❤️', '😂', '😮', '😢', '🙏', '👍', '😊', '🔥'].map((emoji) => (
-              <TouchableOpacity
-                key={emoji}
-                style={styles.emojiOption}
-                onPress={() => handleInputChange(`${input}${emoji}`)}
-                accessibilityRole="button"
-                accessibilityLabel={`Insérer ${emoji}`}
-              >
-                <Text style={styles.emojiText}>{emoji}</Text>
-              </TouchableOpacity>
-            ))}
+          <View style={[styles.stickerPanel, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
+            <View style={styles.stickerPanelHeader}>
+              <Text style={[styles.stickerPanelTitle, { color: colors.text.primary }]}>Autocollants et emojis</Text>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.stickerCategoryRow}>
+              {(Object.keys(STICKER_CATEGORIES) as Array<keyof typeof STICKER_CATEGORIES>).map((category) => {
+                const selected = stickerCategory === category;
+                return (
+                  <TouchableOpacity
+                    key={category}
+                    style={[styles.stickerCategory, { backgroundColor: selected ? colors.primary : isDark ? '#272332' : '#f1eff8' }]}
+                    onPress={() => setStickerCategory(category)}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected }}
+                  >
+                    <Text style={[styles.stickerCategoryText, { color: selected ? '#fff' : colors.text.secondary }]}>{category}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+            <ScrollView keyboardShouldPersistTaps="always" showsVerticalScrollIndicator={false}>
+              <View style={styles.stickerGrid}>
+                {STICKER_CATEGORIES[stickerCategory].map((sticker, index) => (
+                  <TouchableOpacity
+                    key={`${sticker}-${index}`}
+                    style={styles.stickerOption}
+                    onPress={() => handleInputChange(`${input}${sticker}`)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Ajouter ${sticker} au message`}
+                  >
+                    <Text style={styles.stickerText}>{sticker}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
+          </View>
+        )}
+        {replyMessage && (
+          <View style={[styles.replyComposer, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
+            <View style={{ flex: 1, borderLeftWidth: 3, borderLeftColor: colors.primary, paddingLeft: 9 }}>
+              <Text style={[styles.replyComposerText, { color: colors.primary }]} numberOfLines={1}>
+                Réponse à {replyMessage.sender_name}
+              </Text>
+              <Text style={[styles.replyComposerText, { color: colors.text.secondary }]} numberOfLines={1}>
+                {replyMessage.content}
+              </Text>
+            </View>
+            <TouchableOpacity
+              onPress={() => setReplyMessage(null)}
+              accessibilityRole="button"
+              accessibilityLabel="Annuler la réponse"
+              style={styles.iconButton}
+            >
+              <X size={18} color={colors.text.secondary} />
+            </TouchableOpacity>
           </View>
         )}
         <View style={[styles.composer, { paddingBottom: isKeyboardVisible ? 8 : Math.max(insets.bottom, 8) }]}>
@@ -1526,13 +1677,19 @@ export default function ChatScreen({ navigation, route }: any) {
           <View style={styles.inputBox}>
             <TouchableOpacity
               style={styles.inlineIconButton}
-              onPress={() => { setIsEmojiPickerOpen((open) => !open); setIsAttachmentMenuOpen(false); }}
+              onPress={() => {
+                const opening = !isEmojiPickerOpen;
+                setIsEmojiPickerOpen(opening);
+                setIsAttachmentMenuOpen(false);
+                if (opening && isKeyboardVisible) Keyboard.dismiss();
+              }}
               accessibilityRole="button"
-              accessibilityLabel="Choisir un emoji"
+              accessibilityLabel={isEmojiPickerOpen ? 'Fermer les autocollants' : 'Choisir un autocollant ou un emoji'}
             >
-              <Smile size={19} color={colors.text.secondary} />
+              <Smile size={19} color={isEmojiPickerOpen ? colors.primary : colors.text.secondary} />
             </TouchableOpacity>
             <TextInput
+              ref={messageInputRef}
               value={input}
               onChangeText={handleInputChange}
               placeholder="Message"
@@ -1541,6 +1698,10 @@ export default function ChatScreen({ navigation, route }: any) {
               multiline
               scrollEnabled
               blurOnSubmit={false}
+              onFocus={() => {
+                setIsEmojiPickerOpen(false);
+                setIsAttachmentMenuOpen(false);
+              }}
             />
             {recording ? (
               <Text style={styles.recordingTime}>{formatDuration(recordingDuration / 1000)}</Text>
@@ -1564,7 +1725,7 @@ export default function ChatScreen({ navigation, route }: any) {
 
       <Modal
         transparent
-        visible={Platform.OS === 'web' && Boolean(selectedMessage)}
+        visible={Boolean(selectedMessage)}
         animationType="fade"
         onRequestClose={() => setSelectedMessage(null)}
       >
@@ -1575,11 +1736,30 @@ export default function ChatScreen({ navigation, route }: any) {
               style={styles.actionSheetButton}
               onPress={() => {
                 const item = selectedMessage;
-                setSelectedMessage(null);
-                shareMessage(item);
+                startReply(item);
               }}
             >
-              <Text style={styles.actionSheetButtonText}>Transférer</Text>
+              <Text style={styles.actionSheetButtonText}>Répondre</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.actionSheetButton}
+              onPress={() => {
+                const item = selectedMessage;
+                setSelectedMessage(null);
+                void openForwardPicker(item);
+              }}
+            >
+              <Text style={styles.actionSheetButtonText}>Transférer vers une conversation</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.actionSheetButton}
+              onPress={() => {
+                const item = selectedMessage;
+                setSelectedMessage(null);
+                void shareMessage(item);
+              }}
+            >
+              <Text style={styles.actionSheetButtonText}>Partager hors d’Acemia</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.actionSheetButton}
@@ -1615,6 +1795,68 @@ export default function ChatScreen({ navigation, route }: any) {
             <TouchableOpacity style={styles.actionSheetButton} onPress={() => setSelectedMessage(null)}>
               <Text style={styles.actionSheetButtonText}>Annuler</Text>
             </TouchableOpacity>
+          </View>
+        </Pressable>
+      </Modal>
+
+      <Modal
+        transparent
+        visible={Boolean(messageToForward)}
+        animationType="slide"
+        onRequestClose={() => setMessageToForward(null)}
+      >
+        <Pressable style={styles.actionSheetOverlay} onPress={() => setMessageToForward(null)}>
+          <View style={[styles.actionSheet, { maxHeight: '80%' }]} onStartShouldSetResponder={() => true}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Text style={styles.actionSheetTitle}>Transférer vers…</Text>
+              <TouchableOpacity onPress={() => setMessageToForward(null)} style={styles.iconButton} accessibilityLabel="Fermer">
+                <X size={18} color={colors.text.secondary} />
+              </TouchableOpacity>
+            </View>
+            {messageToForward && (
+              <Text style={{ color: colors.text.secondary, fontSize: normalize(12), marginBottom: 8 }} numberOfLines={2}>
+                {messageToForward.content || messageToForward.file_name || 'Pièce jointe'}
+              </Text>
+            )}
+            {isLoadingForwardChats ? (
+              <ActivityIndicator style={{ padding: 24 }} color={colors.primary} />
+            ) : forwardChats.length ? (
+              <FlatList
+                data={forwardChats}
+                keyExtractor={chat => String(chat.id)}
+                keyboardShouldPersistTaps="handled"
+                renderItem={({ item: chat }) => {
+                  const name = chat.type === 'group'
+                    ? chat.name || 'Groupe'
+                    : chat.other_user?.full_name || chat.name || 'Discussion';
+                  const avatar = chat.type === 'group' ? chat.avatar_url : chat.other_user?.avatar_url;
+                  const isForwarding = forwardingChatId === String(chat.id);
+                  return (
+                    <TouchableOpacity
+                      style={styles.forwardChatRow}
+                      disabled={Boolean(forwardingChatId)}
+                      onPress={() => void forwardMessageToChat(chat)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Transférer vers ${name}`}
+                    >
+                      {avatar ? (
+                        <Image source={{ uri: getFullUrl(avatar) || undefined }} style={styles.forwardChatAvatar} />
+                      ) : (
+                        <View style={[styles.forwardChatAvatar, { alignItems: 'center', justifyContent: 'center', backgroundColor: `${colors.primary}18` }]}>
+                          <Text style={{ color: colors.primary, fontWeight: '800' }}>{name.slice(0, 1).toUpperCase()}</Text>
+                        </View>
+                      )}
+                      <Text style={styles.forwardChatName} numberOfLines={1}>{name}</Text>
+                      {isForwarding && <ActivityIndicator size="small" color={colors.primary} />}
+                    </TouchableOpacity>
+                  );
+                }}
+              />
+            ) : (
+              <Text style={{ padding: 20, color: colors.text.secondary, textAlign: 'center' }}>
+                Aucune autre conversation disponible.
+              </Text>
+            )}
           </View>
         </Pressable>
       </Modal>

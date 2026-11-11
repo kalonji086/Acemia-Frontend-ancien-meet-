@@ -376,6 +376,24 @@ export default function LoginScreen({ navigation, route }: any) {
                 <TouchableOpacity onPress={() => navigation.navigate('Helpdesk')} style={styles.helpdeskLink}>
                   <Text style={[styles.helpdeskLinkText, { color: colors.text.secondary }]}>Besoin d'aide ? Contacter le support</Text>
                 </TouchableOpacity>
+
+                <View style={styles.legalFooter}>
+                  <TouchableOpacity
+                    accessibilityRole="link"
+                    onPress={() => navigation.navigate('TermsOfService')}
+                    hitSlop={8}
+                  >
+                    <Text style={[styles.legalFooterLink, { color: colors.text.secondary }]}>Conditions d’utilisation</Text>
+                  </TouchableOpacity>
+                  <View style={[styles.legalFooterDivider, { backgroundColor: colors.border }]} />
+                  <TouchableOpacity
+                    accessibilityRole="link"
+                    onPress={() => navigation.navigate('PrivacyPolicy')}
+                    hitSlop={8}
+                  >
+                    <Text style={[styles.legalFooterLink, { color: colors.text.secondary }]}>Confidentialité</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             </Animated.View>
           </View>
@@ -440,4 +458,7 @@ const createStyles = (colors: any, normalize: any, factor: number, isDark: boole
   forgotPasswordText: { fontSize: normalize(14, factor), fontWeight: '600' },
   helpdeskLink: { marginTop: 20 },
   helpdeskLinkText: { fontSize: normalize(12, factor), textDecorationLine: 'underline' },
+  legalFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: 22, paddingVertical: 6 },
+  legalFooterLink: { fontSize: normalize(11, factor), fontWeight: '600', textDecorationLine: 'underline', textAlign: 'center' },
+  legalFooterDivider: { width: 1, height: 13 },
 });
