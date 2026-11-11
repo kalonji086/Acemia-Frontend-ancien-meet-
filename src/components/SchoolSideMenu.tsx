@@ -144,7 +144,7 @@ export default function SchoolSideMenu({ navigation, onClose, schoolName }: Scho
           style={styles.logoutButton}
           onPress={() => {
             onClose();
-            navigation.navigate('ChatList');
+            navigation.navigate('ChatList', { screen: 'chats' });
           }}
         >
           <LogOut size={20} color={colors.danger} />

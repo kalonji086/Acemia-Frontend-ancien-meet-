@@ -77,7 +77,7 @@ export default function EmployerDashboardScreen({ navigation }: any) {
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { backgroundColor: colors.surface, paddingHorizontal: isTablet ? '5%' : 20 }]}>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <TouchableOpacity onPress={() => navigation.reset({ index: 0, routes: [{ name: 'ChatList' }] })} style={{ marginRight: 15 }}>
+          <TouchableOpacity onPress={() => navigation.reset({ index: 0, routes: [{ name: 'ChatList', params: { screen: 'chats' } }] })} style={{ marginRight: 15 }}>
             <ArrowLeft size={24} color={colors.text.primary} />
           </TouchableOpacity>
           <View>
@@ -87,7 +87,12 @@ export default function EmployerDashboardScreen({ navigation }: any) {
             </Text>
           </View>
         </View>
-        <TouchableOpacity style={[styles.iconButton, { backgroundColor: colors.background }]}>
+        <TouchableOpacity
+          style={[styles.iconButton, { backgroundColor: colors.background }]}
+          accessibilityRole="button"
+          accessibilityLabel="Paramètres des notifications"
+          onPress={() => navigation.navigate('Settings')}
+        >
           <Bell size={normalize(22)} color={colors.text.primary} />
         </TouchableOpacity>
       </View>
@@ -123,7 +128,7 @@ export default function EmployerDashboardScreen({ navigation }: any) {
 
         <View style={styles.sectionHeader}>
           <Text style={[styles.sectionTitle, { color: colors.text.primary, fontSize: normalize(18) }]}>Offres récentes</Text>
-          <TouchableOpacity>
+          <TouchableOpacity accessibilityRole="button" onPress={() => navigation.navigate('MyJobs')}>
             <Text style={{ color: colors.primary, fontWeight: 'bold', fontSize: normalize(14) }}>Voir tout</Text>
           </TouchableOpacity>
         </View>

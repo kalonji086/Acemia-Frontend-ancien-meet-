@@ -44,6 +44,8 @@ export default function NewEmployerDashboard({ navigation }: any) {
   
   const [loading, setLoading] = useState(true);
   const [showMenu, setShowMenu] = useState(false);
+  const [analyticsOffset, setAnalyticsOffset] = useState(0);
+  const dashboardScrollRef = useRef<ScrollView>(null);
   const [companyName, setCompanyName] = useState('');
   const [userName, setUserName] = useState('');
   const [stats, setStats] = useState({
@@ -186,9 +188,8 @@ export default function NewEmployerDashboard({ navigation }: any) {
   };
 
   const handleAnalytics = () => {
-    // Si on est déjà sur le dashboard, on rafraîchit simplement ou on scroll vers les charts
-    fetchDashboardData();
-    Alert.alert('Analytiques', 'Les données ont été rafraîchies avec les dernières statistiques réelles.');
+    dashboardScrollRef.current?.scrollTo({ y: analyticsOffset, animated: true });
+    void fetchDashboardData();
   };
 
   const renderStatCard = (title: string, value: string | number, icon: any, color: string, change?: number) => (
@@ -251,6 +252,7 @@ export default function NewEmployerDashboard({ navigation }: any) {
               activeRoute="EmployerDashboard"
               userName={userName}
               companyName={companyName}
+              onAnalytics={handleAnalytics}
               onClose={() => setShowMenu(false)}
             />
           </View>
@@ -277,12 +279,17 @@ export default function NewEmployerDashboard({ navigation }: any) {
               style={styles.headerButton}
               onPress={() => navigation.reset({
                 index: 0,
-                routes: [{ name: 'ChatList' }],
+                routes: [{ name: 'ChatList', params: { screen: 'chats' } }],
               })}
             >
               <Home size={22} color={colors.text.primary} />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.headerButton}>
+            <TouchableOpacity
+              style={styles.headerButton}
+              accessibilityRole="button"
+              accessibilityLabel="Paramètres des notifications"
+              onPress={handleSettings}
+            >
               <Bell size={22} color={colors.text.primary} />
             </TouchableOpacity>
             <TouchableOpacity 
@@ -294,7 +301,8 @@ export default function NewEmployerDashboard({ navigation }: any) {
           </View>
         </View>
 
-        <ScrollView 
+        <ScrollView
+          ref={dashboardScrollRef}
           contentContainerStyle={[
             styles.scrollContent,
             { paddingHorizontal: isTablet ? 24 : 16 }
@@ -329,7 +337,10 @@ export default function NewEmployerDashboard({ navigation }: any) {
           </View>
 
           {/* Graphiques */}
-          <View style={styles.chartsSection}>
+          <View
+            style={styles.chartsSection}
+            onLayout={(event) => setAnalyticsOffset(event.nativeEvent.layout.y)}
+          >
             <SimpleChart
               title="Vues par jour (7 derniers jours)"
               data={chartData.views}

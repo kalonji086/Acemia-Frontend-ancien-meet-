@@ -15,22 +15,30 @@ import { useTheme } from '../context/ThemeContext';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import apiService from '../services/api.service';
 
-export default function MarketScreen() {
+export default function MarketScreen({ onBack }: { onBack?: () => void }) {
   const { colors, normalize, isDark } = useTheme();
   const { width } = useWindowDimensions();
   const navigation = useNavigation<any>();
+  const handleBack = () => {
+    if (onBack) onBack();
+    else navigation.navigate('ChatList', { screen: 'chats' });
+  };
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [business, setBusiness] = useState<any>(null);
 
   const checkStatus = async () => {
     setLoading(true);
+    setLoadError('');
     try {
       const res = await apiService.getMyBusiness();
-      if (res.success) {
-        setBusiness(res.data);
+      if (!res.success) {
+        throw new Error(res.error || 'Impossible de vérifier le statut de votre compte Market.');
       }
-    } catch (e) {
-      console.error('Market check error:', e);
+      setBusiness(res.data || null);
+    } catch (error) {
+      console.error('Market check error:', error);
+      setLoadError(error instanceof Error ? error.message : 'Impossible de charger le Market.');
     } finally {
       setLoading(false);
     }
@@ -42,21 +50,57 @@ export default function MarketScreen() {
     }, [])
   );
 
+  const renderModuleHeader = () => (
+    <View style={[styles.moduleHeader, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+      <TouchableOpacity
+        accessibilityRole="button"
+        accessibilityLabel="Retour aux discussions"
+        onPress={handleBack}
+        style={styles.backButton}
+      >
+        <Ionicons name="arrow-back" size={24} color={colors.text.primary} />
+      </TouchableOpacity>
+      <Text style={[styles.headerTitle, { color: colors.text.primary }]}>Market</Text>
+    </View>
+  );
+
   if (loading) {
     return (
-      <View style={[styles.centered, { backgroundColor: colors.background }]}>
-        <ActivityIndicator size="large" color={colors.primary} />
-      </View>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        {renderModuleHeader()}
+        <View style={styles.centered}><ActivityIndicator size="large" color={colors.primary} /></View>
+      </SafeAreaView>
     );
   }
 
   const isWide = width > 1024;
+
+  if (loadError) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        {renderModuleHeader()}
+        <View style={styles.centered}>
+          <Ionicons name="cloud-offline-outline" size={54} color={colors.danger} />
+          <Text style={[styles.pendingTitle, { color: colors.text.primary }]}>Market indisponible</Text>
+          <Text style={[styles.pendingDesc, { color: colors.text.secondary }]}>{loadError}</Text>
+          <TouchableOpacity
+            accessibilityRole="button"
+            style={[styles.startBtn, { backgroundColor: colors.primary, marginTop: 24 }]}
+            onPress={() => void checkStatus()}
+          >
+            <Text style={styles.startBtnText}>RÉESSAYER</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   // Si pas de business enregistré, proposer de s'enregistrer
   if (!business) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
         <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
+        {renderModuleHeader()}
         <View style={[styles.promoContainer, isWide && { paddingHorizontal: '20%' }]}>
           <Image
             source={{ uri: 'https://cdn-icons-png.flaticon.com/512/3081/3081559.png' }}
@@ -81,34 +125,40 @@ export default function MarketScreen() {
   // Si demande en attente
   if (business.status === 'pending') {
     return (
-      <View style={[styles.centered, { backgroundColor: colors.background, padding: 40 }]}>
-        <Ionicons name="time-outline" size={80} color={colors.primary} />
-        <Text style={[styles.pendingTitle, { color: colors.text.primary }]}>Demande en cours</Text>
-        <Text style={[styles.pendingDesc, { color: colors.text.secondary }]}>
-          Votre demande pour "{business.business_name}" est en cours d'examen par notre équipe.
-          Vous recevrez une notification dès que votre compte Market sera activé.
-        </Text>
-      </View>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        {renderModuleHeader()}
+        <View style={[styles.centered, { padding: 40 }]}>
+          <Ionicons name="time-outline" size={80} color={colors.primary} />
+          <Text style={[styles.pendingTitle, { color: colors.text.primary }]}>Demande en cours</Text>
+          <Text style={[styles.pendingDesc, { color: colors.text.secondary }]}>
+            Votre demande pour "{business.business_name}" est en cours d'examen par notre équipe.
+            Vous recevrez une notification dès que votre compte Market sera activé.
+          </Text>
+        </View>
+      </SafeAreaView>
     );
   }
 
   // Si compte bloqué
   if (business.status === 'blocked') {
     return (
-      <View style={[styles.centered, { backgroundColor: colors.background, padding: 40 }]}>
-        <Ionicons name="lock-closed" size={80} color={colors.danger} />
-        <Text style={[styles.pendingTitle, { color: colors.danger }]}>Compte Suspendu</Text>
-        <Text style={[styles.pendingDesc, { color: colors.text.secondary }]}>
-          L'accès au Market pour "{business.business_name}" a été suspendu par l'administration pour non-respect des conditions d'utilisation.
-          Veuillez contacter le support pour plus d'informations.
-        </Text>
-        <TouchableOpacity
-          style={[styles.startBtn, { backgroundColor: colors.text.secondary, marginTop: 30 }]}
-          onPress={() => navigation.navigate('Helpdesk')}
-        >
-          <Text style={styles.startBtnText}>CONTACTER LE SUPPORT</Text>
-        </TouchableOpacity>
-      </View>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        {renderModuleHeader()}
+        <View style={[styles.centered, { padding: 40 }]}>
+          <Ionicons name="lock-closed" size={80} color={colors.danger} />
+          <Text style={[styles.pendingTitle, { color: colors.danger }]}>Compte Suspendu</Text>
+          <Text style={[styles.pendingDesc, { color: colors.text.secondary }]}>
+            L'accès au Market pour "{business.business_name}" a été suspendu par l'administration pour non-respect des conditions d'utilisation.
+            Veuillez contacter le support pour plus d'informations.
+          </Text>
+          <TouchableOpacity
+            style={[styles.startBtn, { backgroundColor: colors.text.secondary, marginTop: 30 }]}
+            onPress={() => navigation.navigate('Helpdesk')}
+          >
+            <Text style={styles.startBtnText}>CONTACTER LE SUPPORT</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
     );
   }
 
@@ -116,6 +166,9 @@ export default function MarketScreen() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.header, isWide && { paddingHorizontal: '10%', paddingTop: 40 }]}>
+        <TouchableOpacity accessibilityRole="button" accessibilityLabel="Retour aux discussions" onPress={handleBack} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color={colors.text.primary} />
+        </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text.primary }]}>Market</Text>
         <TouchableOpacity onPress={() => navigation.navigate('BusinessDashboard')}>
           <Ionicons name="apps-outline" size={32} color={colors.primary} />
@@ -151,6 +204,8 @@ const getFullUrl = (url: string) => {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  moduleHeader: { minHeight: 56, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, borderBottomWidth: StyleSheet.hairlineWidth },
+  backButton: { width: 42, height: 42, alignItems: 'center', justifyContent: 'center', marginRight: 8 },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   promoContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 30 },
   promoImage: { width: 150, height: 150, marginBottom: 30 },

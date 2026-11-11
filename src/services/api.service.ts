@@ -1473,11 +1473,12 @@ class ApiService {
   // Helper pour obtenir les infos de l'appareil de manière sécurisée (Web/Mobile)
   async getDeviceInfo() {
     if (Platform.OS === 'web') {
+      const browser = window.navigator.userAgent.match(/(Edg|Chrome|Firefox|Version)\/([\d.]+)/);
       return {
         brand: 'Browser',
-        model: window.navigator.userAgent.split(' ')[0],
+        model: browser?.[1] || 'Unknown',
         os: 'Web',
-        version: window.navigator.userAgent
+        version: browser?.[2] || 'Unknown'
       };
     }
     const Device = require('expo-device');

@@ -122,6 +122,8 @@ export default function ChatListScreen({ navigation, route, onChatSelect, select
             lastMessage: chat.last_message,
             lastMessageAt: chat.last_message_at,
             otherUserId: isSelf ? user?.id : chat.other_user?.id,
+            otherUserStatus: isSelf ? user?.status : chat.other_user?.status,
+            otherUserLastSeen: isSelf ? user?.last_seen : chat.other_user?.last_seen,
             type: chat.type,
             isVerified: !isGroup && (isSelf ? user?.is_verified : chat.other_user?.is_verified),
             unreadCount: parseInt(chat.unread_count || 0),
@@ -230,7 +232,9 @@ export default function ChatListScreen({ navigation, route, onChatSelect, select
       chatId: chat.id,
       name: chat.name,
       avatar: chat.avatar,
-      peerUserId: chat.otherUserId
+      peerUserId: chat.otherUserId,
+      peerStatus: chat.otherUserStatus,
+      peerLastSeen: chat.otherUserLastSeen,
     });
   };
 

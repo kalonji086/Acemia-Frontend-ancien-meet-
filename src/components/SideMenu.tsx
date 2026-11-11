@@ -33,17 +33,27 @@ interface SideMenuProps {
   navigation: any;
   activeRoute: string;
   onClose: () => void;
+  onAnalytics?: () => void;
   userName?: string;
   companyName?: string;
 }
 
-export default function SideMenu({ navigation, activeRoute, onClose, userName, companyName }: SideMenuProps) {
+interface SideMenuItem {
+  id: string;
+  label: string;
+  icon: React.ReactElement<{ color?: string }>;
+  route: string;
+  routeParams?: Record<string, unknown>;
+  action?: () => void;
+}
+
+export default function SideMenu({ navigation, activeRoute, onClose, onAnalytics, userName, companyName }: SideMenuProps) {
   const { colors, normalize, isDark } = useTheme();
   const { setUser } = useUser();
   const { width: windowWidth } = useWindowDimensions();
   const isTablet = windowWidth > 768;
 
-  const menuItems = [
+  const menuItems: SideMenuItem[] = [
     {
       id: 'dashboard',
       label: 'Tableau de bord',
@@ -72,25 +82,27 @@ export default function SideMenu({ navigation, activeRoute, onClose, userName, c
       id: 'analytics',
       label: 'Analytiques',
       icon: <BarChart3 size={normalize(20)} />,
-      route: 'Analytics'
+      route: 'EmployerDashboard',
+      action: onAnalytics
     },
     {
       id: 'messages',
       label: 'Messages',
       icon: <MessageSquare size={normalize(20)} />,
-      route: 'ChatList'
+      route: 'ChatList',
+      routeParams: { screen: 'chats' }
     },
     {
       id: 'company',
-      label: 'Mon entreprise',
+      label: 'Profil et compte',
       icon: <Building2 size={normalize(20)} />,
-      route: 'CompanyProfile'
+      route: 'Settings'
     },
     {
       id: 'notifications',
-      label: 'Notifications',
+      label: 'Notifications et préférences',
       icon: <Bell size={normalize(20)} />,
-      route: 'Notifications'
+      route: 'Settings'
     },
     {
       id: 'settings',
@@ -106,8 +118,9 @@ export default function SideMenu({ navigation, activeRoute, onClose, userName, c
     }
   ];
 
-  const handleNavigation = (route: string) => {
-    navigation.navigate(route);
+  const handleNavigation = (item: typeof menuItems[number]) => {
+    if (item.action) item.action();
+    else navigation.navigate(item.route, item.routeParams);
     onClose();
   };
 
@@ -152,7 +165,7 @@ export default function SideMenu({ navigation, activeRoute, onClose, userName, c
                 styles.menuItem,
                 activeRoute === item.route && { backgroundColor: colors.primary + '20' }
               ]}
-              onPress={() => handleNavigation(item.route)}
+              onPress={() => handleNavigation(item)}
             >
               <View style={styles.menuItemLeft}>
                 {React.cloneElement(item.icon, { 
@@ -182,7 +195,7 @@ export default function SideMenu({ navigation, activeRoute, onClose, userName, c
                 styles.menuItem,
                 activeRoute === item.route && { backgroundColor: colors.primary + '20' }
               ]}
-              onPress={() => handleNavigation(item.route)}
+              onPress={() => handleNavigation(item)}
             >
               <View style={styles.menuItemLeft}>
                 {React.cloneElement(item.icon, { 
@@ -212,7 +225,7 @@ export default function SideMenu({ navigation, activeRoute, onClose, userName, c
                 styles.menuItem,
                 activeRoute === item.route && { backgroundColor: colors.primary + '20' }
               ]}
-              onPress={() => handleNavigation(item.route)}
+              onPress={() => handleNavigation(item)}
             >
               <View style={styles.menuItemLeft}>
                 {React.cloneElement(item.icon, { 

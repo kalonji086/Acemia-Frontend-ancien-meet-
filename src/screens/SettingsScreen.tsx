@@ -29,7 +29,8 @@ import { useFeedback } from '../components/FeedbackSystem';
 import Constants from 'expo-constants';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
-import { Platform, useWindowDimensions } from 'react-native';
+import { AppState, Linking, Platform, useWindowDimensions } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import EditProfileScreen from './EditProfileScreen';
 import SecurityPrivacyScreen from './SecurityPrivacyScreen';
 import PrivacyPolicyScreen from './PrivacyPolicyScreen';
@@ -41,6 +42,7 @@ export default function SettingsScreen({ navigation }: any) {
   const { user, setUser, loading: userLoading } = useUser();
   const { showFeedbackModal, FeedbackModal } = useFeedback();
   const { width: screenWidth } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
 
   const [langModalVisible, setLangModalVisible] = useState(false);
   const [colorModalVisible, setColorModalVisible] = useState(false);
@@ -51,7 +53,33 @@ export default function SettingsScreen({ navigation }: any) {
   const isTablet = screenWidth > 768;
 
   useEffect(() => {
-    setNotificationsEnabled(Boolean(user?.push_token));
+    let active = true;
+    const refreshNotificationStatus = async () => {
+      if (Platform.OS === 'web' || !Device.isDevice) {
+        setNotificationsEnabled(false);
+        return;
+      }
+
+      try {
+        const permission = await Notifications.getPermissionsAsync();
+        if (active) {
+          setNotificationsEnabled(permission.status === 'granted' && Boolean(user?.push_token));
+        }
+      } catch (error) {
+        console.error('Unable to check push notification permission:', error);
+        if (active) setNotificationsEnabled(Boolean(user?.push_token));
+      }
+    };
+
+    void refreshNotificationStatus();
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') void refreshNotificationStatus();
+    });
+
+    return () => {
+      active = false;
+      subscription.remove();
+    };
   }, [user?.id, user?.push_token]);
 
   const handlePushNotificationsChange = async (enabled: boolean) => {
@@ -79,7 +107,28 @@ export default function SettingsScreen({ navigation }: any) {
           permission = await Notifications.requestPermissionsAsync();
         }
         if (permission.status !== 'granted') {
-          Alert.alert(t('pushNotificationError'), t('pushPermissionDenied'));
+          if (!permission.canAskAgain) {
+            Alert.alert(
+              t('pushNotificationError'),
+              t('pushPermissionDenied'),
+              [
+                { text: t('cancel'), style: 'cancel' },
+                {
+                  text: 'Paramètres',
+                  onPress: async () => {
+                    try {
+                      await Linking.openSettings();
+                    } catch (error) {
+                      console.error('Unable to open notification settings:', error);
+                      Alert.alert(t('pushNotificationError'), t('pushPermissionDenied'));
+                    }
+                  },
+                },
+              ]
+            );
+          } else {
+            Alert.alert(t('pushNotificationError'), t('pushPermissionDenied'));
+          }
           return;
         }
 
@@ -278,7 +327,8 @@ export default function SettingsScreen({ navigation }: any) {
   );
 
   const renderMasterPane = () => (
-    <ScrollView showsVerticalScrollIndicator={false}>
+    <View style={{ flex: 1 }}>
+    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 20 }} showsVerticalScrollIndicator={false}>
       <View style={dynamicStyles.header}>
         {!isTablet && (
           <TouchableOpacity onPress={() => navigation.goBack()} style={dynamicStyles.backButton}>
@@ -344,21 +394,36 @@ export default function SettingsScreen({ navigation }: any) {
 
       <View style={dynamicStyles.section}>
         <Text style={dynamicStyles.sectionTitle}>{t('notifications')}</Text>
-        <View style={dynamicStyles.menuItem}>
+        <View style={[dynamicStyles.menuItem, dynamicStyles.notificationRow]}>
           <Bell size={22} color={colors.primary} />
           <View style={dynamicStyles.notificationText}>
             <Text style={dynamicStyles.menuText}>{t('pushNotifications')}</Text>
-            <Text style={dynamicStyles.notificationDescription}>{t('pushNotificationsDescription')}</Text>
+            <Text style={dynamicStyles.notificationDescription}>
+              {Platform.OS === 'web'
+                ? t('pushNotificationsUnsupported')
+                : notificationsEnabled
+                  ? 'Activées sur cet appareil.'
+                  : t('pushNotificationsDescription')}
+            </Text>
           </View>
           {notificationsLoading
             ? <ActivityIndicator size="small" color={colors.primary} />
-            : <Switch
-                value={notificationsEnabled}
-                onValueChange={handlePushNotificationsChange}
-                disabled={Platform.OS === 'web'}
-                trackColor={{ false: colors.border, true: colors.primaryLight }}
-                thumbColor={notificationsEnabled ? colors.primary : '#f4f3f4'}
-              />}
+            : (
+              <TouchableOpacity
+                accessibilityRole="switch"
+                accessibilityLabel={t('pushNotifications')}
+                accessibilityState={{ checked: notificationsEnabled, disabled: notificationsLoading }}
+                onPress={() => void handlePushNotificationsChange(!notificationsEnabled)}
+                style={[
+                  dynamicStyles.notificationToggle,
+                  { backgroundColor: notificationsEnabled ? colors.primary : colors.background, borderColor: colors.primary },
+                ]}
+              >
+                <Text style={{ color: notificationsEnabled ? '#fff' : colors.primary, fontWeight: '800', fontSize: normalize(12) }}>
+                  {notificationsEnabled ? 'Activées' : 'Activer'}
+                </Text>
+              </TouchableOpacity>
+            )}
         </View>
         {user?.is_global_admin && (
           <TouchableOpacity
@@ -402,18 +467,26 @@ export default function SettingsScreen({ navigation }: any) {
         </TouchableOpacity>
       </View>
 
-      <TouchableOpacity style={dynamicStyles.logoutButton} onPress={handleLogout}>
+    </ScrollView>
+    <View style={[dynamicStyles.logoutFooter, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+      <TouchableOpacity
+        accessibilityRole="button"
+        accessibilityLabel={t('logout')}
+        style={dynamicStyles.logoutButton}
+        onPress={handleLogout}
+      >
         <LogOut size={22} color={colors.danger} />
         <Text style={dynamicStyles.logoutText}>{t('logout')}</Text>
       </TouchableOpacity>
-    </ScrollView>
+    </View>
+    </View>
   );
 
   if (isTablet) {
     return (
       <View style={[dynamicStyles.container, { flexDirection: 'row' }]}>
         <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={colors.surface} />
-        <View style={{ width: 350, borderRightWidth: 1, borderRightColor: colors.divider }}>
+        <View style={{ width: 350, flex: 1, borderRightWidth: 1, borderRightColor: colors.divider }}>
           {renderMasterPane()}
         </View>
         <View style={{ flex: 1 }}>
@@ -557,13 +630,16 @@ const createStyles = (colors: any, normalize: any, factor: number) => StyleSheet
   menuText: { flex: 1, fontSize: normalize(15, factor), color: colors.text.primary, marginLeft: 15 },
   notificationText: { flex: 1, minWidth: 0 },
   notificationDescription: { fontSize: normalize(12, factor), color: colors.text.secondary, marginLeft: 15, marginTop: 3 },
+  notificationRow: { gap: 10 },
+  notificationToggle: { minWidth: 78, minHeight: 40, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 10, borderWidth: 1, borderRadius: 12 },
   valueText: { fontSize: normalize(14, factor), color: colors.text.secondary, marginRight: 10 },
   colorPreview: { width: 24, height: 24, borderRadius: 12, marginRight: 10 },
   fontSizeContainer: { width: '100%', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10 },
   fontBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: colors.border },
   fontBtnDisabled: { opacity: 0.3 },
   fontSizePreview: { flex: 1, alignItems: 'center' },
-  logoutButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface, marginTop: 30, padding: 15, elevation: 1 },
+  logoutFooter: { paddingHorizontal: 20, paddingTop: 10, backgroundColor: colors.background, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
+  logoutButton: { minHeight: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface, padding: 15, elevation: 1 },
   logoutText: { fontSize: normalize(16, factor), color: colors.danger, fontWeight: 'bold', marginLeft: 10 },
   footer: { alignItems: 'center', padding: 30 },
   version: { fontSize: normalize(12, factor), color: colors.text.disabled },

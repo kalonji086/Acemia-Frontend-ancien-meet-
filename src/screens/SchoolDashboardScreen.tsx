@@ -17,7 +17,7 @@ import { useTheme } from '../context/ThemeContext';
 import apiService from '../services/api.service';
 import SchoolSideMenu from '../components/SchoolSideMenu';
 
-export default function SchoolDashboardScreen({ navigation }: any) {
+export default function SchoolDashboardScreen({ navigation, onBack }: any) {
   const { colors, normalize } = useTheme();
   const { width: windowWidth } = useWindowDimensions();
   const isWide = windowWidth >= 1200;
@@ -27,6 +27,10 @@ export default function SchoolDashboardScreen({ navigation }: any) {
   const [requestStatus, setRequestStatus] = useState<string | null>(null);
   const [dashboardData, setDashboardData] = useState<any>(null);
   const [menuVisible, setMenuVisible] = useState(false);
+  const handleBack = () => {
+    if (onBack) onBack();
+    else navigation.navigate('ChatList', { screen: 'chats' });
+  };
 
   useEffect(() => {
     checkStatus();
@@ -100,7 +104,7 @@ export default function SchoolDashboardScreen({ navigation }: any) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
-          <TouchableOpacity style={styles.headerButton} onPress={() => navigation.goBack()}>
+          <TouchableOpacity style={styles.headerButton} onPress={handleBack}>
             <ArrowLeft size={24} color={colors.text.primary} />
           </TouchableOpacity>
           <Image source={require('../../assets/AcemiaLogo.png')} style={[styles.brandLogo, { backgroundColor: `${colors.primary}12` }]} resizeMode="contain" />
@@ -141,7 +145,7 @@ export default function SchoolDashboardScreen({ navigation }: any) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
-          <TouchableOpacity style={styles.headerButton} onPress={() => navigation.goBack()}>
+          <TouchableOpacity style={styles.headerButton} onPress={handleBack}>
             <ArrowLeft size={24} color={colors.text.primary} />
           </TouchableOpacity>
           <Image source={require('../../assets/AcemiaLogo.png')} style={[styles.brandLogo, { backgroundColor: `${colors.primary}12` }]} resizeMode="contain" />
@@ -172,7 +176,7 @@ export default function SchoolDashboardScreen({ navigation }: any) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
-          <TouchableOpacity style={styles.headerButton} onPress={() => navigation.goBack()}>
+          <TouchableOpacity style={styles.headerButton} onPress={handleBack}>
             <ArrowLeft size={24} color={colors.text.primary} />
           </TouchableOpacity>
           <Image source={require('../../assets/AcemiaLogo.png')} style={[styles.brandLogo, { backgroundColor: `${colors.primary}12` }]} resizeMode="contain" />
@@ -209,7 +213,7 @@ export default function SchoolDashboardScreen({ navigation }: any) {
           </Text>
           <Text style={{ color: '#4CAF50', fontSize: normalize(10), fontWeight: '800', letterSpacing: 0.6 }}>ÉTABLISSEMENT AGRÉÉ</Text>
         </View>
-        <TouchableOpacity style={styles.headerButton} accessibilityLabel="Retour aux discussions" onPress={() => navigation.navigate('ChatList')}>
+        <TouchableOpacity style={styles.headerButton} accessibilityLabel="Retour aux discussions" onPress={handleBack}>
           <ArrowLeft size={22} color={colors.text.primary} />
         </TouchableOpacity>
       </View>

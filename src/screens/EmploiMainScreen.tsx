@@ -10,13 +10,17 @@ import { useLanguage } from '../context/LanguageContext';
 import apiService from '../services/api.service';
 import socketService from '../services/socket.service';
 
-export default function EmploiMainScreen({ navigation }: any) {
+export default function EmploiMainScreen({ navigation, onBack }: any) {
   const { colors, normalize, isDark } = useTheme();
   const { t } = useLanguage();
   const { width: windowWidth } = useWindowDimensions();
   const isTablet = windowWidth > 768;
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState<any>(null);
+  const handleBack = () => {
+    if (onBack) onBack();
+    else navigation.navigate('ChatList', { screen: 'chats' });
+  };
 
   useEffect(() => {
     checkStatus();
@@ -86,7 +90,7 @@ export default function EmploiMainScreen({ navigation }: any) {
           </Text>
           <TouchableOpacity
             style={[styles.backBtn, { backgroundColor: colors.primary }]}
-            onPress={() => navigation.navigate('ChatList')}
+            onPress={handleBack}
           >
             <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: normalize(14) }}>RETOUR AUX DISCUSSIONS</Text>
           </TouchableOpacity>
@@ -98,7 +102,7 @@ export default function EmploiMainScreen({ navigation }: any) {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.mainHeader, { backgroundColor: colors.surface }]}>
-        <TouchableOpacity onPress={() => navigation.navigate('ChatList')} style={styles.backButton}>
+        <TouchableOpacity onPress={handleBack} style={styles.backButton}>
           <ArrowLeft size={24} color={colors.text.primary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text.primary }]}>Acemia Emploi</Text>

@@ -172,6 +172,7 @@ const MessageItem = React.memo((props: any) => {
     isDark,
     getFullUrl: resolveUrl,
     handleMessageLongPress,
+    onRetrySend,
     playAudio,
     playingId,
     playbackStatus,
@@ -202,6 +203,7 @@ const MessageItem = React.memo((props: any) => {
   const isFileMessage = messageType === 'file' && (Boolean(mediaUrl) || Boolean(normalized.file_name || normalized.filename || normalized.name));
   const isDeleted = Boolean(normalized.content && normalized.content.includes('Ce message a été supprimé'));
   const isSending = normalized.status === 'sending';
+  const hasSendFailed = normalized.status === 'failed';
   const likes = Array.isArray(normalized.likes) ? normalized.likes : [];
   const isLikedByCurrentUser = likes.some((userId: string | number) => String(userId) === String(currentUser?.id));
 
@@ -210,7 +212,8 @@ const MessageItem = React.memo((props: any) => {
     isMe ? { backgroundColor: chatColor || themeColors.primary, borderBottomRightRadius: 4 } : { backgroundColor: themeColors.surface, borderBottomLeftRadius: 4 },
     isDeleted && { backgroundColor: isDark ? '#222' : '#f0f0f0', borderWidth: 1, borderStyle: 'dashed', borderColor: '#ccc' },
     isSending && { opacity: 0.72 },
-  ], [chatColor, isDark, isDeleted, isMe, isSending, styles.bubble, themeColors.primary, themeColors.surface]);
+    hasSendFailed && { borderWidth: 1, borderColor: '#ef4444' },
+  ], [chatColor, hasSendFailed, isDark, isDeleted, isMe, isSending, styles.bubble, themeColors.primary, themeColors.surface]);
 
   const renderAudioWaveform = () => {
     const currentId = normalized.id;
@@ -328,8 +331,12 @@ const MessageItem = React.memo((props: any) => {
 
   return (
     <View style={[styles.messageRow, isMe ? { justifyContent: 'flex-end' } : { justifyContent: 'flex-start' }]}>
-      {!isMe && isGroup && sender && (
-        <Image source={{ uri: resolveUrl(sender.avatar_url) || `https://ui-avatars.com/api/?name=${encodeURIComponent(sender.full_name || 'User')}` }} style={styles.msgAvatar} resizeMode="cover" />
+      {!isMe && (
+        <Image
+          source={{ uri: resolveUrl(sender?.avatar_url || sender?.avatar) || `https://ui-avatars.com/api/?name=${encodeURIComponent(sender?.full_name || sender?.name || 'User')}&background=random` }}
+          style={styles.msgAvatar}
+          resizeMode="cover"
+        />
       )}
 
       <View style={{ maxWidth: maxMessageWidth }}>
@@ -337,8 +344,18 @@ const MessageItem = React.memo((props: any) => {
           <Text style={[styles.senderName, { color: themeColors.primary }]}>{sender.full_name}</Text>
         )}
 
-        <TouchableOpacity activeOpacity={0.82} onPress={() => {}} onLongPress={() => handleMessageLongPress(normalized)} disabled={isDeleted} style={bubbleStyle}>
-          {isAudioMessage ? (
+        <TouchableOpacity
+          activeOpacity={0.82}
+          onPress={() => { if (hasSendFailed) onRetrySend(normalized); }}
+          onLongPress={() => handleMessageLongPress(normalized)}
+          disabled={isDeleted}
+          style={bubbleStyle}
+        >
+          {isDeleted ? (
+            <Text style={[styles.msgText, styles.deletedMessageText]}>
+              {t?.('messageRemoved') || 'Ce message a été supprimé'}
+            </Text>
+          ) : isAudioMessage ? (
             renderAudioWaveform()
           ) : isImageMessage ? (
             <View style={styles.imageContainer}>
@@ -367,8 +384,8 @@ const MessageItem = React.memo((props: any) => {
           ) : isFileMessage ? (
             renderDocumentBubble()
           ) : (
-            <Text style={[styles.msgText, { color: isMe ? '#fff' : isDark ? '#fff' : '#171717' }, isDeleted && { fontStyle: 'italic', color: '#999' }]}>
-              {isDeleted ? (t?.('messageRemoved') || 'Ce message a été supprimé') : (normalized.translatedText || normalized.content || '')}
+            <Text style={[styles.msgText, { color: isMe ? '#fff' : isDark ? '#fff' : '#171717' }]}>
+              {normalized.translatedText || normalized.content || ''}
             </Text>
           )}
 
@@ -389,10 +406,13 @@ const MessageItem = React.memo((props: any) => {
             <Text style={[styles.timeText, { color: isMe ? 'rgba(255,255,255,0.75)' : '#667085' }]}>
               {safeDate(normalized.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </Text>
+            {hasSendFailed && <Text style={styles.sendFailedText}> • Échec — toucher pour réessayer</Text>}
             {isMe && (
               <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 4 }}>
                 {isSending ? (
                   <Clock size={10} color="rgba(255,255,255,0.55)" />
+                ) : hasSendFailed ? (
+                  <Text style={styles.sendFailedText}>!</Text>
                 ) : normalized.status === 'read' || normalized.status === 'delivered' ? (
                   <CheckCheck size={13} color={normalized.status === 'read' ? '#34B7F1' : 'rgba(255,255,255,0.65)'} />
                 ) : (
@@ -428,11 +448,13 @@ const createStyles = (colors: any, normalize: any, isDark: boolean, isCompact: b
   headerLeft: { flexDirection: 'row', alignItems: 'center', flex: 1 },
   headerTitle: { fontSize: normalize(18), fontWeight: '700', color: colors.text.primary },
   headerSubtitle: { fontSize: normalize(11), color: colors.text.secondary, marginTop: 2 },
+  headerStatusRow: { flexDirection: 'row', alignItems: 'center' },
+  presenceDot: { width: 7, height: 7, borderRadius: 4, marginRight: 5 },
   headerActions: { flexDirection: 'row', alignItems: 'center' },
   headerBtn: { minWidth: 44, minHeight: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', marginLeft: 4 },
   avatar: { width: normalize(40), height: normalize(40), borderRadius: normalize(20), backgroundColor: '#E2E8F0', marginRight: normalize(10) },
   body: { flex: 1 },
-  wallpaper: { opacity: isDark ? 0.18 : 0.28 },
+  wallpaper: { opacity: isDark ? 0.1 : 0.12 },
   messagesList: { paddingHorizontal: 10, paddingTop: 8, paddingBottom: 12 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   messageRow: { flexDirection: 'row', marginVertical: 6 },
@@ -440,6 +462,8 @@ const createStyles = (colors: any, normalize: any, isDark: boolean, isCompact: b
   dateDividerText: { color: colors.text.secondary, fontSize: normalize(11), fontWeight: '600' },
   bubble: { maxWidth: '100%', borderRadius: 18, paddingHorizontal: 12, paddingVertical: 10, overflow: 'hidden' },
   msgText: { fontSize: normalize(15), lineHeight: normalize(22) },
+  deletedMessageText: { fontStyle: 'italic', color: '#999' },
+  sendFailedText: { fontSize: 10, fontWeight: '700', color: '#ffb4ab' },
   msgFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', marginTop: 6 },
   likeButton: { flexDirection: 'row', alignItems: 'center', marginRight: 7, minWidth: 18, minHeight: 18, justifyContent: 'center' },
   likesCount: { fontSize: 10, fontWeight: '700', marginLeft: 3 },
@@ -544,14 +568,81 @@ export default function ChatScreen({ navigation, route }: any) {
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [recordingDuration, setRecordingDuration] = useState(0);
+  const [peerStatus, setPeerStatus] = useState(route?.params?.peerStatus || 'offline');
+  const [peerLastSeen, setPeerLastSeen] = useState(route?.params?.peerLastSeen || null);
+  const [typingUserId, setTypingUserId] = useState<string | null>(null);
   const flatListRef = useRef<FlatList>(null);
   const recordingRef = useRef<Audio.Recording | null>(null);
+  const messagesRef = useRef(messages);
+  const localTypingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const remoteTypingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isLocallyTypingRef = useRef(false);
+  const typingUserIdRef = useRef<string | null>(null);
+  messagesRef.current = messages;
 
   const currentChatName = route?.params?.name || chatInfo?.name || 'Conversation';
   const currentChatAvatar = route?.params?.avatar || chatInfo?.avatar_url || chatInfo?.avatar || null;
+  const isGroupChat = Boolean(route?.params?.isGroup || chatInfo?.type === 'group');
+  const peerUser = chatInfo?.participants?.find((participant: any) => (
+    String(participant.id) === String(route?.params?.peerUserId)
+  )) || chatInfo?.participants?.find((participant: any) => (
+    String(participant.id) !== String(currentUser?.id)
+  ));
+  const peerUserId = route?.params?.peerUserId || peerUser?.id;
+  const isPeerOnline = Boolean(peerStatus && String(peerStatus).toLowerCase() !== 'offline');
+  const typingParticipant = chatInfo?.participants?.find((participant: any) => (
+    String(participant.id) === String(typingUserId)
+  ));
+  const headerSubtitle = typingUserId
+    ? (isGroupChat && typingParticipant?.full_name
+      ? `${typingParticipant.full_name} ${t('typing')}`
+      : t('someoneTyping'))
+    : isGroupChat
+      ? `${chatInfo?.participants?.length || 0} participants`
+      : isPeerOnline
+        ? t('online')
+        : peerLastSeen && !Number.isNaN(new Date(peerLastSeen).getTime())
+          ? t('offlineSince').replace('{time}', safeDate(peerLastSeen).toLocaleString([], {
+              day: '2-digit',
+              month: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit',
+            }))
+          : t('offline');
   const wallpaperStorageKey = `chat-wallpaper:${currentUser?.id || 'guest'}:${chatId || 'unknown'}`;
   const selectedWallpaper = PRESET_WALLPAPERS.find((wallpaper) => wallpaper.id === wallpaperId) || PRESET_WALLPAPERS[0];
   const wallpaperSource = customWallpaperUri ? { uri: customWallpaperUri } : selectedWallpaper.image;
+
+  const stopTypingIndicator = useCallback(() => {
+    if (localTypingTimeoutRef.current) {
+      clearTimeout(localTypingTimeoutRef.current);
+      localTypingTimeoutRef.current = null;
+    }
+    if (isLocallyTypingRef.current && chatId) {
+      socketService.stopTyping(String(chatId));
+      isLocallyTypingRef.current = false;
+    }
+  }, [chatId]);
+
+  const handleInputChange = useCallback((value: string) => {
+    setInput(value);
+    if (!chatId) return;
+    if (!value.trim()) {
+      stopTypingIndicator();
+      return;
+    }
+
+    if (!isLocallyTypingRef.current) {
+      socketService.startTyping(String(chatId));
+      isLocallyTypingRef.current = true;
+    }
+    if (localTypingTimeoutRef.current) clearTimeout(localTypingTimeoutRef.current);
+    localTypingTimeoutRef.current = setTimeout(() => {
+      socketService.stopTyping(String(chatId));
+      isLocallyTypingRef.current = false;
+      localTypingTimeoutRef.current = null;
+    }, 1400);
+  }, [chatId, stopTypingIndicator]);
 
   const loadMessages = useCallback(async () => {
     if (!chatId) return;
@@ -636,11 +727,22 @@ export default function ChatScreen({ navigation, route }: any) {
 
     const onNewMessage = (payload: any) => {
       const incoming = payload?.message ?? payload;
-      if (!incoming || (incoming.chat_id !== chatId && incoming.chatId !== chatId)) return;
+      const incomingChatId = incoming?.chat_id ?? incoming?.chatId ?? payload?.chatId;
+      if (!incoming || String(incomingChatId) !== String(chatId)) return;
       const next = dedupePayload(incoming);
+      const clientMessageId = next.metadata?.client_message_id;
       setMessages((prev) => {
-        const exists = prev.some((m) => String(m.id) === String(next.id));
-        return exists ? prev.map((m) => (String(m.id) === String(next.id) ? next : m)) : [...prev, next];
+        const optimisticIndex = clientMessageId
+          ? prev.findIndex((message) => message.metadata?.client_message_id === clientMessageId)
+          : -1;
+        if (optimisticIndex >= 0) {
+          return prev.map((message, index) => index === optimisticIndex ? next : message);
+        }
+        const existingIndex = prev.findIndex((message) => String(message.id) === String(next.id));
+        if (existingIndex >= 0) {
+          return prev.map((message, index) => index === existingIndex ? next : message);
+        }
+        return [...prev, next];
       });
 
       const senderId = incoming.sender_id || incoming.user_id || incoming.author_id;
@@ -658,6 +760,28 @@ export default function ChatScreen({ navigation, route }: any) {
     socketService.on('new_message', onNewMessage);
     return () => socketService.off('new_message', onNewMessage);
   }, [chatId, currentUser?.id]);
+
+  useEffect(() => {
+    const onMessageDeleted = (payload: any) => {
+      if (String(payload?.chatId ?? payload?.chat_id) !== String(chatId) || !payload?.messageId) return;
+      const deletedMessage = payload.message ? dedupePayload(payload.message) : null;
+      setMessages((prev) => prev.map((message) => (
+        String(message.id) === String(payload.messageId)
+          ? deletedMessage || {
+              ...message,
+              content: '🚫 Ce message a été supprimé',
+              type: 'text',
+              file_url: null,
+              media_url: null,
+              metadata: {},
+            }
+          : message
+      )));
+    };
+
+    socketService.on('message_deleted', onMessageDeleted);
+    return () => socketService.off('message_deleted', onMessageDeleted);
+  }, [chatId]);
 
   useEffect(() => {
     const onReaction = (payload: any) => {
@@ -872,23 +996,143 @@ export default function ChatScreen({ navigation, route }: any) {
     }
   }, [downloadProgress, downloadedFiles]);
 
-  const sendMessage = useCallback(async () => {
-    if (!chatId || !input.trim()) return;
-    setIsSending(true);
+  const submitTextMessage = useCallback(async (content: string, clientMessageId: string, optimisticId: string) => {
     try {
-      const res = await apiService.sendMessage(chatId, input.trim(), 'text');
-      if (!res?.success) {
-        Alert.alert('Échec de l’envoi', res?.error || 'Le message n’a pas pu être envoyé.');
-        return;
+      const res = await apiService.sendMessage(chatId, content, 'text', undefined, {
+        client_message_id: clientMessageId,
+      });
+      if (!res?.success || !res.data) {
+        throw new Error(res?.error || 'Le message n’a pas pu être envoyé.');
       }
-      setInput('');
-      await loadMessages();
-    } catch (error) {
+
+      const savedMessage = dedupePayload(res.data);
+      setMessages((prev) => {
+        const pendingIndex = prev.findIndex((message) => String(message.id) === optimisticId);
+        if (pendingIndex >= 0) {
+          return prev.map((message, index) => index === pendingIndex ? savedMessage : message);
+        }
+        return prev.map((message) => (
+          String(message.id) === String(savedMessage.id) ? savedMessage : message
+        ));
+      });
+    } catch (error: any) {
       console.error('Send message error', error);
-    } finally {
-      setIsSending(false);
+      const alreadyDelivered = messagesRef.current.some((message) => (
+        message.metadata?.client_message_id === clientMessageId && String(message.id) !== optimisticId
+      ));
+      if (alreadyDelivered) return;
+
+      setMessages((prev) => prev.map((message) => (
+        String(message.id) === optimisticId ? { ...message, status: 'failed' } : message
+      )));
+      Alert.alert('Échec de l’envoi', error?.message || 'Touchez le message pour réessayer.');
     }
-  }, [chatId, input, loadMessages]);
+  }, [chatId]);
+
+  const sendMessage = useCallback(() => {
+    if (!chatId || !input.trim()) return;
+    stopTypingIndicator();
+    const content = input.trim();
+    const clientMessageId = `${currentUser?.id || 'user'}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const optimisticId = `pending-${clientMessageId}`;
+    const optimisticMessage = {
+      id: optimisticId,
+      chat_id: chatId,
+      sender_id: currentUser?.id,
+      sender: {
+        id: currentUser?.id,
+        full_name: currentUser?.full_name || 'Moi',
+        avatar_url: currentUser?.avatar_url || null,
+      },
+      content,
+      type: 'text',
+      status: 'sending',
+      created_at: new Date().toISOString(),
+      metadata: { client_message_id: clientMessageId },
+    };
+
+    setInput('');
+    setMessages((prev) => [...prev, optimisticMessage]);
+    requestAnimationFrame(() => flatListRef.current?.scrollToEnd({ animated: true }));
+
+    void submitTextMessage(content, clientMessageId, optimisticId);
+  }, [chatId, currentUser?.avatar_url, currentUser?.full_name, currentUser?.id, input, stopTypingIndicator, submitTextMessage]);
+
+  const retryTextMessage = useCallback((item: any) => {
+    const clientMessageId = item.metadata?.client_message_id;
+    if (!clientMessageId || !chatId) return;
+    const optimisticId = String(item.id);
+    setMessages((prev) => prev.map((message) => (
+      String(message.id) === optimisticId ? { ...message, status: 'sending' } : message
+    )));
+    void submitTextMessage(item.content, clientMessageId, optimisticId);
+  }, [chatId, submitTextMessage]);
+
+  useEffect(() => {
+    if (!chatId) return;
+    const joinChat = () => socketService.joinChat(String(chatId));
+    socketService.on('authenticated', joinChat);
+    if (socketService.isSocketAuthenticated()) joinChat();
+
+    return () => {
+      socketService.off('authenticated', joinChat);
+      socketService.leaveChat(String(chatId));
+      stopTypingIndicator();
+    };
+  }, [chatId, stopTypingIndicator]);
+
+  useEffect(() => {
+    if (!peerUserId || isGroupChat) return;
+    const onUserStatusChanged = (payload: any) => {
+      if (String(payload?.userId) !== String(peerUserId)) return;
+      setPeerStatus(payload.status || 'offline');
+      setPeerLastSeen(payload.lastSeen || null);
+    };
+
+    socketService.on('user_status_changed', onUserStatusChanged);
+    return () => socketService.off('user_status_changed', onUserStatusChanged);
+  }, [isGroupChat, peerUserId]);
+
+  useEffect(() => {
+    if (!chatId) return;
+    const matchesChat = (payload: any) => String(payload?.chatId ?? payload?.chat_id) === String(chatId);
+    const onUserTyping = (payload: any) => {
+      if (!matchesChat(payload) || !payload?.userId || String(payload.userId) === String(currentUser?.id)) return;
+      const nextTypingUserId = String(payload.userId);
+      typingUserIdRef.current = nextTypingUserId;
+      setTypingUserId(nextTypingUserId);
+      if (remoteTypingTimeoutRef.current) clearTimeout(remoteTypingTimeoutRef.current);
+      remoteTypingTimeoutRef.current = setTimeout(() => {
+        typingUserIdRef.current = null;
+        setTypingUserId(null);
+        remoteTypingTimeoutRef.current = null;
+      }, 5000);
+    };
+    const onUserStoppedTyping = (payload: any) => {
+      if (!matchesChat(payload)) return;
+      if (payload?.userId && String(payload.userId) !== typingUserIdRef.current) return;
+      if (remoteTypingTimeoutRef.current) {
+        clearTimeout(remoteTypingTimeoutRef.current);
+        remoteTypingTimeoutRef.current = null;
+      }
+      typingUserIdRef.current = null;
+      setTypingUserId(null);
+    };
+
+    socketService.on('user_typing', onUserTyping);
+    socketService.on('user_stopped_typing', onUserStoppedTyping);
+    return () => {
+      socketService.off('user_typing', onUserTyping);
+      socketService.off('user_stopped_typing', onUserStoppedTyping);
+      if (remoteTypingTimeoutRef.current) clearTimeout(remoteTypingTimeoutRef.current);
+    };
+  }, [chatId, currentUser?.id]);
+
+  useEffect(() => {
+    if (!peerUser) return;
+    setPeerStatus(peerUser.status || 'offline');
+    setPeerLastSeen(peerUser.last_seen || null);
+  }, [peerUser?.id, peerUser?.last_seen, peerUser?.status]);
 
   const startVoiceRecording = useCallback(async () => {
     if (Platform.OS === 'web') {
@@ -1119,9 +1363,19 @@ export default function ChatScreen({ navigation, route }: any) {
       : messageDate.toDateString() === yesterday.toDateString()
         ? 'Hier'
         : messageDate.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' });
-    const isGroupChat = Boolean(route?.params?.isGroup || chatInfo?.type === 'group');
-    const maxMediaWidth = Math.max(100, Math.min(260, windowWidth - 48 - (isGroupChat ? 36 : 0)));
-    const maxMessageWidth = Math.max(0, Math.min(windowWidth - 36 - (isGroupChat ? 36 : 0), windowWidth * 0.86));
+    const isIncoming = String(normalizedItem.sender_id || normalizedItem.user_id || normalizedItem.author_id) !== String(currentUser?.id);
+    const maxMediaWidth = Math.max(100, Math.min(260, windowWidth - 48 - (isIncoming ? 36 : 0)));
+    const maxMessageWidth = Math.max(0, Math.min(windowWidth - 36 - (isIncoming ? 36 : 0), windowWidth * 0.86));
+    const messageSender = normalizedItem.sender || normalizedItem.user || null;
+    const senderProfile = chatInfo?.participants?.find((participant: any) => (
+      String(participant.id) === String(normalizedItem.sender_id || normalizedItem.user_id || messageSender?.id)
+    ));
+    const sender = {
+      ...(senderProfile || {}),
+      ...(messageSender || {}),
+      avatar_url: messageSender?.avatar_url || messageSender?.avatar || senderProfile?.avatar_url,
+      full_name: messageSender?.full_name || messageSender?.name || senderProfile?.full_name,
+    };
     return (
       <>
         {isNewDay && (
@@ -1135,12 +1389,13 @@ export default function ChatScreen({ navigation, route }: any) {
           maxMessageWidth={maxMessageWidth}
           isMe={String(normalizedItem.sender_id || normalizedItem.user_id || normalizedItem.author_id) === String(currentUser?.id)}
           isGroup={isGroupChat}
-          sender={normalizedItem.sender || normalizedItem.user || chatInfo?.participants?.find?.((p: any) => p.id !== currentUser?.id) || null}
+          sender={sender}
           currentUser={currentUser}
           themeColors={colors}
           isDark={isDark}
           getFullUrl={getFullUrl}
           handleMessageLongPress={handleMessageLongPress}
+          onRetrySend={retryTextMessage}
           playAudio={playAudio}
           playingId={playingId}
           playbackStatus={playbackStatus}
@@ -1172,7 +1427,12 @@ export default function ChatScreen({ navigation, route }: any) {
           )}
           <View style={{ flex: 1 }}>
             <Text style={styles.headerTitle}>{currentChatName}</Text>
-            <Text style={styles.headerSubtitle}>{isLoading ? 'Loading...' : 'Online'}</Text>
+            <View style={styles.headerStatusRow}>
+              {!isGroupChat && !typingUserId && (
+                <View style={[styles.presenceDot, { backgroundColor: isPeerOnline ? '#22c55e' : '#9ca3af' }]} />
+              )}
+              <Text style={[styles.headerSubtitle, typingUserId && { color: colors.primary }]}>{headerSubtitle}</Text>
+            </View>
           </View>
         </View>
 
@@ -1244,7 +1504,7 @@ export default function ChatScreen({ navigation, route }: any) {
               <TouchableOpacity
                 key={emoji}
                 style={styles.emojiOption}
-                onPress={() => setInput((value) => `${value}${emoji}`)}
+                onPress={() => handleInputChange(`${input}${emoji}`)}
                 accessibilityRole="button"
                 accessibilityLabel={`Insérer ${emoji}`}
               >
@@ -1274,7 +1534,7 @@ export default function ChatScreen({ navigation, route }: any) {
             </TouchableOpacity>
             <TextInput
               value={input}
-              onChangeText={setInput}
+              onChangeText={handleInputChange}
               placeholder="Message"
               placeholderTextColor={colors.text.secondary}
               style={styles.textInput}
@@ -1296,8 +1556,8 @@ export default function ChatScreen({ navigation, route }: any) {
             </TouchableOpacity>
           </View>
 
-          <TouchableOpacity style={styles.sendButton} onPress={sendMessage} disabled={isSending || !input.trim()}>
-            {isSending ? <ActivityIndicator size="small" color="#fff" /> : <Send size={18} color="#fff" />}
+          <TouchableOpacity style={styles.sendButton} onPress={sendMessage} disabled={!input.trim()}>
+            <Send size={18} color="#fff" />
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>

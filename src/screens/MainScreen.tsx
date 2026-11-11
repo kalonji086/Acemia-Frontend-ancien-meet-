@@ -161,9 +161,7 @@ export default function MainScreen({ navigation, route }: any) {
 
   const handleTabPress = (tab: string) => {
     setActiveTab(tab);
-    if (isWeb) {
-      navigation.setParams({ screen: tab });
-    }
+    navigation.setParams({ screen: tab });
   };
 
   const renderContent = () => {
@@ -207,9 +205,9 @@ export default function MainScreen({ navigation, route }: any) {
           }
           return <ChatListScreen navigation={navigation} route={route} />;
         case 'status': return <StatusScreen />;
-        case 'emploi': return <EmploiMainScreen navigation={navigation} />;
-        case 'market': return <MarketScreen />;
-        case 'school': return <SchoolDashboardScreen navigation={navigation} />;
+        case 'emploi': return <EmploiMainScreen navigation={navigation} onBack={() => handleTabPress('chats')} />;
+        case 'market': return <MarketScreen onBack={() => handleTabPress('chats')} />;
+        case 'school': return <SchoolDashboardScreen navigation={navigation} onBack={() => handleTabPress('chats')} />;
         default: return <ChatListScreen navigation={navigation} route={route} />;
       }
     } catch (err) {

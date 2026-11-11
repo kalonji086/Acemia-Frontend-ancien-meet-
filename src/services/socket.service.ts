@@ -39,6 +39,8 @@ class SocketService {
   private static instance: SocketService;
   private socket: Socket | null = null;
   private isConnected = false;
+  private isAuthenticated = false;
+  private hasAuthenticatedBefore = false;
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
   private eventListeners: Map<string, ((data: any) => void)[]> = new Map();
@@ -161,11 +163,15 @@ class SocketService {
       this.isConnected = true;
       this.reconnectAttempts = 0;
       this.emitEvent('connected', { socketId: this.socket?.id });
+      if (this.hasAuthenticatedBefore) {
+        void this.authenticate();
+      }
     });
 
     this.socket.on('disconnect', (reason) => {
       console.log('Socket disconnected:', reason);
       this.isConnected = false;
+      this.isAuthenticated = false;
       this.emitEvent('disconnected', { reason });
     });
 
@@ -194,11 +200,14 @@ class SocketService {
     // Authentication events
     this.socket.on('authenticated', (data) => {
       console.log('Socket authenticated:', data);
+      this.isAuthenticated = Boolean(data?.success);
+      this.hasAuthenticatedBefore = this.isAuthenticated || this.hasAuthenticatedBefore;
       this.emitEvent('authenticated', data);
     });
 
     this.socket.on('authentication_error', (error) => {
       console.error('Socket authentication error:', error);
+      this.isAuthenticated = false;
       this.emitEvent('authentication_error', error);
     });
 
@@ -323,6 +332,7 @@ class SocketService {
         this.socket.disconnect();
         this.socket = null;
         this.isConnected = false;
+        this.isAuthenticated = false;
         this.emitEvent('disconnected', { reason: 'manual' });
       }
     } catch (error) {
@@ -330,11 +340,16 @@ class SocketService {
       // Forcer la réinitialisation même en cas d'erreur
       this.socket = null;
       this.isConnected = false;
+      this.isAuthenticated = false;
     }
   }
 
   isSocketConnected(): boolean {
     return this.isConnected && this.socket?.connected === true;
+  }
+
+  isSocketAuthenticated(): boolean {
+    return this.isAuthenticated;
   }
 
   getSocketId(): string | undefined {
@@ -344,6 +359,7 @@ class SocketService {
   // Authentication
   async authenticate(): Promise<void> {
     try {
+      if (this.isAuthenticated) return;
       if (!this.socket) {
         await this.initialize();
         // Attendre que le socket soit prêt
@@ -405,14 +421,14 @@ class SocketService {
 
   // Chat operations
   joinChat(chatId: string): void {
-    if (this.socket && this.isConnected) {
+    if (this.socket && this.isConnected && this.isAuthenticated) {
       this.socket.emit('join_chat', chatId);
       console.log(`Joined chat: ${chatId}`);
     }
   }
 
   leaveChat(chatId: string): void {
-    if (this.socket && this.isConnected) {
+    if (this.socket && this.isConnected && this.isAuthenticated) {
       this.socket.emit('leave_chat', chatId);
       console.log(`Left chat: ${chatId}`);
     }
@@ -480,14 +496,14 @@ class SocketService {
 
   // Typing indicators
   startTyping(chatId: string): void {
-    if (this.socket && this.isConnected) {
+    if (this.socket && this.isConnected && this.isAuthenticated) {
       this.socket.emit('typing', { chatId });
       console.log('Typing started in chat:', chatId);
     }
   }
 
   stopTyping(chatId: string): void {
-    if (this.socket && this.isConnected) {
+    if (this.socket && this.isConnected && this.isAuthenticated) {
       this.socket.emit('stop_typing', { chatId });
       console.log('Typing stopped in chat:', chatId);
     }
