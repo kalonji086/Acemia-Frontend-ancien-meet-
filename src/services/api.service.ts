@@ -420,6 +420,37 @@ class ApiService {
     } catch (e: any) { return this.handleError(e); }
   }
 
+  async getLocationSharing(): Promise<ApiResponse & { enabled?: boolean }> {
+    try {
+      const res = await this.api.get('/users/location-sharing');
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async updateLocationSharing(enabled: boolean, location?: { latitude: number; longitude: number; accuracy: number | null }): Promise<ApiResponse> {
+    try {
+      const res = await this.api.put('/users/location-sharing', {
+        enabled,
+        ...(location || {}),
+      });
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async updateCurrentLocation(location: { latitude: number; longitude: number; accuracy: number | null }): Promise<ApiResponse> {
+    try {
+      const res = await this.api.put('/users/location', location);
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
+  async clearCurrentLocation(): Promise<ApiResponse> {
+    try {
+      const res = await this.api.delete('/users/location');
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
   async getBadges(): Promise<ApiResponse<{ messages: number; notifications?: number; calls: number; status: number }>> {
     try {
       const res = await this.api.get('/users/badges');

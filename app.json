@@ -56,6 +56,12 @@
       "expo-localization",
       "expo-secure-store",
       [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Acemia utilise votre position uniquement lorsque vous activez le partage et que l’application est ouverte."
+        }
+      ],
+      [
         "expo-build-properties",
         {
           "android": {

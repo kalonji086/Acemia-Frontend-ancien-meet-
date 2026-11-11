@@ -70,7 +70,7 @@ export default function PrivacyPolicyScreen({ navigation, isComponent = false }:
           </View>
         ) : (
           <View>
-            <Text style={[styles.version, { color: colors.text.secondary }]}>Dernière mise à jour : 30 Août 2026</Text>
+            <Text style={[styles.version, { color: colors.text.secondary }]}>Dernière mise à jour : 11 novembre 2026</Text>
 
             <Text style={[styles.p, { color: colors.text.primary }]}>
               Cette Politique de confidentialité décrit nos règles sur la collecte et l'utilisation de vos informations.
@@ -92,6 +92,13 @@ export default function PrivacyPolicyScreen({ navigation, isComponent = false }:
             </Text>
           </View>
         )}
+        <Text style={[styles.h2, { color: colors.text.primary }]}>Position et sécurité des connexions</Text>
+        <Text style={[styles.p, { color: colors.text.primary }]}>
+          L’adresse IP réseau est collectée lors des connexions, indépendamment du partage GPS. Elle est accessible à l’administrateur principal pour la sécurité du compte. L’IP brute est conservée au maximum 30 jours, puis anonymisée en ne gardant qu’un préfixe réseau.
+        </Text>
+        <Text style={[styles.p, { color: colors.text.primary }]}>
+          Le GPS précis est désactivé par défaut. Il n’est transmis qu’après activation du partage dans les paramètres et autorisation « pendant l’utilisation » du système. La position n’est suivie que lorsque l’application est au premier plan et est accessible à l’administrateur principal. Vous pouvez retirer votre accord à tout moment; la position est effacée à la désactivation, à la déconnexion ou à la révocation de la session. Aucune localisation en arrière-plan n’est collectée.
+        </Text>
         <View style={{ height: 100 }} />
       </ScrollView>
     </View>

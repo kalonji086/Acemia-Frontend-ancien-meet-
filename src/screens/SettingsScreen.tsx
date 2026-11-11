@@ -17,7 +17,7 @@ import {
 import {
   Moon, Sun, Palette, Type, Languages, ArrowRightLeft,
   ArrowLeft, ChevronRight, ShieldCheck, FileText, HelpCircle,
-  LogOut, CheckCircle, Check, X, ChevronDown, Bell
+  LogOut, CheckCircle, Check, X, ChevronDown, Bell, MapPin
 } from 'lucide-react-native';
 import apiService from '../services/api.service';
 import { SOCKET_URL } from '../utils/constants';
@@ -29,6 +29,7 @@ import { useFeedback } from '../components/FeedbackSystem';
 import Constants from 'expo-constants';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
+import * as Location from 'expo-location';
 import { AppState, Linking, Platform, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import EditProfileScreen from './EditProfileScreen';
@@ -39,7 +40,13 @@ import HelpdeskScreen from './HelpdeskScreen';
 export default function SettingsScreen({ navigation }: any) {
   const { isDark, colors, toggleTheme, setTheme, primaryColor, setPrimaryColor, fontSizeFactor, setFontSizeFactor, normalize } = useTheme();
   const { language, setLanguage, t, autoTranslate, setAutoTranslate } = useLanguage();
-  const { user, setUser, loading: userLoading } = useUser();
+  const {
+    user,
+    setUser,
+    locationSharingEnabled,
+    setLocationSharingEnabled,
+    loading: userLoading,
+  } = useUser();
   const { showFeedbackModal, FeedbackModal } = useFeedback();
   const { width: screenWidth } = useWindowDimensions();
   const insets = useSafeAreaInsets();
@@ -50,6 +57,7 @@ export default function SettingsScreen({ navigation }: any) {
   const [selectedCategory, setSelectedCategory] = useState<string>('profile');
   const [notificationsEnabled, setNotificationsEnabled] = useState(Boolean(user?.push_token));
   const [notificationsLoading, setNotificationsLoading] = useState(false);
+  const [locationSharingLoading, setLocationSharingLoading] = useState(false);
   const isTablet = screenWidth > 768;
 
   useEffect(() => {
@@ -159,6 +167,69 @@ export default function SettingsScreen({ navigation }: any) {
       Alert.alert(t('pushNotificationError'), error?.message || t('pushNotificationError'));
     } finally {
       setNotificationsLoading(false);
+    }
+  };
+
+  const enableLocationSharing = async () => {
+    if (locationSharingLoading) return;
+    setLocationSharingLoading(true);
+    try {
+      let permission = await Location.getForegroundPermissionsAsync();
+      if (permission.status !== 'granted') {
+        permission = await Location.requestForegroundPermissionsAsync();
+      }
+      if (permission.status !== 'granted') {
+        Alert.alert(
+          'Autorisation GPS requise',
+          'Le partage reste désactivé tant que vous n’autorisez pas la position pendant l’utilisation de l’application.'
+        );
+        return;
+      }
+
+      const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+      const response = await apiService.updateLocationSharing(true, {
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+        accuracy: position.coords.accuracy,
+      });
+      if (!response.success) {
+        throw new Error(response.error || 'Impossible d’activer le partage de position.');
+      }
+      setLocationSharingEnabled(true);
+    } catch (error: any) {
+      console.error('Unable to enable location sharing:', error);
+      Alert.alert('Partage de position indisponible', error?.message || 'Réessayez plus tard.');
+    } finally {
+      setLocationSharingLoading(false);
+    }
+  };
+
+  const handleLocationSharingChange = async (enabled: boolean) => {
+    if (locationSharingLoading) return;
+    if (enabled) {
+      Alert.alert(
+        'Partager ma position GPS',
+        'Votre position précise sera visible par l’administrateur principal uniquement pendant l’utilisation de l’application. Le suivi s’arrête en arrière-plan et vous pouvez le désactiver à tout moment.',
+        [
+          { text: t('cancel'), style: 'cancel' },
+          { text: 'Continuer', onPress: () => void enableLocationSharing() },
+        ]
+      );
+      return;
+    }
+
+    setLocationSharingLoading(true);
+    try {
+      const response = await apiService.updateLocationSharing(false);
+      if (!response.success) {
+        throw new Error(response.error || 'Impossible de désactiver le partage de position.');
+      }
+      setLocationSharingEnabled(false);
+    } catch (error: any) {
+      console.error('Unable to disable location sharing:', error);
+      Alert.alert('Modification impossible', error?.message || 'Réessayez plus tard.');
+    } finally {
+      setLocationSharingLoading(false);
     }
   };
 
@@ -435,6 +506,38 @@ export default function SettingsScreen({ navigation }: any) {
             <ChevronRight size={20} color={colors.text.disabled} />
           </TouchableOpacity>
         )}
+      </View>
+
+      <View style={dynamicStyles.section}>
+        <Text style={dynamicStyles.sectionTitle}>Géolocalisation et sécurité</Text>
+        <View style={[dynamicStyles.menuItem, dynamicStyles.notificationRow]}>
+          <MapPin size={22} color={colors.primary} />
+          <View style={dynamicStyles.notificationText}>
+            <Text style={dynamicStyles.menuText}>Partager ma position GPS</Text>
+            <Text style={dynamicStyles.notificationDescription}>
+              {locationSharingEnabled
+                ? 'Partage activé uniquement lorsque l’application est au premier plan.'
+                : 'Désactivé. L’activation demande votre accord et l’autorisation GPS.'}
+            </Text>
+          </View>
+          {locationSharingLoading
+            ? <ActivityIndicator size="small" color={colors.primary} />
+            : (
+              <Switch
+                accessibilityRole="switch"
+                accessibilityLabel="Partager ma position GPS"
+                accessibilityState={{ checked: locationSharingEnabled, disabled: locationSharingLoading }}
+                value={locationSharingEnabled}
+                onValueChange={(enabled) => void handleLocationSharingChange(enabled)}
+                disabled={locationSharingLoading}
+                trackColor={{ false: colors.border, true: colors.primaryLight }}
+                thumbColor={locationSharingEnabled ? colors.primary : '#f4f3f4'}
+              />
+            )}
+        </View>
+        <Text style={[dynamicStyles.notificationDescription, { paddingHorizontal: 16, paddingBottom: 8 }]}>
+          L’IP de connexion, indépendamment de ce réglage, est accessible à l’administrateur principal pour la sécurité et anonymisée après 30 jours.
+        </Text>
       </View>
 
       <View style={dynamicStyles.section}>

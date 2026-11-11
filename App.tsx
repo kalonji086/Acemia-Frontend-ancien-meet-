@@ -11,6 +11,7 @@ import { Platform, Alert, View, Text, ActivityIndicator, StyleSheet } from 'reac
 import * as Notifications from 'expo-notifications';
 import ErrorBoundary from './src/components/ErrorBoundary';
 import ErrorScreen from './src/screens/ErrorScreen';
+import LocationSharingTracker from './src/components/LocationSharingTracker';
 
 if (Platform.OS !== 'web') {
   Notifications.setNotificationHandler({
@@ -151,6 +152,7 @@ export default function App() {
       <ErrorBoundary onError={handleError} fallback={<ErrorScreen />}>
         <LanguageProvider>
           <UserProvider>
+            <LocationSharingTracker />
             <ThemeProvider>
               <SafeAreaProvider>
                 <WebResponsiveWrapper>

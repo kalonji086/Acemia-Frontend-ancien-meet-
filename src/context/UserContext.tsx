@@ -1,10 +1,13 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import socketService from '../services/socket.service';
+import apiService from '../services/api.service';
 
 interface UserContextType {
   user: any;
   setUser: (user: any) => Promise<void>;
+  locationSharingEnabled: boolean;
+  setLocationSharingEnabled: (enabled: boolean) => void;
   refreshUser: () => Promise<void>;
   loading: boolean;
 }
@@ -14,6 +17,7 @@ const UserContext = createContext<UserContextType | undefined>(undefined);
 export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUserState] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [locationSharingEnabled, setLocationSharingEnabled] = useState(false);
 
   const normalizeUser = useCallback((newUser: any) => {
     if (!newUser) return null;
@@ -51,6 +55,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await AsyncStorage.setItem('user', JSON.stringify(formattedUser));
       } else {
         setUserState(null);
+        setLocationSharingEnabled(false);
         await AsyncStorage.removeItem('user');
         await AsyncStorage.removeItem('auth_token');
       }
@@ -58,6 +63,27 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error('UserContext: Error setting user', e);
     }
   }, [normalizeUser]);
+
+  useEffect(() => {
+    if (loading) return undefined;
+    if (!user?.id) {
+      setLocationSharingEnabled(false);
+      return undefined;
+    }
+
+    let active = true;
+    void apiService.getLocationSharing().then((response) => {
+      if (!response.success) throw new Error(response.error || 'Impossible de vérifier le partage de position.');
+      if (active) setLocationSharingEnabled(Boolean(response.enabled));
+    }).catch((error) => {
+      console.error('Unable to load location-sharing consent:', error);
+      if (active) setLocationSharingEnabled(false);
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [loading, user?.id]);
 
   const refreshUser = useCallback(async () => {
     try {
@@ -109,7 +135,14 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [normalizeUser, refreshUser]);
 
   return (
-    <UserContext.Provider value={{ user, setUser, refreshUser, loading }}>
+    <UserContext.Provider value={{
+      user,
+      setUser,
+      locationSharingEnabled,
+      setLocationSharingEnabled,
+      refreshUser,
+      loading,
+    }}>
       {children}
     </UserContext.Provider>
   );
