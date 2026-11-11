@@ -351,6 +351,22 @@ class ApiService {
     } catch (e: any) { return this.handleError(e); }
   }
 
+  async loginWithGoogle(credentials: {
+    idToken: string;
+    device_info?: Record<string, unknown>;
+    appVersion?: string;
+  }): Promise<ApiResponse> {
+    try {
+      const res = await this.api.post('/auth/google', credentials);
+      if (res.data?.success && res.data.data) {
+        if (res.data.data.token) await this.setAuthToken(res.data.data.token);
+        if (res.data.data.refreshToken) await this.setRefreshToken(res.data.data.refreshToken);
+        if (res.data.data.user) await AsyncStorage.setItem('user', JSON.stringify(res.data.data.user));
+      }
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
   async logout(): Promise<ApiResponse> {
     try {
       const res = await this.api.post('/auth/logout');
@@ -1558,7 +1574,13 @@ class ApiService {
       : (errorData?.message || errorData?.error?.message || error.message || 'Server error');
 
     if (error.response) {
-      return { success: false, error: errorMessage, statusCode: error.response.status };
+      return {
+        success: false,
+        error: errorMessage,
+        statusCode: error.response.status,
+        isLocked: errorData?.isLocked === true,
+        message: typeof errorData?.message === 'string' ? errorData.message : undefined,
+      };
     }
     return { success: false, error: errorMessage, message: 'Erreur réseau' };
   }

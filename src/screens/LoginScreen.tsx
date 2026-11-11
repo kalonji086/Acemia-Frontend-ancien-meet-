@@ -24,6 +24,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useUser } from '../context/UserContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { APP_VERSION } from '../utils/constants';
+import { signInWithGoogle } from '../services/google-auth';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -85,6 +86,28 @@ export default function LoginScreen({ navigation, route }: any) {
     );
   };
 
+  const completeLogin = async (user: any) => {
+    if (!user) {
+      Alert.alert('Erreur', 'La connexion a réussi, mais le profil utilisateur est incomplet. Réessayez.');
+      return;
+    }
+
+    await setUser(user);
+    try {
+      await AsyncStorage.setItem('last_app_open', Date.now().toString());
+      await AsyncStorage.removeItem('session_requires_password');
+    } catch (storageError) {
+      console.warn('Login: Failed to save last app open timestamp', storageError);
+    }
+
+    setTimeout(() => {
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'ChatList' }],
+      });
+    }, 300);
+  };
+
   const handleLogin = async () => {
     const normalizedEmail = email.trim().toLowerCase();
     if (!normalizedEmail || !password) {
@@ -107,30 +130,7 @@ export default function LoginScreen({ navigation, route }: any) {
         appVersion: APP_VERSION
       });
       if (response.success) {
-        const user = response.data?.user;
-        if (!user) {
-          Alert.alert('Erreur', 'La connexion a réussi, mais le profil utilisateur est incomplet. Réessayez.');
-          return;
-        }
-
-        // 1. Mettre à jour le contexte utilisateur et attendre la persistance
-        await setUser(user);
-
-        // 2. Mettre à jour le timestamp d'ouverture
-        try {
-          await AsyncStorage.setItem('last_app_open', Date.now().toString());
-          await AsyncStorage.removeItem('session_requires_password');
-        } catch (storageError) {
-          console.warn('Login: Failed to save last app open timestamp', storageError);
-        }
-
-        // 3. Petite pause pour laisser le temps au state de se propager avant le switch
-        setTimeout(() => {
-          navigation.reset({
-            index: 0,
-            routes: [{ name: 'ChatList' }],
-          });
-        }, 300);
+        await completeLogin(response.data?.user);
       } else {
         triggerShake();
         if (response.isLocked) {
@@ -149,6 +149,36 @@ export default function LoginScreen({ navigation, route }: any) {
     } catch (error: any) {
       console.error('Login: Authentication failed', error);
       Alert.alert('Erreur', error?.message || 'Une erreur est survenue pendant la connexion.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    setLoading(true);
+    try {
+      const idToken = await signInWithGoogle();
+      if (!idToken) return;
+
+      const response = await apiService.loginWithGoogle({
+        idToken,
+        device_info: await apiService.getDeviceInfo(),
+        appVersion: APP_VERSION,
+      });
+      if (!response.success) {
+        if (response.isLocked) {
+          setIsLocked(true);
+          setLockMessage(response.message || 'Compte bloqué');
+        } else {
+          Alert.alert('Connexion Google', response.error || 'Impossible de se connecter avec Google.');
+        }
+        return;
+      }
+
+      await completeLogin(response.data?.user);
+    } catch (error: any) {
+      console.error('Google login failed:', error);
+      Alert.alert('Connexion Google', error?.message || 'Impossible de se connecter avec Google.');
     } finally {
       setLoading(false);
     }
@@ -358,6 +388,32 @@ export default function LoginScreen({ navigation, route }: any) {
                 {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.loginButtonText}>{mode === 'password_only' ? 'DÉVERROUILLER' : 'SE CONNECTER'}</Text>}
               </TouchableOpacity>
 
+              {mode === 'full' && Platform.OS === 'android' && (
+                <>
+                  <View style={styles.googleDivider}>
+                    <View style={[styles.googleDividerLine, { backgroundColor: colors.border }]} />
+                    <Text style={[styles.googleDividerText, { color: colors.text.secondary }]}>OU</Text>
+                    <View style={[styles.googleDividerLine, { backgroundColor: colors.border }]} />
+                  </View>
+                  <TouchableOpacity
+                    accessibilityRole="button"
+                    accessibilityLabel="Se connecter avec Google"
+                    style={[styles.googleButton, { borderColor: colors.border }, loading && styles.loginButtonDisabled]}
+                    onPress={handleGoogleLogin}
+                    disabled={loading}
+                  >
+                    {loading
+                      ? <ActivityIndicator color={colors.primary} />
+                      : (
+                        <>
+                          <Text style={styles.googleIcon}>G</Text>
+                          <Text style={[styles.googleButtonText, { color: colors.text.primary }]}>Continuer avec Google</Text>
+                        </>
+                      )}
+                  </TouchableOpacity>
+                </>
+              )}
+
               <View style={styles.footerLinks}>
                 {mode === 'full' ? (
                   <TouchableOpacity style={[styles.signupButton, { borderColor: colors.primary }]} onPress={() => navigation.navigate('Signup')}>
@@ -449,6 +505,12 @@ const createStyles = (colors: any, normalize: any, factor: number, isDark: boole
   loginButton: { borderRadius: 15, height: normalize(54), justifyContent: 'center', alignItems: 'center', marginTop: 10, elevation: 3 },
   loginButtonDisabled: { opacity: 0.7 },
   loginButtonText: { color: '#fff', fontSize: normalize(16, factor), fontWeight: 'bold' },
+  googleDivider: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 16 },
+  googleDividerLine: { flex: 1, height: StyleSheet.hairlineWidth },
+  googleDividerText: { fontSize: normalize(11, factor), fontWeight: '700' },
+  googleButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, width: '100%', height: normalize(52), marginTop: 12, borderWidth: 1, borderRadius: 15, backgroundColor: colors.surface },
+  googleIcon: { fontSize: normalize(20, factor), fontWeight: '900', color: '#4285F4' },
+  googleButtonText: { fontSize: normalize(14, factor), fontWeight: '700' },
   footerLinks: { alignItems: 'center', marginTop: 10, width: '100%' },
   signupButton: { backgroundColor: 'transparent', borderRadius: 15, height: normalize(52), justifyContent: 'center', alignItems: 'center', marginTop: 20, borderWidth: 1.5, width: '100%' },
   signupButtonText: { fontSize: normalize(16, factor), fontWeight: 'bold' },
