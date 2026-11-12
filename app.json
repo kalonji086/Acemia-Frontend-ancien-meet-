@@ -2,7 +2,7 @@
   "expo": {
     "name": "Acemia",
     "slug": "meet-me",
-    "version": "8.0.0",
+    "version": "8.0.1",
     "orientation": "portrait",
     "icon": "./assets/AcemiaLogo.png",
     "userInterfaceStyle": "light",
@@ -31,7 +31,7 @@
     "android": {
       "package": "com.deve",
       "googleServicesFile": "./google-services.json",
-      "versionCode": 106,
+      "versionCode": 108,
       "adaptiveIcon": {
         "foregroundImage": "./assets/AcemiaLogo.png",
         "backgroundColor": "#ffffff"

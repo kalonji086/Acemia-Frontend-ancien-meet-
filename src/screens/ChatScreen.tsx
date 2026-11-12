@@ -101,27 +101,58 @@ const normalizeSender = (item: any) => {
 
 const dedupePayload = (item: any) => {
   const raw = item?.message && item?.chatId ? item.message : item;
-  const media = raw?.file || raw?.media || raw?.metadata || raw?.media_metadata || raw?.file_metadata || item?.file || item?.media || item?.metadata || item?.media_metadata || item?.file_metadata || {};
-  const fileUrl = raw?.localUri || raw?.file_url || raw?.fileUrl || raw?.media_url || raw?.mediaUrl || raw?.url || raw?.file?.url || raw?.file?.file_url || raw?.file?.fileUrl || media?.url || media?.file_url || media?.fileUrl || null;
-  const mimeType = raw?.mime_type || raw?.mimeType || raw?.file_mime_type || raw?.fileMimeType || media?.mime_type || media?.mimeType || media?.file_mime_type || media?.fileMimeType || '';
-  const fileName = raw?.file_name || raw?.fileName || raw?.filename || raw?.name || media?.file_name || media?.fileName || media?.filename || media?.name || '';
-  const fileSize = raw?.file_size ?? raw?.size ?? raw?.fileSize ?? media?.file_size ?? media?.size ?? media?.size_bytes ?? null;
+  const media = {
+    ...(item?.media_metadata || {}),
+    ...(raw?.media_metadata || {}),
+    ...(item?.file_metadata || {}),
+    ...(raw?.file_metadata || {}),
+    ...(item?.metadata || {}),
+    ...(raw?.metadata || {}),
+    ...(item?.media || {}),
+    ...(raw?.media || {}),
+    ...(item?.attachment || {}),
+    ...(raw?.attachment || {}),
+    ...(item?.file || {}),
+    ...(raw?.file || {}),
+  };
+  const fileUrl = raw?.localUri || raw?.file_url || raw?.fileUrl || raw?.media_file_url || raw?.media_url || raw?.mediaUrl || raw?.url ||
+    raw?.file?.url || raw?.file?.file_url || raw?.file?.fileUrl || raw?.attachment?.url ||
+    media?.url || media?.file_url || media?.fileUrl || media?.media_file_url || media?.media_url || media?.mediaUrl || media?.localUri || media?.path ||
+    item?.file_url || item?.fileUrl || item?.media_file_url || item?.media_url || item?.mediaUrl || item?.url || null;
+  const mimeType = raw?.mime_type || raw?.mimeType || raw?.file_mime_type || raw?.fileMimeType ||
+    media?.mime_type || media?.mimeType || media?.file_mime_type || media?.fileMimeType || '';
+  const fileName = raw?.file_name || raw?.fileName || raw?.filename || raw?.name || raw?.attachment_name ||
+    media?.file_name || media?.fileName || media?.filename || media?.name || media?.attachment_name ||
+    item?.file_name || item?.fileName || item?.filename || '';
+  const fileSize = raw?.file_size ?? raw?.size ?? raw?.fileSize ??
+    media?.file_size ?? media?.size ?? media?.size_bytes ?? item?.file_size ?? item?.fileSize ?? null;
   const sender = normalizeSender(raw);
   const createdAt = raw?.created_at || raw?.createdAt || item?.created_at || item?.createdAt || new Date().toISOString();
-  const messageType = (raw?.type || raw?.message_type || raw?.messageType || '').toLowerCase();
+  const messageType = (raw?.type || raw?.message_type || raw?.messageType || raw?.media_type || '').toLowerCase();
 
-  let inferredType = messageType || undefined;
-  if (!inferredType) {
-    const urlOrName = `${fileUrl || ''} ${fileName || ''}`.toLowerCase();
-    if (/\.(mp3|m4a|aac|wav|ogg)$/i.test(urlOrName) || /audio\//i.test(mimeType)) inferredType = 'audio';
-    else if (/\.(jpg|jpeg|png|gif|webp|heic|heif)$/i.test(urlOrName) || /image\//i.test(mimeType)) inferredType = 'image';
-    else if (/\.(mp4|mov|webm|m4v)$/i.test(urlOrName) || /video\//i.test(mimeType)) inferredType = 'video';
-    else if (fileUrl || mimeType) inferredType = 'file';
-    else inferredType = 'text';
-  }
+  const mediaHint = `${fileName || ''} ${String(fileUrl || '').split(/[?#]/, 1)[0]}`.toLowerCase();
+  const normalizedMimeType = String(mimeType).toLowerCase();
+  const typeAliases: Record<string, string> = {
+    photo: 'image',
+    picture: 'image',
+    image_message: 'image',
+    document: 'file',
+    attachment: 'file',
+    document_message: 'file',
+    audio_message: 'audio',
+    voice: 'audio',
+    video_message: 'video',
+  };
+  const inferredType = /audio\//i.test(normalizedMimeType) || /\.(mp3|m4a|aac|wav|ogg)$/i.test(mediaHint)
+    ? 'audio'
+    : /image\//i.test(normalizedMimeType) || /\.(jpg|jpeg|png|gif|webp|heic|heif)$/i.test(mediaHint)
+      ? 'image'
+      : /video\//i.test(normalizedMimeType) || /\.(mp4|mov|webm|m4v)$/i.test(mediaHint)
+        ? 'video'
+        : typeAliases[messageType] || (messageType && messageType !== 'text' ? messageType : (fileUrl || mimeType || fileName ? 'file' : 'text'));
 
   const hasFileLikeContent = ['image', 'audio', 'video', 'file'].includes(inferredType);
-  const fallbackName = fileName || (hasFileLikeContent ? 'Document' : '');
+  const fallbackName = fileName || (hasFileLikeContent ? raw?.content || item?.content || 'Document' : '');
 
   return {
     ...item,
@@ -146,7 +177,7 @@ const dedupePayload = (item: any) => {
     type: inferredType,
     created_at: createdAt,
     createdAt,
-    metadata: raw?.metadata || media,
+    metadata: media,
     file_metadata: raw?.file_metadata || media,
   };
 };
@@ -164,11 +195,9 @@ const getFileExtension = (mimeType?: string, fileName?: string) => {
 
 const getFullUrl = (value?: string | null) => {
   if (!value) return null;
-  if (/^https?:\/\//i.test(value) || /^data:/i.test(value) || value.startsWith('file:')) return value;
-  if (value.startsWith('/')) {
-    return `${API_BASE_URL.replace(/\/api\/?$/, '')}${value}`;
-  }
-  return value;
+  if (/^[a-z][a-z\d+.-]*:/i.test(value)) return value;
+  const baseUrl = API_BASE_URL.replace(/\/api\/?$/, '').replace(/\/$/, '');
+  return `${baseUrl}/${value.replace(/^\/+/, '')}`;
 };
 
 const MessageItem = React.memo((props: any) => {
@@ -550,12 +579,12 @@ const createStyles = (colors: any, normalize: any, isDark: boolean, isCompact: b
   quickAction: { alignItems: 'center', justifyContent: 'center', minWidth: 78, minHeight: 72 },
   quickActionIcon: { width: 44, height: 44, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
   quickActionLabel: { fontSize: normalize(11), fontWeight: '600', marginTop: 5 },
-  stickerPanel: { maxHeight: 250, borderTopWidth: StyleSheet.hairlineWidth },
-  stickerPanelHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingTop: 9, paddingBottom: 4 },
-  stickerPanelTitle: { fontSize: normalize(12), fontWeight: '800' },
-  stickerCategoryRow: { paddingHorizontal: 10, paddingVertical: 5, gap: 7 },
-  stickerCategory: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 16 },
-  stickerCategoryText: { fontSize: normalize(11), fontWeight: '700' },
+  stickerPanel: { maxHeight: 250, borderTopWidth: StyleSheet.hairlineWidth, flexShrink: 0 },
+  stickerPanelHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingTop: 10, paddingBottom: 6 },
+  stickerPanelTitle: { fontSize: normalize(13), fontWeight: '800' },
+  stickerCategoryRow: { minHeight: 48, alignItems: 'center', paddingHorizontal: 12, paddingVertical: 6, gap: 8 },
+  stickerCategory: { minHeight: 36, justifyContent: 'center', paddingHorizontal: 14, paddingVertical: 7, borderRadius: 18, borderWidth: 1 },
+  stickerCategoryText: { fontSize: normalize(12), fontWeight: '800' },
   stickerGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-start', paddingHorizontal: 8, paddingBottom: 8 },
   stickerOption: { width: '12.5%', minWidth: 38, height: 42, alignItems: 'center', justifyContent: 'center' },
   stickerText: { fontSize: 25 },
@@ -1617,12 +1646,19 @@ export default function ChatScreen({ navigation, route }: any) {
                 return (
                   <TouchableOpacity
                     key={category}
-                    style={[styles.stickerCategory, { backgroundColor: selected ? colors.primary : isDark ? '#272332' : '#f1eff8' }]}
+                    style={[
+                      styles.stickerCategory,
+                      {
+                        backgroundColor: selected ? colors.primary : colors.surface,
+                        borderColor: selected ? colors.primary : colors.border,
+                      },
+                    ]}
                     onPress={() => setStickerCategory(category)}
                     accessibilityRole="button"
+                    accessibilityLabel={`Catégorie ${category}`}
                     accessibilityState={{ selected }}
                   >
-                    <Text style={[styles.stickerCategoryText, { color: selected ? '#fff' : colors.text.secondary }]}>{category}</Text>
+                    <Text style={[styles.stickerCategoryText, { color: selected ? '#fff' : colors.text.primary }]}>{category}</Text>
                   </TouchableOpacity>
                 );
               })}

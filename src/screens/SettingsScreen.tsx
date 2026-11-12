@@ -209,7 +209,7 @@ export default function SettingsScreen({ navigation }: any) {
     if (enabled) {
       Alert.alert(
         'Partager ma position GPS',
-        'Votre position précise sera visible par l’administrateur principal uniquement pendant l’utilisation de l’application. Le suivi s’arrête en arrière-plan et vous pouvez le désactiver à tout moment.',
+        'L’administrateur principal, chargé de la sécurité, peut consulter votre position précise afin de contribuer à protéger votre compte contre les attaques. Le partage est actif uniquement pendant l’utilisation de l’application et vous pouvez le désactiver à tout moment.',
         [
           { text: t('cancel'), style: 'cancel' },
           { text: 'Continuer', onPress: () => void enableLocationSharing() },

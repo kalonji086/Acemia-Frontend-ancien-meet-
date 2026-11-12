@@ -179,6 +179,15 @@ export default function LoginScreen({ navigation, route }: any) {
         if (response.isLocked) {
           setIsLocked(true);
           setLockMessage(response.message || 'Compte bloqué');
+        } else if (response.statusCode === 404) {
+          Alert.alert(
+            'Aucun compte Acemia trouvé',
+            'Cette adresse Google n’est associée à aucun compte Acemia. Vous pouvez créer un compte pour continuer.',
+            [
+              { text: 'Annuler', style: 'cancel' },
+              { text: 'Créer un compte', onPress: () => navigation.navigate('Signup') },
+            ]
+          );
         } else {
           Alert.alert('Connexion Google', response.error || 'Impossible de se connecter avec Google.');
         }
