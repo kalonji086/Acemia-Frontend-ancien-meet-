@@ -3,7 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
@@ -11,6 +10,7 @@ import {
   useWindowDimensions,
   Dimensions
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, BarChart3, PieChart, TrendingUp, Users, DollarSign, Calendar, Download, FileText, RefreshCw } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
 import apiService from '../services/api.service';

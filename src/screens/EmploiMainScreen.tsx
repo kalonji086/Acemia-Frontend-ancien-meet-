@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, Image,
-  ScrollView, SafeAreaView, ActivityIndicator, Alert,
+  ScrollView, ActivityIndicator, Alert,
   useWindowDimensions
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Briefcase, Building2, Search, ArrowRight, CheckCircle2, Clock, ShieldCheck, ArrowLeft } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';

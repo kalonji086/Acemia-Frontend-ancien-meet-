@@ -3,7 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   FlatList,
   TouchableOpacity,
   TextInput,
@@ -13,6 +12,7 @@ import {
   ScrollView,
   Share
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, Plus, Users, Trash2, Edit, Search, Check, Copy, UserPlus, Filter } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
 import apiService from '../services/api.service';

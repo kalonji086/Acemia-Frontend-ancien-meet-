@@ -5,7 +5,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
-  SafeAreaView,
   StatusBar,
   Alert,
   TextInput,
@@ -15,6 +14,7 @@ import {
   FlatList,
   Keyboard,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { normalize } from '../styles/theme';
 import apiService from '../services/api.service';

@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, SafeAreaView, ScrollView, Modal,
+  View, Text, StyleSheet, ScrollView, Modal,
   TouchableOpacity, Image, ActivityIndicator, Alert,
   TextInput, KeyboardAvoidingView, Platform, FlatList,
   useWindowDimensions
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   ArrowLeft, MapPin, Briefcase, DollarSign, Clock,
   Send, MessageCircle, Building2, CheckCircle2, User, X

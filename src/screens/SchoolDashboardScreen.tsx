@@ -3,7 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
@@ -12,6 +11,7 @@ import {
   Modal,
   Image,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, ChevronRight, Users, GraduationCap, BookOpen, DollarSign, Clock, RefreshCw, Menu, X, School, Search } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
 import apiService from '../services/api.service';

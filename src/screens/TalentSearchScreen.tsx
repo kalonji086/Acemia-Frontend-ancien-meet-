@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, SafeAreaView, FlatList,
+  View, Text, StyleSheet, FlatList,
   TouchableOpacity, Image, TextInput, ActivityIndicator
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Search, MapPin, User, ChevronRight, ArrowLeft, MessageCircle } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
 import apiService from '../services/api.service';

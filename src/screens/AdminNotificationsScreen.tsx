@@ -5,13 +5,13 @@ import {
   FlatList,
   Platform,
   RefreshControl,
-  SafeAreaView,
   StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { ArrowLeft, Bell, Check } from 'lucide-react-native';
 import * as Notifications from 'expo-notifications';

@@ -1,10 +1,11 @@
 import { useState, useEffect, useMemo } from 'react';
 import type { LucideIcon } from 'lucide-react-native';
 import {
-  View, Text, StyleSheet, SafeAreaView, FlatList,
+  View, Text, StyleSheet, FlatList,
   TouchableOpacity, Image, TextInput, ActivityIndicator, Alert,
   ScrollView, useWindowDimensions
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Search, Filter, MapPin, Briefcase, DollarSign, Clock, ChevronRight, LayoutGrid, Zap, Monitor, HeartPulse, Hammer, ArrowLeft } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
 import apiService from '../services/api.service';

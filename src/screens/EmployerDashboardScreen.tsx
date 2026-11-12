@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, SafeAreaView, ScrollView,
+  View, Text, StyleSheet, ScrollView,
   TouchableOpacity, ActivityIndicator, FlatList,
   useWindowDimensions
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   Plus, Users, Briefcase, TrendingUp, ChevronRight,
   Settings, Bell, Search, Filter, ArrowLeft
