@@ -8,6 +8,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Linking,
   Image,
   ImageBackground,
   Alert,
@@ -23,7 +24,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
 import { useUser } from '../context/UserContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { APP_VERSION } from '../utils/constants';
+import { APP_VERSION, SOCKET_URL } from '../utils/constants';
 import { signInWithGoogle } from '../services/google-auth';
 import Animated, {
   useSharedValue,
@@ -84,6 +85,15 @@ export default function LoginScreen({ navigation, route }: any) {
       withRepeat(withTiming(10, { duration: 100 }), 5, true),
       withTiming(0, { duration: 50 })
     );
+  };
+
+  const openAccountDeletionPage = async () => {
+    try {
+      await Linking.openURL(`${SOCKET_URL}/delete-account`);
+    } catch (error) {
+      console.error('Login: Failed to open account deletion page', error);
+      Alert.alert('Erreur', 'Impossible d’ouvrir la page de demande de suppression de compte.');
+    }
   };
 
   const completeLogin = async (user: any) => {
@@ -450,6 +460,18 @@ export default function LoginScreen({ navigation, route }: any) {
                     <Text style={[styles.legalFooterLink, { color: colors.text.secondary }]}>Confidentialité</Text>
                   </TouchableOpacity>
                 </View>
+
+                <TouchableOpacity
+                  accessibilityRole="link"
+                  accessibilityLabel="Demander la suppression de mon compte"
+                  onPress={openAccountDeletionPage}
+                  hitSlop={8}
+                  style={styles.deleteAccountLink}
+                >
+                  <Text style={[styles.legalFooterLink, { color: colors.text.secondary }]}>
+                    Demander la suppression de mon compte
+                  </Text>
+                </TouchableOpacity>
               </View>
             </Animated.View>
           </View>
@@ -523,4 +545,5 @@ const createStyles = (colors: any, normalize: any, factor: number, isDark: boole
   legalFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: 22, paddingVertical: 6 },
   legalFooterLink: { fontSize: normalize(11, factor), fontWeight: '600', textDecorationLine: 'underline', textAlign: 'center' },
   legalFooterDivider: { width: 1, height: 13 },
+  deleteAccountLink: { marginTop: 10, paddingVertical: 6 },
 });
