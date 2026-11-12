@@ -31,7 +31,7 @@
     "android": {
       "package": "com.deve",
       "googleServicesFile": "./google-services.json",
-      "versionCode": 108,
+      "versionCode": 109,
       "adaptiveIcon": {
         "foregroundImage": "./assets/AcemiaLogo.png",
         "backgroundColor": "#ffffff"
