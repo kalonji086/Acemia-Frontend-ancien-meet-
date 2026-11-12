@@ -10,8 +10,10 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { ArrowLeft, ChevronRight, RefreshCw, Scale } from 'lucide-react-native';
+import io from 'socket.io-client';
 import { useTheme } from '../context/ThemeContext';
 import apiService from '../services/api.service';
+import { SOCKET_URL } from '../utils/constants';
 
 type LegalDocumentType = 'tos' | 'privacy';
 export type LegalBlock = { type: 'heading' | 'paragraph' | 'bullet'; text: string };
@@ -68,6 +70,7 @@ export default function LegalDocumentScreen({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const scrollRef = useRef<ScrollView>(null);
+  const loadRequest = useRef(0);
   const sectionOffsets = useRef<number[]>([]);
   const documentCardOffset = useRef(0);
   const title = type === 'privacy' ? 'Politique de confidentialité' : 'Conditions d’utilisation';
@@ -78,6 +81,7 @@ export default function LegalDocumentScreen({
   );
 
   const loadDocument = useCallback(async () => {
+    const requestId = ++loadRequest.current;
     try {
       const response = await apiService.getLegalDocs();
       if (!response.success || !Array.isArray(response.data)) {
@@ -85,25 +89,54 @@ export default function LegalDocumentScreen({
       }
       const current = response.data.find((item: any) => item.type === type);
       if (!current || typeof current.content !== 'string' || !current.content.trim()) {
+        if (requestId !== loadRequest.current) return;
         setDocument(null);
         setError('Ce document n’est pas encore publié.');
         return;
       }
+      if (requestId !== loadRequest.current) return;
       setDocument({ content: current.content, version: String(current.version || '') });
       setError(null);
     } catch (loadError) {
+      if (requestId !== loadRequest.current) return;
       console.error(`Unable to load ${type} legal document:`, loadError);
       setError('Impossible de charger le document. Vérifiez votre connexion puis réessayez.');
     } finally {
-      setLoading(false);
+      if (requestId === loadRequest.current) setLoading(false);
     }
   }, [type]);
 
   useFocusEffect(useCallback(() => {
+    const socket = io(`${SOCKET_URL.replace(/\/$/, '')}/legal`, {
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+    });
+    const handleLegalUpdate = (updated: any) => {
+      if (updated?.type !== type || typeof updated.content !== 'string' || !updated.content.trim()) return;
+      loadRequest.current += 1;
+      setDocument({ content: updated.content, version: String(updated.version || '') });
+      setError(null);
+      setLoading(false);
+    };
+    const handleLegalRemoval = (removed: any) => {
+      if (removed?.type !== type) return;
+      loadRequest.current += 1;
+      setDocument(null);
+      setError('Ce document n’est pas encore publié.');
+      setLoading(false);
+    };
+
+    socket.on('legal_update', handleLegalUpdate);
+    socket.on('legal_removed', handleLegalRemoval);
+    socket.on('connect', loadDocument);
     loadDocument();
     const refresh = setInterval(loadDocument, 30_000);
-    return () => clearInterval(refresh);
-  }, [loadDocument]));
+    return () => {
+      clearInterval(refresh);
+      loadRequest.current += 1;
+      socket.disconnect();
+    };
+  }, [loadDocument, type]));
 
   const background = isDark ? '#171520' : '#f7f5ff';
   const surface = isDark ? colors.surface : '#ffffff';
