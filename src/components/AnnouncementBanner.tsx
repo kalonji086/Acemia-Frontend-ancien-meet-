@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { AppState, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
-import { Megaphone, X } from 'lucide-react-native';
+import { Alert, AppState, Linking, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { ExternalLink, Megaphone, X } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
 import apiService from '../services/api.service';
 import socketService from '../services/socket.service';
@@ -9,6 +10,7 @@ interface Announcement {
   id: number | string;
   title: string;
   content: string;
+  link_url?: string | null;
   type: 'info' | 'update' | 'maintenance' | 'important';
 }
 
@@ -21,6 +23,7 @@ const typeLabels: Record<Announcement['type'], string> = {
 
 export default function AnnouncementBanner() {
   const { colors, normalize } = useTheme();
+  const navigation = useNavigation<any>();
   const { width } = useWindowDimensions();
   const [announcement, setAnnouncement] = useState<Announcement | null>(null);
   const [dismissedId, setDismissedId] = useState<string | number | null>(null);
@@ -69,6 +72,75 @@ export default function AnnouncementBanner() {
     ? colors.warning
     : colors.primary;
   const canExpand = announcement.content.length > (compact ? 90 : 150);
+  const openAnnouncementLink = async () => {
+    const target = announcement.link_url?.trim();
+    if (!target) return;
+
+    if (target.startsWith('/')) {
+      const path = target.split(/[?#]/, 1)[0].toLowerCase();
+      const routeByPath: Record<string, string> = {
+        '/chats': 'ChatList',
+        '/settings': 'Settings',
+        '/contacts': 'Contacts',
+        '/status/create': 'CreateStatus',
+        '/contacts/add': 'AddContact',
+        '/profile/edit': 'EditProfile',
+        '/privacy': 'PrivacyPolicy',
+        '/privacy-policy': 'PrivacyPolicy',
+        '/terms': 'TermsOfService',
+        '/terms-of-service': 'TermsOfService',
+        '/groups/create': 'CreateGroup',
+        '/business': 'BusinessDashboard',
+        '/emploi': 'EmploiMain',
+        '/employer-dashboard': 'EmployerDashboard',
+        '/school/request': 'SchoolRequest',
+        '/school/dashboard': 'SchoolDashboard',
+        '/school/students': 'SchoolStudents',
+        '/school/schedule': 'SchoolSchedule',
+        '/school/fees': 'SchoolFees',
+        '/school/accounts': 'SchoolAccounts',
+        '/school/classes': 'SchoolClasses',
+        '/school/settings': 'SchoolSettings',
+        '/school/login': 'SchoolLogin',
+        '/school/student-dashboard': 'StudentDashboard',
+        '/school/parent-dashboard': 'ParentDashboard',
+        '/school/grades': 'SchoolGrades',
+        '/school/attendance': 'SchoolAttendance',
+        '/school/reports': 'SchoolReports',
+      };
+      const route = routeByPath[path];
+      if (route) {
+        navigation.navigate(route);
+        return;
+      }
+
+      const chatMatch = path.match(/^\/chat\/([^/]+)$/);
+      if (chatMatch) {
+        navigation.navigate('Chat', { chatId: decodeURIComponent(chatMatch[1]) });
+        return;
+      }
+      const statusMatch = path.match(/^\/status\/view\/([^/]+)$/);
+      if (statusMatch) {
+        navigation.navigate('ViewStatus', { statusId: decodeURIComponent(statusMatch[1]) });
+        return;
+      }
+
+      Alert.alert('Lien indisponible', 'Cette page interne n’est pas prise en charge dans l’application.');
+      return;
+    }
+
+    if (!/^https:\/\//i.test(target)) {
+      Alert.alert('Lien indisponible', 'Seuls les liens HTTPS externes peuvent être ouverts.');
+      return;
+    }
+
+    try {
+      await Linking.openURL(target);
+    } catch (error) {
+      console.error('Unable to open announcement link:', error);
+      Alert.alert('Lien indisponible', 'Impossible d’ouvrir cette destination.');
+    }
+  };
 
   return (
     <View
@@ -106,6 +178,19 @@ export default function AnnouncementBanner() {
             <Text style={[styles.expandLabel, { color: tone }]}>
               {expanded ? 'Réduire' : 'Lire la suite'}
             </Text>
+          </TouchableOpacity>
+        )}
+        {announcement.link_url && (
+          <TouchableOpacity
+            accessibilityRole="link"
+            accessibilityLabel={announcement.link_url.startsWith('/') ? 'Ouvrir la page dans Acemia' : 'Ouvrir le site externe'}
+            onPress={() => void openAnnouncementLink()}
+            style={[styles.destinationButton, { backgroundColor: `${tone}12` }]}
+          >
+            <Text style={[styles.destinationLabel, { color: tone }]}>
+              {announcement.link_url.startsWith('/') ? 'Ouvrir la page' : 'Ouvrir le site'}
+            </Text>
+            <ExternalLink size={normalize(14)} color={tone} />
           </TouchableOpacity>
         )}
       </View>
@@ -152,5 +237,7 @@ const styles = StyleSheet.create({
   message: { fontSize: 13, lineHeight: 18 },
   expandButton: { alignSelf: 'flex-start', marginTop: 4, paddingVertical: 2 },
   expandLabel: { fontSize: 12, fontWeight: '700' },
+  destinationButton: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 6, marginTop: 8, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 9 },
+  destinationLabel: { fontSize: 12, fontWeight: '800' },
   closeButton: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
 });
