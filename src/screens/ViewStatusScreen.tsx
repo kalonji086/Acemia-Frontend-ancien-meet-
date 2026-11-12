@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   Image,
-  SafeAreaView,
   StatusBar,
   useWindowDimensions,
   TouchableOpacity,
@@ -12,10 +11,12 @@ import {
   KeyboardAvoidingView,
   Platform,
   FlatList,
+  ScrollView,
   ActivityIndicator,
   Alert,
   Animated,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, normalize } from '../styles/theme';
 import apiService from '../services/api.service';
@@ -71,6 +72,7 @@ const AnimatedFloatingEmoji = ({ emoji }: { emoji: string }) => {
 export default function ViewStatusScreen({ navigation, route }: any) {
   const { width } = useWindowDimensions();
   const userStatus = route?.params?.userStatus;
+  const statuses = Array.isArray(userStatus?.statuses) ? userStatus.statuses : [];
   const [currentIndex, setCurrentIndex] = useState(0);
   const progressAnim = useRef(new Animated.Value(0)).current;
   const [isPaused, setIsPaused] = useState(false);
@@ -78,20 +80,19 @@ export default function ViewStatusScreen({ navigation, route }: any) {
   const [reactions, setReactions] = useState<any[]>([]);
   const [showReactions, setShowReactions] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [viewerLoaded, setViewerLoaded] = useState(false);
   const [sending, setSending] = useState(false);
   const [floatingEmojis, setFloatingEmojis] = useState<any[]>([]);
+  const insets = useSafeAreaInsets();
+  const currentStatus = statuses[currentIndex] || null;
+  const isOwner = Boolean(viewerLoaded && currentUser?.id && String(currentUser.id) === String(userStatus?.user_id));
 
   // Sécurité si les données sont absentes
   useEffect(() => {
-    if (!userStatus) {
+    if (!statuses.length) {
       navigation.navigate('ChatList');
     }
-  }, [userStatus]);
-
-  if (!userStatus || !userStatus.statuses) return null;
-
-  const currentStatus = userStatus.statuses[currentIndex];
-  const isOwner = String(currentUser?.id) === String(userStatus.user_id);
+  }, [navigation, statuses.length]);
 
   const getFullUrl = (url: string) => {
     if (!url || url === 'null') return null;
@@ -104,15 +105,36 @@ export default function ViewStatusScreen({ navigation, route }: any) {
   };
 
   useEffect(() => {
-    const fetchUser = async () => {
-      const user = await apiService.getCurrentUser();
-      setCurrentUser(user);
-      if (user && String(user.id) !== String(userStatus.user_id)) {
-        await apiService.markStatusAsViewed(currentStatus.id);
-      }
-    };
-    fetchUser().catch((error) => console.error('Unable to load status viewer', error));
-    fetchReactions();
+    let active = true;
+    apiService.getCurrentUser()
+      .then(user => {
+        if (!active) return;
+        setCurrentUser(user);
+        setViewerLoaded(true);
+      })
+      .catch(error => {
+        console.error('Unable to load status viewer:', error);
+        if (active) setViewerLoaded(true);
+      });
+
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    if (!currentStatus) {
+      setReactions([]);
+      return;
+    }
+
+    let active = true;
+    setReactions([]);
+    apiService.getStatusReactions(currentStatus.id)
+      .then(response => {
+        if (active && response.success) setReactions(Array.isArray(response.data) ? response.data : []);
+      })
+      .catch(error => {
+        if (active) console.error('Unable to load status reactions:', error);
+      });
 
     // Écouter les réactions en temps réel
     const onRealTimeReaction = (data: any) => {
@@ -127,16 +149,16 @@ export default function ViewStatusScreen({ navigation, route }: any) {
     SocketService.on('status:reacted', onRealTimeReaction);
 
     return () => {
+      active = false;
       SocketService.off('status:reacted', onRealTimeReaction);
     };
-  }, [currentIndex, currentStatus.id]);
+  }, [currentStatus?.id]);
 
-  const fetchReactions = async () => {
-    try {
-      const response = await apiService.getStatusReactions(currentStatus.id);
-      if (response.success) setReactions(response.data);
-    } catch (e) { console.error(e); }
-  };
+  useEffect(() => {
+    if (!currentStatus || !viewerLoaded || !currentUser?.id || isOwner) return;
+    apiService.markStatusAsViewed(currentStatus.id)
+      .catch(error => console.error('Unable to mark status as viewed:', error));
+  }, [currentStatus?.id, currentUser?.id, isOwner, viewerLoaded]);
 
   useEffect(() => {
     if (!isPaused && !showReactions && currentStatus) {
@@ -161,7 +183,7 @@ export default function ViewStatusScreen({ navigation, route }: any) {
   }, [currentIndex, isPaused, showReactions, currentStatus]);
 
   const nextStatus = () => {
-    if (currentIndex < userStatus.statuses.length - 1) {
+    if (currentIndex < statuses.length - 1) {
       setCurrentIndex(currentIndex + 1);
       progressAnim.setValue(0);
     } else {
@@ -192,57 +214,59 @@ export default function ViewStatusScreen({ navigation, route }: any) {
   };
 
   const sendReaction = async (content: string, type: 'emoji' | 'comment' | 'like') => {
+    if (!currentStatus || !currentUser?.id || isOwner) return;
     if (!content.trim() && type === 'comment') return;
 
-    if (type === 'emoji') {
-      // Effet visuel immédiat (Floating Emoji)
-      const id = Date.now();
-      setFloatingEmojis(prev => [...prev, { id, emoji: content }]);
+    const emojiId = type === 'emoji' ? Date.now() : null;
+    if (emojiId !== null) {
+      setFloatingEmojis(prev => [...prev, { id: emojiId, emoji: content }]);
       setTimeout(() => {
-        setFloatingEmojis(prev => prev.filter(e => e.id !== id));
+        setFloatingEmojis(prev => prev.filter(e => e.id !== emojiId));
       }, 2000);
-
-      // Pour que ça s'affiche dans la chatlist, on crée une discussion et on envoie un message
-      try {
-        const chatRes = await apiService.createChat([userStatus.user_id]);
-        if (chatRes.success) {
-          const msgPrefix = (type as string) === 'like' ? "A aimé votre statut" : "A réagi à votre statut : ";
-          await apiService.sendMessage(chatRes.data.id, `${msgPrefix}${content}`);
-        }
-      } catch (e) { console.error('Error sending emoji message:', e); }
-
-      // Appel API de réaction
-      apiService.addStatusReaction(currentStatus.id, { content, type })
-        .catch(e => console.error('Silent emoji error:', e));
-
-      return;
     }
 
     setSending(true);
     setIsPaused(true);
     try {
       const reactionRes = await apiService.addStatusReaction(currentStatus.id, { content, type });
-      
-      if (reactionRes.success) {
-        if (type === 'comment') {
-          const chatRes = await apiService.createChat([userStatus.user_id]);
-          if (chatRes.success) {
-            const msgPrefix = "A commenté votre statut : ";
-            await apiService.sendMessage(chatRes.data.id, `${msgPrefix}${content}`);
+      if (!reactionRes.success) {
+        throw new Error(reactionRes.error || 'La réaction n’a pas pu être envoyée.');
+      }
+
+      if (type === 'comment') setComment('');
+
+      try {
+        const chatRes = await apiService.createChat([userStatus.user_id]);
+        if (chatRes.success) {
+          const message = type === 'comment'
+            ? `A commenté votre statut : ${content}`
+            : `A réagi à votre statut : ${content}`;
+          const messageRes = await apiService.sendMessage(chatRes.data.id, message);
+          if (!messageRes.success) {
+            console.error('Unable to send status reaction message:', messageRes.error);
           }
-          setComment('');
+        } else {
+          console.error('Unable to create chat for status reaction:', chatRes.error);
         }
+      } catch (error) {
+        console.error('Unable to send status reaction message:', error);
       }
     } catch (error) {
       console.error('Send reaction error:', error);
+      if (emojiId !== null) setFloatingEmojis(prev => prev.filter(item => item.id !== emojiId));
+      Alert.alert('Erreur', error instanceof Error ? error.message : 'Impossible d’envoyer la réaction.');
     } finally {
       setSending(false);
-      if (type === 'comment') setIsPaused(false);
+      setIsPaused(false);
     }
   };
 
+  if (!currentStatus) {
+    return <View style={[styles.container, { backgroundColor: '#000' }]} />;
+  }
+
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: currentStatus.type === 'text' ? currentStatus.background_color : '#000' }]}>
+    <View style={[styles.container, { backgroundColor: currentStatus.type === 'text' ? currentStatus.background_color : '#000' }]}>
       <StatusBar hidden />
       <View style={styles.mainContainer}>
         <TouchableOpacity activeOpacity={1} onPress={handlePress} onLongPress={() => setIsPaused(true)} onPressOut={() => setIsPaused(false)} style={styles.touchArea}>
@@ -253,9 +277,9 @@ export default function ViewStatusScreen({ navigation, route }: any) {
             <AnimatedFloatingEmoji key={e.id} emoji={e.emoji} />
           ))}
 
-          <View style={styles.overlay}>
+          <View style={[styles.overlay, { paddingTop: Math.max(insets.top, 10), paddingBottom: insets.bottom }]}>
             <View style={styles.progressContainer}>
-              {userStatus.statuses.map((_: any, index: number) => (
+              {statuses.map((_: any, index: number) => (
                 <View key={index} style={styles.progressBarBg}>
                   <Animated.View 
                     style={[
@@ -283,9 +307,11 @@ export default function ViewStatusScreen({ navigation, route }: any) {
                     const now = new Date();
                     const hoursDiff = (now.getTime() - statusDate.getTime()) / (1000 * 60 * 60);
                     
-                    if (hoursDiff < 1) {
+                    if (!Number.isFinite(hoursDiff) || hoursDiff < 1) {
                       const minutes = Math.floor(hoursDiff * 60);
-                      return `${minutes} minute${minutes > 1 ? 's' : ''}`;
+                      return hoursDiff < 0 || !Number.isFinite(hoursDiff)
+                        ? 'À l’instant'
+                        : `${minutes} minute${minutes > 1 ? 's' : ''}`;
                     } else if (hoursDiff < 24) {
                       return `${Math.floor(hoursDiff)} heure${Math.floor(hoursDiff) > 1 ? 's' : ''}`;
                     } else {
@@ -299,7 +325,17 @@ export default function ViewStatusScreen({ navigation, route }: any) {
                 <Ionicons name="close" size={28} color="#fff" />
               </TouchableOpacity>
             </View>
-            {currentStatus.type === 'text' && <View style={styles.textContainer}><Text style={styles.statusText}>{currentStatus.content}</Text></View>}
+            {currentStatus.type === 'text' && (
+              <View style={styles.textContainer}>
+                <ScrollView
+                  contentContainerStyle={styles.textStatusContent}
+                  showsVerticalScrollIndicator={false}
+                  nestedScrollEnabled
+                >
+                  <Text style={styles.statusText}>{currentStatus.content}</Text>
+                </ScrollView>
+              </View>
+            )}
 
             <View style={styles.bottomSection}>
               {isOwner && (
@@ -317,8 +353,11 @@ export default function ViewStatusScreen({ navigation, route }: any) {
           </View>
         </TouchableOpacity>
 
-        {!isOwner && (
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.interactionArea}>
+        {viewerLoaded && currentUser?.id && !isOwner && (
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={[styles.interactionArea, { paddingBottom: Math.max(insets.bottom, 20) }]}
+          >
             <View style={styles.quickEmojis}>
               {QUICK_EMOJIS.map(emoji => (
                 <TouchableOpacity key={emoji} onPress={() => sendReaction(emoji, 'emoji')} disabled={sending}>
@@ -345,7 +384,7 @@ export default function ViewStatusScreen({ navigation, route }: any) {
       </View>
 
       {showReactions && (
-        <View style={styles.reactionsModal}>
+        <View style={[styles.reactionsModal, { paddingBottom: Math.max(insets.bottom, 20) }]}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Réactions et réponses</Text>
             <TouchableOpacity onPress={() => setShowReactions(false)}><Ionicons name="close" size={24} color="#000" /></TouchableOpacity>
@@ -365,7 +404,7 @@ export default function ViewStatusScreen({ navigation, route }: any) {
           />
         </View>
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -383,7 +422,8 @@ const styles = StyleSheet.create({
   avatar: { width: 40, height: 40, borderRadius: 20, marginRight: 10, borderWidth: 1, borderColor: '#fff' },
   userName: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
   time: { color: 'rgba(255,255,255,0.8)', fontSize: 12 },
-  textContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 30 },
+  textContainer: { flex: 1, paddingHorizontal: 20 },
+  textStatusContent: { flexGrow: 1, justifyContent: 'center', paddingVertical: 24 },
   statusText: { color: '#fff', fontSize: normalize(28), textAlign: 'center' },
   bottomSection: { marginBottom: 10, width: '100%' },
   captionContainer: { paddingHorizontal: 20, marginBottom: 5, alignItems: 'center' },

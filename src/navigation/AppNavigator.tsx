@@ -385,7 +385,7 @@ export default function AppNavigator() {
         <Stack.Screen
           name="Settings"
           component={SettingsScreen}
-          options={{ headerTitle: 'Paramètres' }}
+          options={{ headerShown: false }}
         />
         <Stack.Screen
           name="AdminNotifications"

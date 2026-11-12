@@ -7,7 +7,6 @@ import {
   Switch,
   ScrollView,
   Image,
-  SafeAreaView,
   Alert,
   ActivityIndicator,
   StatusBar,
@@ -31,7 +30,7 @@ import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import * as Location from 'expo-location';
 import { AppState, Linking, Platform, useWindowDimensions } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import EditProfileScreen from './EditProfileScreen';
 import SecurityPrivacyScreen from './SecurityPrivacyScreen';
 import PrivacyPolicyScreen from './PrivacyPolicyScreen';
@@ -587,7 +586,10 @@ export default function SettingsScreen({ navigation }: any) {
 
   if (isTablet) {
     return (
-      <View style={[dynamicStyles.container, { flexDirection: 'row' }]}>
+      <SafeAreaView
+        edges={['top', 'left', 'right']}
+        style={[dynamicStyles.container, { flexDirection: 'row' }]}
+      >
         <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={colors.surface} />
         <View style={{ width: 350, flex: 1, borderRightWidth: 1, borderRightColor: colors.divider }}>
           {renderMasterPane()}
@@ -641,12 +643,12 @@ export default function SettingsScreen({ navigation }: any) {
         </Modal>
 
         <FeedbackModal />
-      </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={dynamicStyles.container}>
+    <SafeAreaView edges={['top', 'left', 'right']} style={dynamicStyles.container}>
       <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={colors.surface} />
       {renderMasterPane()}
       <FeedbackModal />
