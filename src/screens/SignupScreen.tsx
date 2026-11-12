@@ -29,6 +29,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useUser } from '../context/UserContext';
 import { CountryPicker } from 'react-native-country-codes-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { signInWithGoogleAccount } from '../services/google-auth';
 import { APP_VERSION } from '../utils/constants';
 import { RDC_PROVINCES, GENDERS } from '../utils/locations';
 
@@ -75,6 +76,13 @@ const createStyles = (colors: any, normalize: any, isDark: boolean, width: numbe
   signupButton: { borderRadius: 14, height: normalize(52), justifyContent: 'center', alignItems: 'center', marginTop: 18, elevation: 2 },
   disabledButton: { opacity: 0.5 },
   signupButtonText: { color: '#fff', fontSize: normalize(14), fontWeight: 'bold', letterSpacing: 1 },
+  googleDivider: { flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 16 },
+  googleDividerLine: { flex: 1, height: StyleSheet.hairlineWidth },
+  googleDividerText: { fontSize: normalize(11), fontWeight: '700' },
+  googleButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, width: '100%', height: normalize(52), borderWidth: 1, borderRadius: 14, backgroundColor: colors.surface },
+  googleIcon: { fontSize: normalize(20), fontWeight: '900', color: '#4285F4' },
+  googleButtonText: { fontSize: normalize(14), fontWeight: '700' },
+  googleVerifiedText: { fontSize: normalize(12), fontWeight: '700', marginBottom: 12 },
   loginLink: { marginTop: 22, alignItems: 'center', paddingBottom: 4 },
   loginLinkText: { fontSize: normalize(14) },
   labelSmall: { fontSize: normalize(11), fontWeight: '700', marginBottom: 5, marginLeft: 5, textTransform: 'uppercase' },
@@ -129,6 +137,7 @@ export default function SignupScreen({ navigation }: any) {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [acceptedPrivacy, setAcceptedPrivacy] = useState(false);
+  const [googleIdToken, setGoogleIdToken] = useState<string | null>(null);
 
   const [emailError, setEmailError] = useState('');
   const [phoneError, setPhoneError] = useState('');
@@ -327,7 +336,7 @@ export default function SignupScreen({ navigation }: any) {
       const normalizedPseudo = pseudo.trim();
       if (!normalizedPseudo) { Alert.alert('Erreur', 'L\'identifiant est requis'); return; }
       if (!email.trim()) { Alert.alert('Erreur', 'L\'adresse email est requise'); return; }
-      if (!password) { Alert.alert('Erreur', 'Le mot de passe est requis'); return; }
+      if (!googleIdToken && !password) { Alert.alert('Erreur', 'Le mot de passe est requis'); return; }
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
         Alert.alert('Erreur', 'Veuillez saisir une adresse email valide.');
         return;
@@ -336,7 +345,7 @@ export default function SignupScreen({ navigation }: any) {
         Alert.alert('Erreur', 'Le pseudo doit contenir au moins 3 caractères : lettres, chiffres, point ou soulignement.');
         return;
       }
-      if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])/.test(password) || password.length < 8) {
+      if (!googleIdToken && (!/(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])/.test(password) || password.length < 8)) {
         Alert.alert('Erreur', 'Le mot de passe doit contenir au moins 8 caractères, une majuscule, une minuscule et un chiffre.');
         return;
       }
@@ -407,6 +416,48 @@ export default function SignupScreen({ navigation }: any) {
     else navigation.goBack();
   };
 
+  const handleGoogleSignup = async () => {
+    setLoading(true);
+    try {
+      const googleAccount = await signInWithGoogleAccount();
+      if (!googleAccount) return;
+
+      const deviceInfo = await apiService.getDeviceInfo();
+      const loginResponse = await apiService.loginWithGoogle({
+        idToken: googleAccount.idToken,
+        device_info: deviceInfo,
+        appVersion: APP_VERSION,
+      });
+
+      if (loginResponse.success && loginResponse.data?.user) {
+        await setUser(loginResponse.data.user);
+        await AsyncStorage.setItem('last_app_open', Date.now().toString());
+        navigation.reset({ index: 0, routes: [{ name: 'ChatList' }] });
+        return;
+      }
+
+      if (loginResponse.statusCode !== 404) {
+        throw new Error(loginResponse.error || 'Impossible de vérifier le compte Google.');
+      }
+
+      setGoogleIdToken(googleAccount.idToken);
+      setEmail(googleAccount.email.trim().toLowerCase());
+      setFullName(googleAccount.name.trim());
+      setEmailError('');
+      setEmailTaken(false);
+      setStep(1);
+      Alert.alert(
+        'Compte Google vérifié',
+        'Complétez votre profil et acceptez les conditions pour créer votre compte Acemia.'
+      );
+    } catch (error: any) {
+      console.error('Signup: Google account verification failed', error);
+      Alert.alert('Inscription avec Google', error?.message || 'Impossible de continuer avec Google.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSignup = async () => {
     if (!acceptedPrivacy) {
       Alert.alert('Erreur', t('privacyError'));
@@ -421,6 +472,7 @@ export default function SignupScreen({ navigation }: any) {
       const formattedBirthDate = (birthDate.day && birthDate.month && birthDate.year)
         ? `${birthDate.year}-${birthDate.month.padStart(2, '0')}-${birthDate.day.padStart(2, '0')}`
         : null;
+      if (!formattedBirthDate) throw new Error('Veuillez compléter votre date de naissance.');
 
       const [deviceInfo, legalResponse] = await Promise.all([
         apiService.getDeviceInfo(),
@@ -435,10 +487,8 @@ export default function SignupScreen({ navigation }: any) {
 
       console.log('Signup: Attempting registration...');
 
-      const response = await apiService.register({
+      const registrationData = {
         name: fullName.trim(),
-        email: email.trim().toLowerCase(),
-        password,
         phone_number: fullPhone,
         username: pseudo.trim() || undefined,
         gender,
@@ -452,7 +502,14 @@ export default function SignupScreen({ navigation }: any) {
         accepted_legal_version: tosVersion,
         accepted_tos_version: tosVersion,
         accepted_privacy_version: privacyVersion,
-      });
+      };
+      const response = googleIdToken
+        ? await apiService.registerWithGoogle({ idToken: googleIdToken, ...registrationData })
+        : await apiService.register({
+          ...registrationData,
+          email: email.trim().toLowerCase(),
+          password,
+        });
 
       if (!response || !response.success) {
         throw new Error(response?.error || 'Échec de la création du compte');
@@ -599,6 +656,38 @@ export default function SignupScreen({ navigation }: any) {
             </Text>
             {step === 1 && (
               <View style={styles.animateStep}>
+                {Platform.OS === 'android' && !googleIdToken && (
+                <>
+                  <TouchableOpacity
+                    accessibilityRole="button"
+                    accessibilityLabel="S'inscrire avec Google"
+                    style={[styles.googleButton, { borderColor: colors.border }, loading && styles.disabledButton]}
+                    onPress={handleGoogleSignup}
+                    disabled={loading}
+                  >
+                    {loading
+                      ? <ActivityIndicator color={colors.primary} />
+                      : (
+                        <>
+                          <Text style={styles.googleIcon}>G</Text>
+                          <Text style={[styles.googleButtonText, { color: colors.text.primary }]}>Continuer avec Google</Text>
+                        </>
+                      )}
+                  </TouchableOpacity>
+                  <View style={styles.googleDivider}>
+                    <View style={[styles.googleDividerLine, { backgroundColor: colors.border }]} />
+                    <Text style={[styles.googleDividerText, { color: colors.text.secondary }]}>OU</Text>
+                    <View style={[styles.googleDividerLine, { backgroundColor: colors.border }]} />
+                  </View>
+                </>
+              )}
+
+                {googleIdToken && (
+                  <Text style={[styles.googleVerifiedText, { color: colors.success }]}>
+                    Adresse Google vérifiée : {email}
+                  </Text>
+                )}
+
                 <View style={[styles.inputWrapper, { backgroundColor: isDark ? '#333' : '#f9f9f9', borderColor: colors.border }]}>
                   <AtSign size={20} color={colors.text.secondary} />
                   <TextInput
@@ -627,69 +716,73 @@ export default function SignupScreen({ navigation }: any) {
                     ref={emailInputRef}
                     value={email}
                     onChangeText={setEmail}
+                    editable={!googleIdToken}
                     keyboardType="email-address"
                     autoCapitalize="none"
                     autoCorrect={false}
                     autoComplete="email"
                     textContentType="emailAddress"
                     returnKeyType="next"
-                    onSubmitEditing={() => passwordInputRef.current?.focus()}
+                    onSubmitEditing={() => googleIdToken ? handleNextStep() : passwordInputRef.current?.focus()}
                     accessibilityLabel="Adresse email"
                   />
                 </View>
                 {emailError ? <Text style={styles.errorText}>{emailError}</Text> : null}
 
-                <View style={[styles.inputWrapper, { backgroundColor: isDark ? '#333' : '#f9f9f9', borderColor: passwordError ? colors.danger : colors.border }]}>
-                  <Lock size={20} color={colors.text.secondary} />
-                  <TextInput
-                  ref={passwordInputRef}
-                  style={[styles.input, { color: colors.text.primary }]}
-                    placeholder="Mot de passe"
-                    placeholderTextColor={colors.text.disabled}
-                    value={password}
-                    onChangeText={(text) => {
-                      setPassword(text);
-                      let strength = 0;
-                      if (text.length >= 8) strength++;
-                      if (/[A-Z]/.test(text)) strength++;
-                      if (/[0-9]/.test(text)) strength++;
-                      setPasswordStrength(strength);
+                {!googleIdToken && (
+                  <>
+                    <View style={[styles.inputWrapper, { backgroundColor: isDark ? '#333' : '#f9f9f9', borderColor: passwordError ? colors.danger : colors.border }]}>
+                      <Lock size={20} color={colors.text.secondary} />
+                      <TextInput
+                        ref={passwordInputRef}
+                        style={[styles.input, { color: colors.text.primary }]}
+                        placeholder="Mot de passe"
+                        placeholderTextColor={colors.text.disabled}
+                        value={password}
+                        onChangeText={(text) => {
+                          setPassword(text);
+                          let strength = 0;
+                          if (text.length >= 8) strength++;
+                          if (/[A-Z]/.test(text)) strength++;
+                          if (/[0-9]/.test(text)) strength++;
+                          setPasswordStrength(strength);
 
-                      if (text.length > 0 && text.length < 8) {
-                        setPasswordError('Minimum 8 caractères requis');
-                      } else if (text.length >= 8 && !/(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])/.test(text)) {
-                        setPasswordError('Inclure Majuscule, minuscule et chiffre');
-                      } else {
-                        setPasswordError('');
-                      }
-                    }}
-                    secureTextEntry={!showPassword}
-                    autoCapitalize="none"
-                    autoComplete="new-password"
-                    textContentType="newPassword"
-                    returnKeyType="done"
-                    accessibilityLabel="Mot de passe"
-                  />
-                  <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                    {showPassword ? <EyeOff size={20} color={colors.text.secondary} /> : <Eye size={20} color={colors.text.secondary} />}
-                  </TouchableOpacity>
-                </View>
+                          if (text.length > 0 && text.length < 8) {
+                            setPasswordError('Minimum 8 caractères requis');
+                          } else if (text.length >= 8 && !/(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])/.test(text)) {
+                            setPasswordError('Inclure Majuscule, minuscule et chiffre');
+                          } else {
+                            setPasswordError('');
+                          }
+                        }}
+                        secureTextEntry={!showPassword}
+                        autoCapitalize="none"
+                        autoComplete="new-password"
+                        textContentType="newPassword"
+                        returnKeyType="done"
+                        accessibilityLabel="Mot de passe"
+                      />
+                      <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                        {showPassword ? <EyeOff size={20} color={colors.text.secondary} /> : <Eye size={20} color={colors.text.secondary} />}
+                      </TouchableOpacity>
+                    </View>
 
-                {/* Barre de force du mot de passe */}
-                {password.length > 0 && (
-                  <View style={styles.strengthBarContainer}>
-                    <View style={[
-                      styles.strengthBar,
-                      {
-                        width: `${(passwordStrength / 3) * 100}%`,
-                        backgroundColor: passwordStrength === 1 ? '#FF3B30' : (passwordStrength === 2 ? '#FF9500' : (passwordStrength === 3 ? '#4CD964' : colors.danger))
-                      }
-                    ]} />
-                  </View>
-                )}
+                    {password.length > 0 && (
+                      <View style={styles.strengthBarContainer}>
+                        <View style={[
+                          styles.strengthBar,
+                          {
+                            width: `${(passwordStrength / 3) * 100}%`,
+                            backgroundColor: passwordStrength === 1 ? '#FF3B30' : (passwordStrength === 2 ? '#FF9500' : (passwordStrength === 3 ? '#4CD964' : colors.danger))
+                          }
+                        ]} />
+                      </View>
+                    )}
 
-                {passwordError ? <Text style={styles.errorText}>{passwordError}</Text> : (
-                   <Text style={[styles.hintText, { color: colors.text.secondary }]}>Min. 8 caractères, 1 Majuscule et 1 chiffre</Text>
+                    {passwordError ? <Text style={styles.errorText}>{passwordError}</Text> : (
+                      <Text style={[styles.hintText, { color: colors.text.secondary }]}>Min. 8 caractères, 1 Majuscule et 1 chiffre</Text>
+                    )}
+                  </>
                 )}
 
                 <TouchableOpacity style={[styles.signupButton, { backgroundColor: colors.primary }]} onPress={handleNextStep}>

@@ -339,6 +339,34 @@ class ApiService {
     } catch (e: any) { return this.handleError(e); }
   }
 
+  async registerWithGoogle(data: {
+    idToken: string;
+    name: string;
+    phone_number: string;
+    username?: string;
+    gender: string;
+    country: string;
+    province: string;
+    city: string;
+    commune?: string;
+    birth_date: string;
+    device_info?: Record<string, unknown>;
+    appVersion?: string;
+    accepted_legal_version: string;
+    accepted_tos_version: string;
+    accepted_privacy_version: string;
+  }): Promise<ApiResponse> {
+    try {
+      const res = await this.api.post('/auth/google/register', data);
+      if (res.data?.success && res.data.data) {
+        if (res.data.data.token) await this.setAuthToken(res.data.data.token);
+        if (res.data.data.refreshToken) await this.setRefreshToken(res.data.data.refreshToken);
+        if (res.data.data.user) await AsyncStorage.setItem('user', JSON.stringify(res.data.data.user));
+      }
+      return res.data;
+    } catch (e: any) { return this.handleError(e); }
+  }
+
   async login(credentials: any): Promise<ApiResponse> {
     try {
       const res = await this.api.post('/auth/login', credentials);

@@ -9,9 +9,12 @@ import {
   ActivityIndicator,
   Alert,
   ScrollView,
+  KeyboardAvoidingView,
   Linking,
+  Platform,
   useWindowDimensions,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -160,50 +163,61 @@ export default function AddContactScreen({ navigation }: any) {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]} edges={['top', 'left', 'right', 'bottom']}>
       <StatusBar backgroundColor={colors.surface} barStyle={isDark ? "light-content" : "dark-content"} />
 
-      <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.closeButton}>
-          <Ionicons name="close" size={28} color={colors.text.secondary} />
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text.primary }]}>Nouveau contact</Text>
-        <TouchableOpacity
-          onPress={handleSaveContact}
-          disabled={loading || !firstName.trim() || !isPhoneValid}
-          style={styles.saveButton}
-        >
-          {loading ? <ActivityIndicator size="small" color={colors.primary} /> : <Text style={[styles.saveButtonText, { color: colors.primary }]}>ENREGISTRER</Text>}
-        </TouchableOpacity>
-      </View>
-
-      <ScrollView style={styles.form} contentContainerStyle={styles.formContent} keyboardShouldPersistTaps="handled">
-        <View style={styles.inputGroup}>
-          <Ionicons name="person-outline" size={24} color={colors.primary} style={styles.icon} />
-          <View style={styles.inputs}>
-            <TextInput
-              style={[styles.input, { borderBottomColor: colors.primary, color: colors.text.primary }]}
-              placeholder="Prénom"
-              placeholderTextColor={colors.text.disabled}
-              value={firstName}
-              onChangeText={setFirstName}
-            />
-            <TextInput
-              style={[styles.input, { borderBottomColor: colors.primary, color: colors.text.primary, marginTop: 10 }]}
-              placeholder="Nom"
-              placeholderTextColor={colors.text.disabled}
-              value={lastName}
-              onChangeText={setLastName}
-            />
-          </View>
+      <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+          <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel="Retour"
+            onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.navigate('ChatList')}
+            style={styles.closeButton}
+          >
+            <Ionicons name="arrow-back" size={24} color={colors.text.secondary} />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: colors.text.primary }]} numberOfLines={1}>Nouveau contact</Text>
+          <TouchableOpacity
+            onPress={handleSaveContact}
+            disabled={loading || !firstName.trim() || !isPhoneValid}
+            style={styles.saveButton}
+          >
+            {loading ? <ActivityIndicator size="small" color={colors.primary} /> : <Text style={[styles.saveButtonText, { color: colors.primary }]} numberOfLines={1}>ENREGISTRER</Text>}
+          </TouchableOpacity>
         </View>
 
-        <View style={styles.inputGroup}>
-          <Ionicons name="call-outline" size={24} color={colors.primary} style={styles.icon} />
-          <View style={styles.inputs}>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <ScrollView
+          style={styles.form}
+          contentContainerStyle={styles.formContent}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+        >
+          <View style={styles.inputGroup}>
+            <Ionicons name="person-outline" size={24} color={colors.primary} style={styles.icon} />
+            <View style={styles.inputs}>
+              <TextInput
+                style={[styles.input, { borderBottomColor: colors.primary, color: colors.text.primary }]}
+                placeholder="Prénom"
+                placeholderTextColor={colors.text.disabled}
+                value={firstName}
+                onChangeText={setFirstName}
+              />
+              <TextInput
+                style={[styles.input, { borderBottomColor: colors.primary, color: colors.text.primary, marginTop: 10 }]}
+                placeholder="Nom"
+                placeholderTextColor={colors.text.disabled}
+                value={lastName}
+                onChangeText={setLastName}
+              />
+            </View>
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Ionicons name="call-outline" size={24} color={colors.primary} style={styles.icon} />
+            <View style={styles.inputs}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <TouchableOpacity
-                    style={[styles.countryBtn, { borderColor: colors.border }]}
+                  style={[styles.countryBtn, { borderColor: colors.border }]}
                   onPress={() => setShowCountryPicker(true)}
                 >
                   <Text style={{ fontSize: 18 }}>{countryFlag}</Text>
@@ -222,67 +236,69 @@ export default function AddContactScreen({ navigation }: any) {
 
                 {checkingPhone && <ActivityIndicator size="small" color={colors.primary} style={{ marginLeft: 10 }} />}
                 {foundUser && <CheckCircle size={20} color="#2ecc71" style={{ marginLeft: 10 }} />}
-            </View>
+              </View>
 
-            {!!phone && !isPhoneValid && (
-              <Text style={{ color: '#d93025', fontSize: normalize(12), marginTop: 8 }}>
-                Entrez un numéro international valide (7 à 15 chiffres avec l’indicatif).
-              </Text>
-            )}
+              {!!phone && !isPhoneValid && (
+                <Text style={{ color: '#d93025', fontSize: normalize(12), marginTop: 8 }}>
+                  Entrez un numéro international valide (7 à 15 chiffres avec l’indicatif).
+                </Text>
+              )}
 
-            {foundUser && (
+              {foundUser && (
                 <View style={[styles.foundBox, { backgroundColor: '#2ecc7115', borderColor: '#2ecc71' }]}>
-                    <Text style={{ color: '#2ecc71', fontWeight: 'bold', fontSize: 12 }}>Utilisateur Acemia trouvé !</Text>
-                    <Text style={{ color: colors.text.primary, fontSize: 11 }}>{foundUser.full_name} (@{foundUser.username})</Text>
+                  <Text style={{ color: '#2ecc71', fontWeight: 'bold', fontSize: 12 }}>Utilisateur Acemia trouvé !</Text>
+                  <Text style={{ color: colors.text.primary, fontSize: 11 }}>{foundUser.full_name} (@{foundUser.username})</Text>
                 </View>
-            )}
+              )}
 
-            {lookupError && !checkingPhone && (
-              <Text style={{ color: '#d93025', fontSize: normalize(12), marginTop: 10 }}>
-                Vérification impossible pour le moment. Vous pouvez réessayer dans un instant.
-              </Text>
-            )}
+              {lookupError && !checkingPhone && (
+                <Text style={{ color: '#d93025', fontSize: normalize(12), marginTop: 10 }}>
+                  Vérification impossible pour le moment. Vous pouvez réessayer dans un instant.
+                </Text>
+              )}
 
-            {showInvite && !foundUser && !checkingPhone && (
-              <Text style={{ color: colors.text.secondary, fontSize: normalize(12), marginTop: 10 }}>
-                Aucun compte Acemia n’utilise ce numéro.
-              </Text>
-            )}
+              {showInvite && !foundUser && !checkingPhone && (
+                <Text style={{ color: colors.text.secondary, fontSize: normalize(12), marginTop: 10 }}>
+                  Aucun compte Acemia n’utilise ce numéro.
+                </Text>
+              )}
 
-            {showInvite && !foundUser && !checkingPhone && (
+              {showInvite && !foundUser && !checkingPhone && (
                 <TouchableOpacity onPress={handleInvite} style={[styles.inviteBtn, { backgroundColor: colors.primary + '15', borderColor: colors.primary }]}>
-                    <Share2 size={16} color={colors.primary} />
-                    <Text style={{ color: colors.primary, fontWeight: 'bold', marginLeft: 10, fontSize: 13 }}>Inviter sur Acemia</Text>
+                  <Share2 size={16} color={colors.primary} />
+                  <Text style={{ color: colors.primary, fontWeight: 'bold', marginLeft: 10, fontSize: 13 }}>Inviter sur Acemia</Text>
                 </TouchableOpacity>
-            )}
+              )}
+            </View>
           </View>
-        </View>
 
-        <Text style={[styles.infoText, { color: colors.text.secondary }]}>
-          Le numéro sera ajouté au répertoire de votre téléphone. Si cette personne utilise Acemia, elle sera aussi ajoutée à vos contacts dans l’application.
-        </Text>
-      </ScrollView>
+          <Text style={[styles.infoText, { color: colors.text.secondary }]}>
+            Le numéro sera ajouté au répertoire de votre téléphone. Si cette personne utilise Acemia, elle sera aussi ajoutée à vos contacts dans l’application.
+          </Text>
+        </ScrollView>
 
-      <CountryPicker
-        show={showCountryPicker}
-        lang={language}
-        pickerButtonOnPress={(item) => {
-          setCountryFlag(item.flag);
-          setCallingCode(item.dial_code.replace('+', ''));
-          setShowCountryPicker(false);
-        }}
-        onBackdropPress={() => setShowCountryPicker(false)}
-        style={{
-          modal: { height: Math.min(500, height * 0.75), backgroundColor: isDark ? '#1E1E1E' : '#FFFFFF' },
-          countryName: { color: colors.text.primary },
-          dialCode: { color: colors.text.secondary },
-        }}
-      />
-    </View>
+        <CountryPicker
+          show={showCountryPicker}
+          lang={language}
+          pickerButtonOnPress={(item) => {
+            setCountryFlag(item.flag);
+            setCallingCode(item.dial_code.replace('+', ''));
+            setShowCountryPicker(false);
+          }}
+          onBackdropPress={() => setShowCountryPicker(false)}
+          style={{
+            modal: { height: Math.min(500, height * 0.75), backgroundColor: isDark ? '#1E1E1E' : '#FFFFFF' },
+            countryName: { color: colors.text.primary },
+            dialCode: { color: colors.text.secondary },
+          }}
+        />
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 const createStyles = (normalize: (size: number) => number, width: number) => StyleSheet.create({
+  safeArea: { flex: 1, width: '100%' },
   container: { flex: 1, width: '100%', maxWidth: 720, alignSelf: 'center' as const },
   header: {
     flexDirection: 'row',
@@ -292,7 +308,7 @@ const createStyles = (normalize: (size: number) => number, width: number) => Sty
     paddingVertical: normalize(12),
     borderBottomWidth: 0.5,
   },
-  headerTitle: { fontSize: normalize(18), fontWeight: 'bold', flex: 1, marginLeft: normalize(width < 360 ? 8 : 20) },
+  headerTitle: { fontSize: normalize(18), fontWeight: 'bold', flex: 1, minWidth: 0, marginLeft: normalize(width < 360 ? 8 : 20) },
   saveButtonText: { fontWeight: 'bold', fontSize: normalize(14) },
   form: { flex: 1, width: '100%' },
   formContent: { width: '100%', maxWidth: 640, alignSelf: 'center' as const, padding: normalize(width < 360 ? 14 : 20), paddingBottom: normalize(36) },
@@ -333,5 +349,5 @@ const createStyles = (normalize: (size: number) => number, width: number) => Sty
   },
   infoText: { fontSize: normalize(12), textAlign: 'center', marginTop: normalize(20), paddingHorizontal: normalize(width < 360 ? 10 : 30), lineHeight: normalize(18) },
   closeButton: { padding: normalize(5) },
-  saveButton: { padding: normalize(5) }
+  saveButton: { padding: normalize(5), flexShrink: 0 }
 });
