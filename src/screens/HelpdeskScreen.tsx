@@ -5,16 +5,19 @@ import {
   StyleSheet,
   TouchableOpacity,
   TextInput,
-  SafeAreaView,
   StatusBar,
   ScrollView,
   Alert,
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Image,
+  ImageBackground,
+  useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import apiService from '../services/api.service';
 
 const HELP_CATEGORIES = [
@@ -27,6 +30,8 @@ const HELP_CATEGORIES = [
 
 export default function HelpdeskScreen({ navigation, isComponent = false }: any) {
   const { colors, normalize, isDark, fontSizeFactor } = useTheme();
+  const { width, height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const [email, setEmail] = useState('');
   const [reason, setReason] = useState('');
   const [category, setCategory] = useState('');
@@ -67,19 +72,19 @@ export default function HelpdeskScreen({ navigation, isComponent = false }: any)
     }
   };
 
-  const styles = createStyles(colors, normalize, fontSizeFactor, isDark);
+  const styles = createStyles(colors, normalize, fontSizeFactor, isDark, width, height, insets, isComponent);
 
   return (
     <View style={styles.container}>
       {!isComponent && (
         <>
-          <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={colors.surface} />
-          <View style={styles.header}>
-            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-              <Ionicons name="arrow-back" size={24} color={colors.primary} />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>Centre d'aide</Text>
-          </View>
+          <ImageBackground
+            source={require('../../assets/AcemiaBackground.png')}
+            style={StyleSheet.absoluteFill}
+            resizeMode="cover"
+          />
+          <View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.backgroundOverlay]} />
+          <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
         </>
       )}
 
@@ -88,88 +93,110 @@ export default function HelpdeskScreen({ navigation, isComponent = false }: any)
         style={{ flex: 1 }}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
-        {!isComponent && <View style={{ height: 1 }} />}
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          <View style={styles.infoBox}>
-            <Ionicons name="information-circle" size={40} color={colors.primary} />
-            <Text style={styles.infoText}>Dites-nous ce qui ne va pas. Utilisez la barre de recherche ci-dessous pour décrire votre problème et nous l'envoyer directement.</Text>
-          </View>
-
-          <Text style={styles.sectionTitle}>Que cherchez-vous ?</Text>
-          <View style={styles.searchBarWrapper}>
-            <Ionicons name="search-outline" size={20} color="#999" />
-            <TextInput
-              style={styles.searchInputField}
-              placeholder="Décrivez votre problème ici..."
-              placeholderTextColor="#999"
-              value={reason}
-              onChangeText={setReason}
-              returnKeyType="send"
-              onSubmitEditing={handleSubmit}
-            />
-            {reason.length > 0 && (
-              <TouchableOpacity onPress={() => setReason('')}>
-                <Ionicons name="close-circle" size={20} color="#999" />
-              </TouchableOpacity>
+          <View style={styles.contentWrapper}>
+            {!isComponent && (
+              <View style={styles.hero}>
+                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton} accessibilityRole="button" accessibilityLabel="Retour">
+                  <Ionicons name="arrow-back" size={22} color={colors.primary} />
+                </TouchableOpacity>
+                <Image source={require('../../assets/AcemiaLogo.png')} style={styles.brandLogo} resizeMode="contain" accessibilityLabel="Acemia" />
+                <Text style={styles.heroTitle}>Centre d’aide</Text>
+                <Text style={styles.heroSubtitle}>Une question ? Notre équipe est là pour vous.</Text>
+              </View>
             )}
-          </View>
 
-          <Text style={styles.sectionTitle}>Catégorie (optionnel)</Text>
-          <View style={styles.categoriesGrid}>
-            {HELP_CATEGORIES.map((item) => (
+            <View style={styles.formCard}>
+              <View style={styles.cardHeading}>
+                <View style={styles.headingIcon}>
+                  <Ionicons name="chatbubbles-outline" size={22} color={colors.primary} />
+                </View>
+                <View style={styles.headingCopy}>
+                  <Text style={styles.cardTitle}>Comment pouvons-nous vous aider ?</Text>
+                  <Text style={styles.cardSubtitle}>Décrivez votre demande et nous vous répondrons par e-mail.</Text>
+                </View>
+              </View>
+
+              <Text style={styles.sectionTitle}>Votre problème</Text>
+              <View style={styles.searchBarWrapper}>
+                <Ionicons name="search-outline" size={19} color={colors.text.secondary} />
+                <TextInput
+                  style={styles.searchInputField}
+                  placeholder="Résumez votre problème..."
+                  placeholderTextColor={colors.text.disabled}
+                  value={reason}
+                  onChangeText={setReason}
+                  returnKeyType="send"
+                  onSubmitEditing={handleSubmit}
+                />
+                {reason.length > 0 && (
+                  <TouchableOpacity onPress={() => setReason('')} accessibilityRole="button" accessibilityLabel="Effacer le texte">
+                    <Ionicons name="close-circle" size={20} color={colors.text.secondary} />
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              <Text style={styles.sectionTitle}>Catégorie</Text>
+              <View style={styles.categoriesGrid}>
+                {HELP_CATEGORIES.map((item) => (
+                  <TouchableOpacity
+                    key={item.id}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: category === item.id }}
+                    style={[styles.categoryItem, category === item.id && styles.categoryItemSelected]}
+                    onPress={() => setCategory(item.id)}
+                  >
+                    <Ionicons name={item.icon as any} size={22} color={category === item.id ? colors.primary : colors.text.secondary} />
+                    <Text style={[styles.categoryLabel, category === item.id && styles.categoryLabelSelected]}>{item.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <Text style={styles.sectionTitle}>Adresse e-mail</Text>
+              <View style={styles.inputWrapper}>
+                <Ionicons name="mail-outline" size={19} color={colors.text.secondary} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Votre adresse e-mail de contact"
+                  placeholderTextColor={colors.text.disabled}
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  editable={!user}
+                />
+              </View>
+
+              <Text style={styles.sectionTitle}>Description détaillée</Text>
+              <TextInput
+                style={styles.textArea}
+                placeholder="Ajoutez les détails qui nous aideront à comprendre votre demande..."
+                placeholderTextColor={colors.text.disabled}
+                value={reason}
+                onChangeText={setReason}
+                multiline
+                numberOfLines={5}
+                textAlignVertical="top"
+              />
+
               <TouchableOpacity
-                key={item.id}
-                style={[styles.categoryItem, category === item.id && { borderColor: colors.primary, backgroundColor: colors.primary + '10' }]}
-                onPress={() => setCategory(item.id)}
+                style={[styles.submitButton, loading && styles.submitButtonDisabled]}
+                onPress={handleSubmit}
+                disabled={loading}
+                accessibilityRole="button"
               >
-                <Ionicons name={item.icon as any} size={24} color={category === item.id ? colors.primary : '#666'} />
-                <Text style={[styles.categoryLabel, category === item.id && { color: colors.primary, fontWeight: 'bold' }]}>{item.label}</Text>
+                {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitButtonText}>ENVOYER MA DEMANDE</Text>}
               </TouchableOpacity>
-            ))}
-          </View>
 
-          <Text style={styles.sectionTitle}>Vos informations</Text>
-          <View style={styles.inputWrapper}>
-            <Ionicons name="mail-outline" size={20} color="#999" />
-            <TextInput
-              style={styles.input}
-              placeholder="Votre adresse email de contact"
-              placeholderTextColor="#999"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              editable={!user}
-            />
-          </View>
-
-          <Text style={styles.sectionTitle}>Description détaillée</Text>
-          <TextInput
-            style={styles.textArea}
-            placeholder="Décrivez votre problème ici avec le plus de détails possible..."
-            placeholderTextColor="#999"
-            value={reason}
-            onChangeText={setReason}
-            multiline
-            numberOfLines={6}
-            textAlignVertical="top"
-          />
-
-          <TouchableOpacity
-            style={[styles.submitButton, loading && { opacity: 0.7 }]}
-            onPress={handleSubmit}
-            disabled={loading}
-          >
-            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitButtonText}>ENVOYER MA DEMANDE</Text>}
-          </TouchableOpacity>
-
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>Vous pouvez aussi nous contacter directement à</Text>
-            <Text style={styles.supportEmail}>support@meetme.app</Text>
+              <View style={styles.footer}>
+                <Text style={styles.footerText}>Vous pouvez aussi nous écrire directement</Text>
+                <Text style={styles.supportEmail}>support@meetme.app</Text>
+              </View>
+            </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -177,26 +204,40 @@ export default function HelpdeskScreen({ navigation, isComponent = false }: any)
   );
 }
 
-const createStyles = (colors: any, normalize: any, factor: number, isDark: boolean) => StyleSheet.create({
+const createStyles = (colors: any, normalize: any, factor: number, isDark: boolean, width: number, height: number, insets: { top: number; bottom: number }, isComponent: boolean) => {
+  const compact = width < 360 || height < 700;
+  return StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  header: { flexDirection: 'row', alignItems: 'center', padding: 20, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border },
-  backButton: { marginRight: 20 },
-  headerTitle: { fontSize: normalize(18, factor), fontWeight: 'bold', color: colors.text.primary },
-  scrollContent: { padding: 20 },
-  infoBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: isDark ? '#333' : '#F0F2F5', padding: 20, borderRadius: 20, marginBottom: 25 },
-  infoText: { flex: 1, marginLeft: 15, fontSize: normalize(13, factor), color: colors.text.secondary, lineHeight: 20 },
-  sectionTitle: { fontSize: normalize(14, factor), fontWeight: 'bold', color: colors.text.primary, marginBottom: 15, marginTop: 10 },
-  searchBarWrapper: { flexDirection: 'row', alignItems: 'center', backgroundColor: isDark ? '#333' : '#F0F2F5', borderRadius: 15, paddingHorizontal: 15, height: 60, marginBottom: 25, borderWidth: 1, borderColor: colors.border },
-  searchInputField: { flex: 1, marginLeft: 10, fontSize: normalize(15, factor), color: colors.text.primary },
-  categoriesGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 20 },
-  categoryItem: { width: '48%', backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 15, padding: 15, alignItems: 'center', marginBottom: 12, elevation: 1 },
-  categoryLabel: { fontSize: normalize(11, factor), marginTop: 8, textAlign: 'center', color: colors.text.secondary },
-  inputWrapper: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 15, paddingHorizontal: 15, height: 55, marginBottom: 10 },
+  backgroundOverlay: { backgroundColor: isDark ? 'rgba(18,18,18,0.82)' : 'rgba(255,255,255,0.56)' },
+  scrollContent: { flexGrow: 1, paddingTop: isComponent ? 18 : Math.max(insets.top, compact ? 12 : 20), paddingBottom: isComponent ? 16 : Math.max(insets.bottom, compact ? 12 : 20), paddingHorizontal: width < 360 ? 16 : 26, justifyContent: 'center' },
+  contentWrapper: { width: '100%', maxWidth: 560, alignSelf: 'center' },
+  hero: { alignItems: 'center', marginBottom: compact ? 12 : 18, paddingTop: 4 },
+  backButton: { position: 'absolute', top: 8, left: 0, width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  brandLogo: { width: normalize(compact ? 108 : 124, factor), height: normalize(compact ? 70 : 86, factor), marginBottom: 2 },
+  heroTitle: { fontSize: normalize(25, factor), fontWeight: '800', letterSpacing: -0.5, color: colors.text.primary, textAlign: 'center' },
+  heroSubtitle: { fontSize: normalize(13, factor), color: colors.text.secondary, textAlign: 'center', marginTop: 5 },
+  formCard: { width: '100%', padding: width < 360 ? 16 : 24, backgroundColor: colors.surface, borderRadius: 26, borderWidth: 1, borderColor: colors.border, shadowColor: '#17152B', shadowOpacity: isDark ? 0 : 0.08, shadowRadius: 24, shadowOffset: { width: 0, height: 10 }, elevation: isDark ? 0 : 3 },
+  cardHeading: { flexDirection: 'row', alignItems: 'center', marginBottom: compact ? 14 : 22 },
+  headingIcon: { width: 44, height: 44, borderRadius: 15, backgroundColor: colors.primary + '12', alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  headingCopy: { flex: 1 },
+  cardTitle: { fontSize: normalize(16, factor), fontWeight: '800', color: colors.text.primary },
+  cardSubtitle: { fontSize: normalize(12, factor), lineHeight: normalize(17, factor), color: colors.text.secondary, marginTop: 4 },
+  sectionTitle: { fontSize: normalize(12, factor), fontWeight: '700', color: colors.text.primary, marginBottom: 8, marginTop: 8 },
+  searchBarWrapper: { flexDirection: 'row', alignItems: 'center', backgroundColor: isDark ? '#252525' : '#F9F9FB', borderRadius: 14, paddingHorizontal: 14, height: normalize(52, factor), marginBottom: 8, borderWidth: 1, borderColor: colors.border },
+  searchInputField: { flex: 1, marginLeft: 10, fontSize: normalize(14, factor), color: colors.text.primary },
+  categoriesGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 4 },
+  categoryItem: { width: '48%', minHeight: compact ? 68 : 78, flexDirection: 'row', backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 14, paddingHorizontal: compact ? 8 : 12, paddingVertical: 10, alignItems: 'center', marginBottom: 10 },
+  categoryItemSelected: { borderColor: colors.primary, backgroundColor: colors.primary + '10' },
+  categoryLabel: { flex: 1, fontSize: normalize(11, factor), marginLeft: 8, color: colors.text.secondary, lineHeight: normalize(15, factor) },
+  categoryLabelSelected: { color: colors.primary, fontWeight: '700' },
+  inputWrapper: { flexDirection: 'row', alignItems: 'center', backgroundColor: isDark ? '#252525' : '#F9F9FB', borderWidth: 1, borderColor: colors.border, borderRadius: 14, paddingHorizontal: 14, height: normalize(52, factor), marginBottom: 8 },
   input: { flex: 1, marginLeft: 10, fontSize: normalize(14, factor), color: colors.text.primary },
-  textArea: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 15, padding: 15, fontSize: normalize(14, factor), color: colors.text.primary, minHeight: 120, marginBottom: 25 },
-  submitButton: { backgroundColor: colors.primary, height: 55, borderRadius: 30, justifyContent: 'center', alignItems: 'center', shadowColor: colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 5, elevation: 5 },
-  submitButtonText: { color: '#fff', fontWeight: 'bold', fontSize: normalize(16, factor), letterSpacing: 1 },
-  footer: { marginTop: 40, alignItems: 'center', paddingBottom: 20 },
-  footerText: { fontSize: normalize(12, factor), color: '#999' },
-  supportEmail: { fontSize: normalize(14, factor), fontWeight: 'bold', color: colors.primary, marginTop: 5 }
-});
+  textArea: { backgroundColor: isDark ? '#252525' : '#F9F9FB', borderWidth: 1, borderColor: colors.border, borderRadius: 14, padding: 14, fontSize: normalize(14, factor), color: colors.text.primary, minHeight: 110, marginBottom: 18 },
+  submitButton: { backgroundColor: colors.primary, height: normalize(54, factor), borderRadius: 15, justifyContent: 'center', alignItems: 'center', shadowColor: colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.22, shadowRadius: 8, elevation: 3 },
+  submitButtonDisabled: { opacity: 0.7 },
+  submitButtonText: { color: '#fff', fontWeight: '800', fontSize: normalize(14, factor), letterSpacing: 0.4 },
+  footer: { marginTop: 22, alignItems: 'center', paddingBottom: isComponent ? 4 : 12 },
+  footerText: { fontSize: normalize(12, factor), color: colors.text.secondary, textAlign: 'center' },
+  supportEmail: { fontSize: normalize(14, factor), fontWeight: '700', color: colors.primary, marginTop: 5 },
+  });
+};
